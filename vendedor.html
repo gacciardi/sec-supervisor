@@ -81,7 +81,7 @@
 <div class="bottom-nav">
   <button onclick="mostrarListado()">☰<span>Listado</span></button>
   <button onclick="centrarMapa()">🗺️<span>Mapa</span></button>
-  <button class="principal" onclick="cargarDatos()">✓<span>Actualizar</span></button>
+  <button class="principal" onclick="forzarActualizar()">✓<span>Actualizar</span></button>
   <button onclick="verVisitas()">📋<span>Visitas</span></button>
   <button onclick="cerrarSesion()">👤<span>Salir</span></button>
 </div>
@@ -103,7 +103,18 @@ let visitaActualId = null;
 let proximoCliente = null;
 let clientesOmitidos = new Set();
 
+let ultimaActualizacion = 0;
+let ultimaPosicionEnviada = null;
+let primeraCargaMapa = true;
+let enviandoGPS = false;
+
 const COLA_OFFLINE = "sec_cola_offline_vendedor";
+
+const MIN_METROS_ENVIO = 20;
+const MIN_MS_ENTRE_ENVIO_GPS = 60000;
+const MIN_MS_RECARGA_DATOS = 120000;
+
+let ultimoEnvioGPS = 0;
 
 if (!vendedorId) window.location.href = "login-vendedor.html";
 
@@ -211,7 +222,7 @@ async function sincronizarOffline(){
   guardarColaOffline(pendientes);
 
   if (pendientes.length === 0) {
-    await cargarDatos();
+    await cargarDatos(false);
   }
 }
 
@@ -224,7 +235,7 @@ function iniciarMapa(){
   capa=L.layerGroup().addTo(mapa);
 }
 
-async function cargarDatos(){
+async function cargarDatos(ajustarMapa = false){
   try {
     const detalle=await fetch(`${API}/dashboard/vendedores/${vendedorId}`).then(r=>r.json());
     clientes=await fetch(`${API}/clientes/vendedor/${vendedorId}/hoy`).then(r=>r.json());
@@ -238,13 +249,19 @@ async function cargarDatos(){
     document.getElementById("pendientes").textContent=clientes.length-visitadosCantidad;
     document.getElementById("total").textContent=clientes.length;
 
-    dibujarMapa(visitadosNombres);
+    dibujarMapa(visitadosNombres, ajustarMapa);
     calcularProximoCliente();
     actualizarEstadoConexion();
 
   } catch (error) {
     actualizarEstadoConexion();
   }
+}
+
+async function forzarActualizar(){
+  ultimaActualizacion = Date.now();
+  await sincronizarOffline();
+  await cargarDatos(true);
 }
 
 function crearIcono(numero,visitado){
@@ -256,7 +273,7 @@ function crearIcono(numero,visitado){
   });
 }
 
-function dibujarMapa(visitadosNombres){
+function dibujarMapa(visitadosNombres, ajustarMapa = false){
   capa.clearLayers();
   const puntos=[];
 
@@ -294,8 +311,9 @@ function dibujarMapa(visitadosNombres){
     }).addTo(capa).bindPopup("Mi ubicación actual");
   }
 
-  if(puntos.length>0){
+  if((primeraCargaMapa || ajustarMapa) && puntos.length>0){
     mapa.fitBounds(puntos,{padding:[45,45],maxZoom:17});
+    primeraCargaMapa = false;
   }
 }
 
@@ -355,6 +373,82 @@ function omitirProximoCliente(){
   calcularProximoCliente();
 }
 
+async function procesarGPS(lat,lng){
+  ubicacionActual={lat,lng};
+
+  document.getElementById("gpsEstado").textContent="GPS activo";
+  document.getElementById("gpsEstado").style.background="#dcfce7";
+  document.getElementById("gpsEstado").style.color="#166534";
+
+  if(enviandoGPS) return;
+
+  const ahora = Date.now();
+
+  if(ahora - ultimoEnvioGPS < MIN_MS_ENTRE_ENVIO_GPS){
+    calcularProximoCliente();
+    return;
+  }
+
+  if(ultimaPosicionEnviada){
+    const metros = distanciaMetros(
+      ultimaPosicionEnviada.lat,
+      ultimaPosicionEnviada.lng,
+      lat,
+      lng
+    );
+
+    if(metros < MIN_METROS_ENVIO){
+      calcularProximoCliente();
+      return;
+    }
+  }
+
+  enviandoGPS = true;
+  ultimoEnvioGPS = ahora;
+  ultimaPosicionEnviada = { lat, lng };
+
+  const evento = {
+    tipo:"gps_automatico",
+    payload:{vendedor_id:vendedorId,latitud:lat,longitud:lng}
+  };
+
+  try {
+    if (!navigator.onLine) throw new Error("Offline");
+
+    const respuesta=await enviarEvento(evento);
+    const datos=await respuesta.json();
+
+    if(datos.estado==="DENTRO"){
+      document.getElementById("panelVisita").style.display="block";
+      document.getElementById("clienteActual").textContent=datos.cliente||"Cliente";
+      document.getElementById("direccionActual").textContent="Visita en curso";
+      document.getElementById("horaLlegada").textContent="Llegada: "+new Date().toLocaleTimeString();
+
+      visitaActualId=datos.visita_id||(datos.visita?datos.visita.id:visitaActualId);
+
+      await cargarDatos(false);
+      ultimaActualizacion = Date.now();
+    }
+
+    if(datos.estado==="FUERA"){
+      document.getElementById("panelVisita").style.display="none";
+      visitaActualId=null;
+    }
+
+  } catch {
+    agregarAColaOffline(evento);
+  }
+
+  await sincronizarOffline();
+
+  if(Date.now() - ultimaActualizacion > MIN_MS_RECARGA_DATOS){
+    ultimaActualizacion = Date.now();
+    await cargarDatos(false);
+  }
+
+  enviandoGPS = false;
+}
+
 function iniciarGPS(){
   if(!navigator.geolocation){
     document.getElementById("gpsEstado").textContent="GPS no disponible";
@@ -364,46 +458,10 @@ function iniciarGPS(){
   }
 
   navigator.geolocation.watchPosition(
-    async pos=>{
+    pos=>{
       const lat=pos.coords.latitude;
       const lng=pos.coords.longitude;
-      ubicacionActual={lat,lng};
-
-      document.getElementById("gpsEstado").textContent="GPS activo";
-      document.getElementById("gpsEstado").style.background="#dcfce7";
-      document.getElementById("gpsEstado").style.color="#166534";
-
-      const evento = {
-        tipo:"gps_automatico",
-        payload:{vendedor_id:vendedorId,latitud:lat,longitud:lng}
-      };
-
-      try {
-        if (!navigator.onLine) throw new Error("Offline");
-
-        const respuesta=await enviarEvento(evento);
-        const datos=await respuesta.json();
-
-        if(datos.estado==="DENTRO"){
-          document.getElementById("panelVisita").style.display="block";
-          document.getElementById("clienteActual").textContent=datos.cliente||"Cliente";
-          document.getElementById("direccionActual").textContent="Visita en curso";
-          document.getElementById("horaLlegada").textContent="Llegada: "+new Date().toLocaleTimeString();
-
-          visitaActualId=datos.visita_id||(datos.visita?datos.visita.id:visitaActualId);
-        }
-
-        if(datos.estado==="FUERA"){
-          document.getElementById("panelVisita").style.display="none";
-          visitaActualId=null;
-        }
-
-      } catch {
-        agregarAColaOffline(evento);
-      }
-
-      await sincronizarOffline();
-      await cargarDatos();
+      procesarGPS(lat,lng);
     },
     error=>{
       document.getElementById("gpsEstado").textContent="Error GPS";
@@ -411,7 +469,11 @@ function iniciarGPS(){
       document.getElementById("gpsEstado").style.color="#991b1b";
       console.error(error);
     },
-    {enableHighAccuracy:true,maximumAge:5000,timeout:15000}
+    {
+      enableHighAccuracy:true,
+      maximumAge:30000,
+      timeout:20000
+    }
   );
 }
 
@@ -507,7 +569,7 @@ async function finalizarVisitaManual(){
   document.getElementById("panelVisita").style.display="none";
   visitaActualId=null;
   await sincronizarOffline();
-  await cargarDatos();
+  await cargarDatos(false);
 }
 
 function abrirGoogleMaps(lat,lng){
@@ -532,9 +594,10 @@ function cerrarSesion(){
 
 actualizarEstadoConexion();
 iniciarMapa();
-cargarDatos();
+cargarDatos(true);
 iniciarGPS();
-setInterval(sincronizarOffline,15000);
+setInterval(sincronizarOffline,30000);
+setInterval(()=>cargarDatos(false),180000);
 </script>
 
 </body>

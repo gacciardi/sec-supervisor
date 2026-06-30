@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Dashboard Vendedores</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>Dashboard de Vendedores</h1>
+    <p>Seguimiento en tiempo real</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="usuarios.html">Usuarios</a>
+  <a href="cobertura.html">Cobertura</a>
+  <a href="pendientes.html">Pendientes</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+  <a href="supervisor.html">Supervisor</a>
+</nav>
+
+<div class="container">
+
+  <div id="panelAlertas"></div>
+
+  <h2>Rendimiento del día</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Legajo</th>
+        <th>Vendedor</th>
+        <th>Estado</th>
+        <th>Último GPS</th>
+        <th>Programados</th>
+        <th>Visitados</th>
+        <th>Pendientes</th>
+        <th>Cobertura</th>
+      </tr>
+    </thead>
+    <tbody id="tablaDashboard"></tbody>
+  </table>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+async function cargarAlertas() {
+
+  const alertas =
+    await fetch(`${API}/dashboard/alertas-operativas`)
+    .then(r => r.json());
+
+  if (!alertas.length) {
+    document.getElementById("panelAlertas").innerHTML = `
+      <div style="
+        background:#dcfce7;
+        border:1px solid #22c55e;
+        padding:15px;
+        margin-bottom:20px;
+        border-radius:8px;
+      ">
+        ✅ Sin alertas operativas
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById("panelAlertas").innerHTML = `
+    <div style="
+      background:#fee2e2;
+      border:1px solid #ef4444;
+      padding:15px;
+      margin-bottom:20px;
+      border-radius:8px;
+    ">
+      <h3>⚠ Alertas operativas</h3>
+
+      ${alertas.map(a => `
+        <div style="margin:8px 0;">
+          🔴 ${a.descripcion}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+async function cargarDashboard() {
+  const vendedores = await fetch(`${API}/dashboard/vendedores`).then(r => r.json());
+
+  document.getElementById("tablaDashboard").innerHTML =
+    vendedores.map(v => {
+      let color = "#ef4444";
+
+      if (v.cobertura >= 80) color = "#22c55e";
+      else if (v.cobertura >= 50) color = "#f59e0b";
+
+      let estado = "⚫ Sin GPS";
+      if (v.llegada_actual) estado = "🟢 En cliente: " + v.cliente_actual;
+      else if (v.ultimo_gps) estado = "🔵 En tránsito";
+
+      function tiempoTranscurrido(fecha) {
+  if (!fecha) return "Sin datos";
+
+  const ahora = new Date();
+  const gps = new Date(fecha);
+  const diffMin = Math.floor((ahora - gps) / 60000);
+
+  if (diffMin < 1) return "Hace menos de 1 min";
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+
+  const horas = Math.floor(diffMin / 60);
+  const minutos = diffMin % 60;
+
+  if (horas < 24) return `Hace ${horas} h ${minutos} min`;
+
+  return gps.toLocaleString();
+}
+
+let ultimoGpsTexto = tiempoTranscurrido(v.ultimo_gps);
+
+      return `
+        <tr>
+          <td>${v.legajo || ""}</td>
+          <td>
+            <a href="vendedor-detalle.html?id=${v.vendedor_id}">
+              ${v.vendedor}
+            </a>
+          </td>
+          <td>${estado}</td>
+          <td>${ultimoGpsTexto}</td>
+          <td>${v.programados}</td>
+          <td>${v.visitados}</td>
+          <td>${v.pendientes}</td>
+          <td>
+            <span style="background:${color};color:white;padding:6px 12px;border-radius:6px;font-weight:bold;">
+              ${v.cobertura}%
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+}
+
+cargarDashboard();
+cargarAlertas();
+cargarDashboard();
+
+setInterval(() => {
+  cargarAlertas();
+  cargarDashboard();
+}, 30000);
+</script>
+
+</body>
+</html>

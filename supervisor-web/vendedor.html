@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Vendedor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+  <style>
+    body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;overflow:hidden}
+    .topbar{height:92px;background:#071b3a;color:white;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;box-sizing:border-box;font-weight:bold;border-bottom-left-radius:24px;border-bottom-right-radius:24px;z-index:1000;position:relative}
+    .titulo{font-size:18px;line-height:22px}.vendedor{font-size:14px;text-align:right}
+    .gps-pill{position:absolute;right:14px;top:54px;background:#dcfce7;color:#166534;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:bold}
+    .offline-pill{position:absolute;left:14px;top:54px;background:#e0f2fe;color:#075985;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:bold}
+    .stats{position:absolute;top:72px;left:12px;right:12px;background:white;border-radius:18px;display:flex;justify-content:space-around;padding:14px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:1001}
+    .stat{flex:1;text-align:center;font-size:13px;border-right:1px solid #e5e7eb;color:#1f2937}.stat:last-child{border-right:none}.stat strong{font-size:26px;display:block;color:#071b3a;margin-bottom:2px}
+    #mapa{position:absolute;top:130px;bottom:72px;left:0;right:0;width:100%;z-index:1}
+    .legend{position:absolute;top:142px;left:50%;transform:translateX(-50%);background:white;padding:8px 12px;border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,.2);z-index:1000;font-size:13px;white-space:nowrap}
+    .proximo{position:absolute;top:182px;left:12px;right:12px;background:white;border-radius:18px;padding:12px;box-shadow:0 4px 14px rgba(0,0,0,.22);z-index:1000;display:none}
+    .proximo h3{margin:0 0 6px 0;color:#071b3a;font-size:16px}.proximo div{font-size:13px;color:#374151}
+    .panel{position:fixed;bottom:86px;left:12px;right:12px;background:white;border-radius:20px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.25);display:none;z-index:1000;max-height:60vh;overflow:auto}
+    .panel h3{margin:0 0 10px 0;color:#071b3a;font-size:20px}.panel p{margin:3px 0;color:#374151}
+    .item-panel{background:white;border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:10px}
+    .btn-finalizar,.btn-panel{background:#071b3a;color:white;border:none;padding:13px;border-radius:12px;width:100%;font-size:15px;font-weight:bold;margin-top:10px}
+    .btn-navegar{width:100%;padding:10px;background:#0b55c7;color:white;border:none;border-radius:10px;margin-top:8px;font-weight:bold}
+    .btn-omitir{width:100%;padding:10px;background:#6b7280;color:white;border:none;border-radius:10px;margin-top:8px;font-weight:bold}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:72px;background:white;display:flex;justify-content:space-around;align-items:center;box-shadow:0 -3px 14px rgba(0,0,0,.18);z-index:1000;border-top-left-radius:20px;border-top-right-radius:20px}
+    .bottom-nav button{border:none;background:none;font-size:12px;color:#071b3a;font-weight:bold;display:flex;flex-direction:column;align-items:center;gap:4px}
+    .bottom-nav .principal{background:#0b55c7;color:white;width:70px;height:70px;border-radius:50%;margin-top:-34px;box-shadow:0 4px 12px rgba(0,0,0,.25);justify-content:center}
+    .numero-marker{color:white;font-weight:bold;font-size:13px;text-align:center;line-height:28px;width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+    .marker-rojo{background:#dc2626}.marker-verde{background:#16a34a}
+    .leaflet-popup-content button{width:100%;padding:9px;border:none;border-radius:8px;background:#071b3a;color:white;font-weight:bold;margin-top:8px}
+  </style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="titulo">☰ SEC<br>Vendedor</div>
+  <div class="vendedor" id="legajoTexto"></div>
+  <div id="offlineEstado" class="offline-pill">Online</div>
+  <div id="gpsEstado" class="gps-pill">GPS iniciando</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><strong id="pendientes">0</strong>Pendientes</div>
+  <div class="stat"><strong id="visitados">0</strong>Visitados</div>
+  <div class="stat"><strong id="total">0</strong>Total</div>
+</div>
+
+<div class="legend">🔴 Pendiente &nbsp;&nbsp; 🟢 Visitado &nbsp;&nbsp; 🔵 Recorrido</div>
+
+<div id="proximoCliente" class="proximo">
+  <h3>Próximo cliente recomendado</h3>
+  <div id="textoProximo"></div>
+  <button id="btnNavegarProximo" class="btn-navegar">Navegar</button>
+  <button onclick="omitirProximoCliente()" class="btn-omitir">Omitir por ahora</button>
+</div>
+
+<div id="mapa"></div>
+
+<div id="panelVisita" class="panel">
+  <h3 id="clienteActual">Cliente actual</h3>
+  <p id="direccionActual"></p>
+  <p id="horaLlegada"></p>
+  <button class="btn-finalizar" onclick="finalizarVisitaManual()">FINALIZAR VISITA</button>
+</div>
+
+<div id="panelListado" class="panel">
+  <h3>Clientes de hoy</h3>
+  <div id="listaClientes"></div>
+  <button class="btn-panel" onclick="cerrarPanelListado()">Cerrar</button>
+</div>
+
+<div id="panelHistorial" class="panel">
+  <h3>Visitas realizadas</h3>
+  <div id="listaVisitas"></div>
+  <button class="btn-panel" onclick="cerrarPanelVisitas()">Cerrar</button>
+</div>
+
+<div class="bottom-nav">
+  <button onclick="mostrarListado()">☰<span>Listado</span></button>
+  <button onclick="centrarMapa()">🗺️<span>Mapa</span></button>
+  <button class="principal" onclick="cargarDatos()">✓<span>Actualizar</span></button>
+  <button onclick="verVisitas()">📋<span>Visitas</span></button>
+  <button onclick="cerrarSesion()">👤<span>Salir</span></button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+const vendedorId = localStorage.getItem("vendedorId");
+const vendedorNombre = localStorage.getItem("vendedorNombre");
+
+let mapa, capa;
+let clientes = [];
+let visitas = [];
+let recorrido = [];
+let ubicacionActual = null;
+let visitaActualId = null;
+let proximoCliente = null;
+let clientesOmitidos = new Set();
+
+const COLA_OFFLINE = "sec_cola_offline_vendedor";
+
+if (!vendedorId) window.location.href = "login-vendedor.html";
+
+document.getElementById("legajoTexto").textContent = vendedorNombre || "Vendedor";
+
+function coordValida(lat,lng){
+  return !isNaN(lat)&&!isNaN(lng)&&lat!==0&&lng!==0&&lat>-40&&lat<-30&&lng>-65&&lng<-55;
+}
+
+function distanciaMetros(lat1,lon1,lat2,lon2){
+  const R=6371000, rad=Math.PI/180;
+  const dLat=(lat2-lat1)*rad;
+  const dLon=(lon2-lon1)*rad;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function leerColaOffline(){
+  try {
+    return JSON.parse(localStorage.getItem(COLA_OFFLINE) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function guardarColaOffline(cola){
+  localStorage.setItem(COLA_OFFLINE, JSON.stringify(cola));
+  actualizarEstadoConexion();
+}
+
+function agregarAColaOffline(evento){
+  const cola = leerColaOffline();
+  cola.push({
+    ...evento,
+    fecha_local: new Date().toISOString()
+  });
+  guardarColaOffline(cola);
+}
+
+function actualizarEstadoConexion(){
+  const cola = leerColaOffline();
+  const el = document.getElementById("offlineEstado");
+
+  if (!navigator.onLine) {
+    el.textContent = `Offline (${cola.length})`;
+    el.style.background = "#fee2e2";
+    el.style.color = "#991b1b";
+    return;
+  }
+
+  if (cola.length > 0) {
+    el.textContent = `Pendiente ${cola.length}`;
+    el.style.background = "#fef3c7";
+    el.style.color = "#92400e";
+  } else {
+    el.textContent = "Online";
+    el.style.background = "#e0f2fe";
+    el.style.color = "#075985";
+  }
+}
+
+async function enviarEvento(evento){
+  if (evento.tipo === "gps_automatico") {
+    return fetch(`${API}/gps-logs/automatico`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(evento.payload)
+    });
+  }
+
+  if (evento.tipo === "salida_visita") {
+    return fetch(`${API}/visitas/salida`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(evento.payload)
+    });
+  }
+
+  throw new Error("Tipo de evento offline no reconocido");
+}
+
+async function sincronizarOffline(){
+  if (!navigator.onLine) {
+    actualizarEstadoConexion();
+    return;
+  }
+
+  let cola = leerColaOffline();
+  if (cola.length === 0) {
+    actualizarEstadoConexion();
+    return;
+  }
+
+  const pendientes = [];
+
+  for (const evento of cola) {
+    try {
+      const r = await enviarEvento(evento);
+      if (!r.ok) pendientes.push(evento);
+    } catch {
+      pendientes.push(evento);
+    }
+  }
+
+  guardarColaOffline(pendientes);
+
+  if (pendientes.length === 0) {
+    await cargarDatos();
+  }
+}
+
+window.addEventListener("online", sincronizarOffline);
+window.addEventListener("offline", actualizarEstadoConexion);
+
+function iniciarMapa(){
+  mapa=L.map("mapa",{zoomControl:true}).setView([-34.7073,-58.6757],14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(mapa);
+  capa=L.layerGroup().addTo(mapa);
+}
+
+async function cargarDatos(){
+  try {
+    const detalle=await fetch(`${API}/dashboard/vendedores/${vendedorId}`).then(r=>r.json());
+    clientes=await fetch(`${API}/clientes/vendedor/${vendedorId}/hoy`).then(r=>r.json());
+    recorrido=await fetch(`${API}/gps-logs/vendedor/${vendedorId}/hoy`).then(r=>r.json());
+    visitas=detalle.visitas||[];
+
+    const visitadosNombres=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+    const visitadosCantidad=clientes.filter(c=>visitadosNombres.has(String(c.nombre||"").toLowerCase())).length;
+
+    document.getElementById("visitados").textContent=visitadosCantidad;
+    document.getElementById("pendientes").textContent=clientes.length-visitadosCantidad;
+    document.getElementById("total").textContent=clientes.length;
+
+    dibujarMapa(visitadosNombres);
+    calcularProximoCliente();
+    actualizarEstadoConexion();
+
+  } catch (error) {
+    actualizarEstadoConexion();
+  }
+}
+
+function crearIcono(numero,visitado){
+  return L.divIcon({
+    className:"",
+    html:`<div class="numero-marker ${visitado?"marker-verde":"marker-rojo"}">${numero}</div>`,
+    iconSize:[32,32],
+    iconAnchor:[16,16]
+  });
+}
+
+function dibujarMapa(visitadosNombres){
+  capa.clearLayers();
+  const puntos=[];
+
+  const puntosRecorrido=recorrido
+    .map(r=>[Number(r.latitud),Number(r.longitud)])
+    .filter(p=>coordValida(p[0],p[1]));
+
+  if(puntosRecorrido.length>1){
+    L.polyline(puntosRecorrido,{color:"#0b55c7",weight:5,opacity:.85}).addTo(capa);
+    puntos.push(...puntosRecorrido);
+  }
+
+  clientes.forEach((c,index)=>{
+    const lat=Number(c.latitud), lng=Number(c.longitud);
+    if(!coordValida(lat,lng)) return;
+
+    const visitado=visitadosNombres.has(String(c.nombre||"").toLowerCase());
+    puntos.push([lat,lng]);
+
+    L.marker([lat,lng],{icon:crearIcono(index+1,visitado)})
+      .addTo(capa)
+      .bindPopup(`
+        <b>${index+1}. ${c.nombre||""}</b><br>
+        ${c.direccion||""}<br>
+        ${c.localidad||""}<br>
+        Estado: <b>${visitado?"VISITADO":"PENDIENTE"}</b><br>
+        <button onclick="abrirGoogleMaps(${lat},${lng})">NAVEGAR</button>
+      `);
+  });
+
+  if(ubicacionActual){
+    puntos.push([ubicacionActual.lat,ubicacionActual.lng]);
+    L.circleMarker([ubicacionActual.lat,ubicacionActual.lng],{
+      radius:16,color:"#0b55c7",fillColor:"#0b55c7",fillOpacity:1
+    }).addTo(capa).bindPopup("Mi ubicación actual");
+  }
+
+  if(puntos.length>0){
+    mapa.fitBounds(puntos,{padding:[45,45],maxZoom:17});
+  }
+}
+
+function calcularProximoCliente(){
+  const panel=document.getElementById("proximoCliente");
+  const texto=document.getElementById("textoProximo");
+  const boton=document.getElementById("btnNavegarProximo");
+
+  if(!ubicacionActual){
+    panel.style.display="none";
+    return;
+  }
+
+  const visitados=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+
+  let mejor=null;
+  let menor=999999999;
+
+  clientes.forEach(c=>{
+    if(clientesOmitidos.has(c.id)) return;
+    if(visitados.has(String(c.nombre||"").toLowerCase())) return;
+
+    const lat=Number(c.latitud), lng=Number(c.longitud);
+    if(!coordValida(lat,lng)) return;
+
+    const d=distanciaMetros(ubicacionActual.lat,ubicacionActual.lng,lat,lng);
+
+    if(d<menor){
+      menor=d;
+      mejor=c;
+    }
+  });
+
+  proximoCliente=mejor;
+
+  if(!mejor){
+    panel.style.display="none";
+    return;
+  }
+
+  texto.innerHTML=`
+    <b>${mejor.nombre||""}</b><br>
+    ${mejor.direccion||""}<br>
+    ${mejor.localidad||""}<br>
+    A ${Math.round(menor)} metros
+  `;
+
+  boton.onclick=()=>abrirGoogleMaps(Number(mejor.latitud),Number(mejor.longitud));
+  panel.style.display="block";
+}
+
+function omitirProximoCliente(){
+  if (proximoCliente) {
+    clientesOmitidos.add(proximoCliente.id);
+  }
+  document.getElementById("proximoCliente").style.display="none";
+  calcularProximoCliente();
+}
+
+function iniciarGPS(){
+  if(!navigator.geolocation){
+    document.getElementById("gpsEstado").textContent="GPS no disponible";
+    document.getElementById("gpsEstado").style.background="#fee2e2";
+    document.getElementById("gpsEstado").style.color="#991b1b";
+    return;
+  }
+
+  navigator.geolocation.watchPosition(
+    async pos=>{
+      const lat=pos.coords.latitude;
+      const lng=pos.coords.longitude;
+      ubicacionActual={lat,lng};
+
+      document.getElementById("gpsEstado").textContent="GPS activo";
+      document.getElementById("gpsEstado").style.background="#dcfce7";
+      document.getElementById("gpsEstado").style.color="#166534";
+
+      const evento = {
+        tipo:"gps_automatico",
+        payload:{vendedor_id:vendedorId,latitud:lat,longitud:lng}
+      };
+
+      try {
+        if (!navigator.onLine) throw new Error("Offline");
+
+        const respuesta=await enviarEvento(evento);
+        const datos=await respuesta.json();
+
+        if(datos.estado==="DENTRO"){
+          document.getElementById("panelVisita").style.display="block";
+          document.getElementById("clienteActual").textContent=datos.cliente||"Cliente";
+          document.getElementById("direccionActual").textContent="Visita en curso";
+          document.getElementById("horaLlegada").textContent="Llegada: "+new Date().toLocaleTimeString();
+
+          visitaActualId=datos.visita_id||(datos.visita?datos.visita.id:visitaActualId);
+        }
+
+        if(datos.estado==="FUERA"){
+          document.getElementById("panelVisita").style.display="none";
+          visitaActualId=null;
+        }
+
+      } catch {
+        agregarAColaOffline(evento);
+      }
+
+      await sincronizarOffline();
+      await cargarDatos();
+    },
+    error=>{
+      document.getElementById("gpsEstado").textContent="Error GPS";
+      document.getElementById("gpsEstado").style.background="#fee2e2";
+      document.getElementById("gpsEstado").style.color="#991b1b";
+      console.error(error);
+    },
+    {enableHighAccuracy:true,maximumAge:5000,timeout:15000}
+  );
+}
+
+function mostrarListado(){
+  const lista=document.getElementById("listaClientes");
+  const visitados=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+
+  if(clientes.length===0){
+    lista.innerHTML="No hay clientes programados para hoy.";
+  } else {
+    lista.innerHTML=clientes.map((c,i)=>{
+      const hecho=visitados.has(String(c.nombre||"").toLowerCase());
+      const lat=Number(c.latitud), lng=Number(c.longitud);
+      const puedeNavegar=coordValida(lat,lng);
+
+      return `
+        <div class="item-panel">
+          <b>${hecho?"🟢":"🔴"} ${i+1}. ${c.nombre||""}</b><br>
+          ${c.direccion||""}<br>
+          ${c.localidad||""}<br>
+          Estado: <b>${hecho?"VISITADO":"PENDIENTE"}</b>
+          ${
+            puedeNavegar
+            ? `<button class="btn-navegar" onclick="abrirGoogleMaps(${lat},${lng})">Navegar</button>`
+            : `<p style="color:#991b1b;">Sin coordenadas</p>`
+          }
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("panelHistorial").style.display="none";
+  document.getElementById("panelVisita").style.display="none";
+  document.getElementById("panelListado").style.display="block";
+}
+
+function cerrarPanelListado(){document.getElementById("panelListado").style.display="none";}
+
+function verVisitas(){
+  const lista=document.getElementById("listaVisitas");
+
+  if(visitas.length===0){
+    lista.innerHTML="Todavía no hay visitas realizadas.";
+  } else {
+    lista.innerHTML=visitas.map(v=>`
+      <div class="item-panel">
+        <b>🟢 ${v.cliente||""}</b><br>
+        Llegada: ${v.hora_llegada?new Date(v.hora_llegada).toLocaleTimeString():"-"}<br>
+        Salida: ${v.hora_salida?new Date(v.hora_salida).toLocaleTimeString():"-"}<br>
+        Permanencia: ${v.permanencia_segundos||0} segundos
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("panelListado").style.display="none";
+  document.getElementById("panelVisita").style.display="none";
+  document.getElementById("panelHistorial").style.display="block";
+}
+
+function cerrarPanelVisitas(){document.getElementById("panelHistorial").style.display="none";}
+
+async function finalizarVisitaManual(){
+  if(!visitaActualId){
+    alert("La visita se cerrará automáticamente al salir de la geocerca.");
+    return;
+  }
+
+  const evento = {
+    tipo:"salida_visita",
+    payload:{
+      visita_id:visitaActualId,
+      latitud:ubicacionActual?ubicacionActual.lat:null,
+      longitud:ubicacionActual?ubicacionActual.lng:null
+    }
+  };
+
+  try {
+    if (!navigator.onLine) throw new Error("Offline");
+
+    const respuesta=await enviarEvento(evento);
+    const datos=await respuesta.json();
+
+    if(!respuesta.ok){
+      alert(datos.error||datos.detalle||"No se pudo cerrar la visita");
+      return;
+    }
+
+  } catch {
+    agregarAColaOffline(evento);
+    alert("Sin conexión. La salida quedó guardada para sincronizar.");
+  }
+
+  document.getElementById("panelVisita").style.display="none";
+  visitaActualId=null;
+  await sincronizarOffline();
+  await cargarDatos();
+}
+
+function abrirGoogleMaps(lat,lng){
+  window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,"_blank");
+}
+
+function centrarMapa(){
+  cerrarPanelListado();
+  cerrarPanelVisitas();
+
+  if(ubicacionActual){
+    mapa.setView([ubicacionActual.lat,ubicacionActual.lng],17);
+  }
+}
+
+function cerrarSesion(){
+  sincronizarOffline();
+  localStorage.removeItem("vendedorId");
+  localStorage.removeItem("vendedorNombre");
+  window.location.href="login-vendedor.html";
+}
+
+actualizarEstadoConexion();
+iniciarMapa();
+cargarDatos();
+iniciarGPS();
+setInterval(sincronizarOffline,15000);
+</script>
+
+</body>
+</html>

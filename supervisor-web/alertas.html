@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Alertas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Rebesa"
+    class="logo-rebesa"
+  >
+
+  <div>
+    <h1>SEC - Alertas</h1>
+    <p>Sistema de Ejecución Comercial</p>
+  </div>
+
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="visitas.html">Visitas</a>
+  <a href="alertas.html">Alertas</a>
+  <a href="pendientes.html">Pendientes</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+
+<div class="container">
+
+  <h2>Alertas del Sistema</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Prioridad</th>
+        <th>Descripción</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody id="tablaAlertas"></tbody>
+  </table>
+
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarAlertas() {
+  const alertas = await fetch(`${API}/dashboard/alertas-operativas`)
+    .then(r => r.json());
+
+  document.getElementById("tablaAlertas").innerHTML =
+    alertas.map(a => `
+      <tr>
+        <td>${a.tipo || ""}</td>
+        <td>${a.prioridad || ""}</td>
+        <td>${a.descripcion || ""}</td>
+        <td>${new Date().toLocaleString()}</td>
+      </tr>
+    `).join("");
+}
+
+cargarAlertas();
+setInterval(cargarAlertas, 30000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SEC - Supervisor</title>
+
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body{margin:0;overflow:hidden;font-family:Arial;background:#f3f4f6}
+.contenedor{display:flex;height:100vh}
+#mapa{flex:1}
+.panel{width:440px;background:white;overflow:auto;border-left:1px solid #ddd;box-shadow:-2px 0 10px rgba(0,0,0,.15)}
+.titulo{background:#071b3a;color:white;padding:20px}
+.card{margin:12px;padding:15px;border-radius:12px;border:1px solid #ddd;background:white}
+.card h3{margin:0 0 10px 0}
+.fila-vendedor{padding:12px;border-bottom:1px solid #eee;cursor:pointer}
+.fila-vendedor:hover{background:#f3f4f6}
+.badge{padding:4px 10px;border-radius:8px;color:white;font-weight:bold;display:inline-block}
+.btn{background:#0b55c7;color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;margin-top:8px}
+.mini{font-size:13px;color:#555;margin-top:4px}
+</style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+  <div id="mapa"></div>
+
+  <div class="panel">
+    <div class="titulo">
+      <h2>Supervisor SEC</h2>
+      <p>Seguimiento en tiempo real</p>
+    </div>
+
+    <div id="alertas"></div>
+
+    <div class="card">
+      <h3>Vendedor seleccionado</h3>
+      <div id="detalleSeleccionado">
+        Seleccioná un vendedor en el mapa o en la lista.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Vendedores activos</h3>
+      <div id="listaVendedores"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const API="http://127.0.0.1:7890";
+
+const mapa=L.map("mapa").setView([-34.7073,-58.6757],11);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  maxZoom:19
+}).addTo(mapa);
+
+let capaGeneral=L.layerGroup().addTo(mapa);
+let capaDetalle=L.layerGroup().addTo(mapa);
+
+let vendedoresGlobal=[];
+let gpsGlobal=[];
+
+function coordValida(lat,lng){
+  return !isNaN(lat)&&!isNaN(lng)&&lat!==0&&lng!==0&&lat>-40&&lat<-30&&lng>-65&&lng<-55;
+}
+
+function tiempoTranscurrido(fecha){
+  if(!fecha)return"Sin GPS";
+  const ahora=new Date();
+  const gps=new Date(fecha);
+  const diff=Math.floor((ahora-gps)/60000);
+  if(diff<1)return"Hace menos de 1 min";
+  if(diff<60)return`Hace ${diff} min`;
+  const h=Math.floor(diff/60);
+  const m=diff%60;
+  return`${h} h ${m} min`;
+}
+
+function colorCobertura(cobertura){
+  if(cobertura>=80)return"#22c55e";
+  if(cobertura>=50)return"#f59e0b";
+  return"#ef4444";
+}
+
+function estadoVendedor(v){
+  if(v.llegada_actual)return"🟢 En cliente";
+  if(v.ultimo_gps)return"🔵 En tránsito";
+  return"⚫ Sin GPS";
+}
+
+async function cargarSupervisor(){
+  capaGeneral.clearLayers();
+
+  vendedoresGlobal=await fetch(`${API}/dashboard/vendedores`).then(r=>r.json());
+  gpsGlobal=await fetch(`${API}/gps-logs/ultimos`).then(r=>r.json());
+  const alertas=await fetch(`${API}/dashboard/alertas-operativas`).then(r=>r.json());
+
+  renderAlertas(alertas);
+  renderListaVendedores();
+  renderMapaGeneral();
+}
+
+function renderAlertas(alertas){
+  if(alertas.length){
+    document.getElementById("alertas").innerHTML=`
+      <div class="card" style="background:#fee2e2;border-color:#ef4444">
+        <h3>⚠ Alertas</h3>
+        ${alertas.map(a=>`<div>🔴 ${a.descripcion}</div>`).join("")}
+      </div>
+    `;
+  }else{
+    document.getElementById("alertas").innerHTML=`
+      <div class="card" style="background:#dcfce7;border-color:#22c55e">
+        ✅ Sin alertas operativas
+      </div>
+    `;
+  }
+}
+
+function renderListaVendedores(){
+  document.getElementById("listaVendedores").innerHTML=
+    vendedoresGlobal.map(v=>`
+      <div class="fila-vendedor" onclick="seleccionarVendedor('${v.vendedor_id}')">
+        <b>${v.vendedor}</b><br>
+        ${estadoVendedor(v)}<br>
+        <span class="mini">GPS: ${tiempoTranscurrido(v.ultimo_gps)}</span><br>
+        <span class="mini">Programados: ${v.programados} | Visitados: ${v.visitados} | Pendientes: ${v.pendientes}</span><br>
+        <span class="badge" style="background:${colorCobertura(v.cobertura)}">${v.cobertura}%</span>
+      </div>
+    `).join("");
+}
+
+function renderMapaGeneral(){
+  const puntos=[];
+
+  gpsGlobal.forEach(g=>{
+    const lat=Number(g.latitud);
+    const lng=Number(g.longitud);
+
+    if(!coordValida(lat,lng))return;
+
+    puntos.push([lat,lng]);
+
+    L.circleMarker([lat,lng],{
+      radius:16,
+      color:"#0b55c7",
+      fillColor:"#0b55c7",
+      fillOpacity:1
+    })
+    .addTo(capaGeneral)
+    .bindPopup(`
+      <b>${g.vendedor||""}</b><br>
+      ${tiempoTranscurrido(g.fecha_hora)}<br>
+      <button class="btn" onclick="seleccionarVendedor('${g.vendedor_id}')">
+        Ver recorrido
+      </button>
+    `);
+  });
+
+  if(puntos.length){
+    mapa.fitBounds(puntos,{padding:[60,60],maxZoom:14});
+  }
+}
+
+async function seleccionarVendedor(id){
+  capaDetalle.clearLayers();
+
+  const v=vendedoresGlobal.find(x=>x.vendedor_id===id);
+
+  if(!v)return;
+
+  const detalle=await fetch(`${API}/dashboard/vendedores/${id}`).then(r=>r.json());
+  const recorrido=await fetch(`${API}/gps-logs/vendedor/${id}/hoy`).then(r=>r.json());
+
+  const puntos=[];
+
+  document.getElementById("detalleSeleccionado").innerHTML=`
+    <b>${v.vendedor}</b><br>
+    Legajo: ${v.legajo||""}<br>
+    Estado: ${estadoVendedor(v)}<br>
+    GPS: ${tiempoTranscurrido(v.ultimo_gps)}<br><br>
+    Programados: ${v.programados}<br>
+    Visitados: ${v.visitados}<br>
+    Pendientes: ${v.pendientes}<br>
+    Cobertura:
+    <span class="badge" style="background:${colorCobertura(v.cobertura)}">
+      ${v.cobertura}%
+    </span>
+    <br><br>
+    <button class="btn" onclick="window.location='vendedor-detalle.html?id=${id}'">
+      Ver detalle completo
+    </button>
+  `;
+
+  const puntosRecorrido=recorrido
+    .map(r=>[Number(r.latitud),Number(r.longitud)])
+    .filter(p=>coordValida(p[0],p[1]));
+
+  if(puntosRecorrido.length>1){
+    L.polyline(puntosRecorrido,{
+      color:"#0b55c7",
+      weight:5,
+      opacity:.85
+    })
+    .addTo(capaDetalle)
+    .bindPopup("Recorrido del día");
+
+    puntos.push(...puntosRecorrido);
+  }
+
+  if(detalle.ultimo_gps){
+    const lat=Number(detalle.ultimo_gps.latitud);
+    const lng=Number(detalle.ultimo_gps.longitud);
+
+    if(coordValida(lat,lng)){
+      puntos.push([lat,lng]);
+
+      L.circleMarker([lat,lng],{
+        radius:18,
+        color:"#0b55c7",
+        fillColor:"#0b55c7",
+        fillOpacity:1
+      })
+      .addTo(capaDetalle)
+      .bindPopup(`<b>${v.vendedor}</b><br>Última posición`);
+    }
+  }
+
+  detalle.pendientes.forEach(p=>{
+    const lat=Number(p.latitud);
+    const lng=Number(p.longitud);
+
+    if(!coordValida(lat,lng))return;
+
+    puntos.push([lat,lng]);
+
+    L.circleMarker([lat,lng],{
+      radius:10,
+      color:"orange",
+      fillColor:"orange",
+      fillOpacity:.9
+    })
+    .addTo(capaDetalle)
+    .bindPopup(`
+      <b>${p.nombre}</b><br>
+      Código: ${p.codigo_cliente||""}<br>
+      Estado: <b>PENDIENTE</b>
+    `);
+  });
+
+  detalle.visitas.forEach(vis=>{
+    if(!vis.latitud_llegada || !vis.longitud_llegada)return;
+
+    const lat=Number(vis.latitud_llegada);
+    const lng=Number(vis.longitud_llegada);
+
+    if(!coordValida(lat,lng))return;
+
+    puntos.push([lat,lng]);
+
+    L.circleMarker([lat,lng],{
+      radius:10,
+      color:"green",
+      fillColor:"green",
+      fillOpacity:.9
+    })
+    .addTo(capaDetalle)
+    .bindPopup(`
+      <b>${vis.cliente}</b><br>
+      Estado: <b>VISITADO</b>
+    `);
+  });
+
+  if(puntos.length){
+    mapa.fitBounds(puntos,{padding:[60,60],maxZoom:16});
+  }
+}
+
+cargarSupervisor();
+
+setInterval(cargarSupervisor,30000);
+</script>
+
+</body>
+</html>

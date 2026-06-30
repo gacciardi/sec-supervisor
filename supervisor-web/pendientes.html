@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Pendientes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>SEC - Pendientes de Hoy</h1>
+    <p>Sistema de Ejecución Comercial</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="importar-clientes.html">📥 Importar Excel</a>
+  <a href="visitas.html">Visitas</a>
+  <a href="alertas.html">Alertas</a>
+  <a href="cobertura.html">Cobertura</a>
+  <a href="pendientes.html">Pendientes</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+
+<div class="container">
+  <h2>Clientes pendientes de hoy</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Dirección</th>
+        <th>Canal</th>
+        <th>Frecuencia</th>
+      </tr>
+    </thead>
+    <tbody id="tablaPendientes"></tbody>
+  </table>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarPendientes() {
+  const pendientes = await fetch(`${API}/pendientes/hoy`).then(r => r.json());
+
+  document.getElementById("tablaPendientes").innerHTML =
+    pendientes.map(p => `
+      <tr>
+        <td>${p.codigo_cliente || ""}</td>
+        <td>${p.nombre || ""}</td>
+        <td>${p.direccion || ""}</td>
+        <td>${p.canal || ""}</td>
+        <td>${p.frecuencia || ""}</td>
+      </tr>
+    `).join("");
+}
+
+cargarPendientes();
+setInterval(cargarPendientes, 30000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Importar Clientes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>SEC - Importar Clientes</h1>
+    <p>Sistema de Ejecución Comercial</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="usuarios.html">Usuarios</a>
+  <a href="importar-clientes.html">📥 Importar Excel</a>
+  <a href="cobertura.html">Cobertura</a>
+  <a href="pendientes.html">Pendientes</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+  <a href="alertas.html">Alertas</a>
+</nav>
+
+<div class="container">
+  <h2>Importar clientes desde Excel</h2>
+
+  <input type="file" id="archivoExcel" accept=".xlsx,.xls">
+  <br><br>
+
+  <button onclick="importarClientes()">Importar</button>
+
+  <pre id="resultado" style="margin-top:20px;background:#f3f4f6;padding:15px;border-radius:8px;white-space:pre-wrap;"></pre>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function importarClientes() {
+  const archivo = document.getElementById("archivoExcel").files[0];
+  const resultado = document.getElementById("resultado");
+
+  if (!archivo) {
+    alert("Seleccioná un archivo Excel");
+    return;
+  }
+
+  resultado.textContent = "Importando, por favor espere...";
+
+  try {
+    const formData = new FormData();
+    formData.append("archivo", archivo);
+
+    const respuesta = await fetch(`${API}/clientes/importar-excel`, {
+      method: "POST",
+      body: formData
+    });
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      resultado.textContent =
+        "ERROR AL IMPORTAR\n\n" +
+        JSON.stringify(datos, null, 2);
+      return;
+    }
+
+    resultado.textContent =
+      "IMPORTACIÓN FINALIZADA\n\n" +
+      "Filas leídas: " + datos.filas + "\n" +
+      "Importados: " + datos.importados + "\n" +
+      "Actualizados: " + datos.actualizados + "\n" +
+      "Omitidos: " + datos.omitidos + "\n" +
+      "Sin coordenadas: " + datos.sinCoordenadas + "\n\n" +
+      "Errores:\n" +
+      JSON.stringify(datos.errores || [], null, 2);
+
+  } catch (error) {
+    resultado.textContent =
+      "ERROR DE CONEXIÓN O JAVASCRIPT:\n\n" + error.message;
+  }
+}
+</script>
+
+</body>
+</html>

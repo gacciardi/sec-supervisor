@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Visitas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="header-sec">
+
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Rebesa"
+    class="logo-rebesa"
+  >
+
+  <div>
+    <h1>SEC - Visitas</h1>
+    <p>Sistema de Ejecución Comercial</p>
+  </div>
+
+</header>
+
+<nav>
+  <a href="index.html">📊 Dashboard</a>
+  <a href="mapa.html">🗺️ Mapa</a>
+  <a href="clientes.html">🏪 Clientes</a>
+  <a href="visitas.html">📋 Visitas</a>
+  <a href="alertas.html">⚠️ Alertas</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+
+<div class="container">
+
+  <h2>Historial de Visitas</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Vendedor</th>
+        <th>Fecha</th>
+        <th>Llegada</th>
+        <th>Salida</th>
+        <th>Permanencia</th>
+      </tr>
+    </thead>
+
+    <tbody id="tablaVisitas"></tbody>
+
+  </table>
+
+</div>
+
+<script>
+
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarVisitas() {
+
+  const visitas = await fetch(`${API}/visitas`)
+    .then(r => r.json());
+
+  document.getElementById("tablaVisitas").innerHTML =
+    visitas.map(v => `
+      <tr>
+        <td>${v.cliente || ""}</td>
+        <td>${v.vendedor || ""}</td>
+        <td>${v.fecha || ""}</td>
+        <td>${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}</td>
+        <td>${v.hora_salida ? new Date(v.hora_salida).toLocaleString() : ""}</td>
+        <td>${v.permanencia_segundos || 0} seg</td>
+      </tr>
+    `).join("");
+
+}
+
+cargarVisitas();
+
+setInterval(cargarVisitas, 30000);
+
+</script>
+
+</body>
+</html>

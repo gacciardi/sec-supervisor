@@ -1,0 +1,199 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+    color:#222;
+}
+
+header{
+    background:#111827;
+    color:white;
+    padding:20px;
+}
+
+header h1{
+    font-size:28px;
+}
+
+nav{
+    background:#1f2937;
+    padding:12px;
+    display:flex;
+    gap:10px;
+}
+
+nav a{
+    color:white;
+    text-decoration:none;
+    padding:10px 15px;
+    border-radius:8px;
+    transition:0.3s;
+}
+
+nav a:hover{
+    background:#374151;
+}
+
+.container{
+    padding:20px;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:20px;
+    margin-bottom:30px;
+}
+
+.card{
+    background:white;
+    border-radius:15px;
+    padding:20px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.1);
+}
+
+.card h3{
+    color:#6b7280;
+    margin-bottom:10px;
+}
+
+.card p{
+    font-size:36px;
+    font-weight:bold;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+    margin-bottom:30px;
+}
+
+th{
+    background:#111827;
+    color:white;
+    padding:12px;
+}
+
+td{
+    padding:10px;
+    border-bottom:1px solid #e5e7eb;
+}
+
+h2{
+    margin-bottom:15px;
+}
+
+.header-sec{
+    background:#111827;
+    color:white;
+    padding:15px 25px;
+    display:flex;
+    align-items:center;
+    gap:20px;
+}
+
+.logo-rebesa{
+    height:70px;
+    background:white;
+    padding:5px;
+    border-radius:10px;
+}
+
+.header-sec h1{
+    margin:0;
+}
+
+.header-sec p{
+    margin:0;
+    color:#d1d5db;
+}
+
+.card{
+    transition:0.3s;
+    cursor:pointer;
+}
+
+.card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 10px 20px rgba(0,0,0,0.15);
+}
+
+.card p{
+    color:#dc2626;
+}
+.filters{
+    display:flex;
+    gap:12px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+
+.filters input,
+.filters select{
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    min-width:220px;
+}
+.barra{
+    width:100%;
+    height:28px;
+    background:#e5e7eb;
+    border-radius:20px;
+    overflow:hidden;
+}
+
+#barraCobertura{
+    height:100%;
+    width:0%;
+    background:#dc2626;
+    transition:0.4s;
+}
+nav{
+    flex-wrap:wrap;
+}
+
+table{
+    font-size:13px;
+}
+
+.container{
+    overflow-x:auto;
+}
+
+td, th{
+    white-space:nowrap;
+}
+.cards{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    padding:10px;
+}
+
+.card{
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    min-width:180px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.card h3{
+    margin:0;
+    font-size:16px;
+}
+
+.card p{
+    margin-top:10px;
+    font-size:28px;
+    font-weight:bold;
+}

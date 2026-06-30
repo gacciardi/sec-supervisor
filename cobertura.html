@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Cobertura</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>SEC - Cobertura</h1>
+    <p>Sistema de Ejecución Comercial</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="importar-clientes.html">📥 Importar Excel</a>
+  <a href="visitas.html">Visitas</a>
+  <a href="alertas.html">Alertas</a>
+  <a href="cobertura.html">Cobertura</a>
+ <a href="pendientes.html">Pendientes</a> 
+ <a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+
+<div class="container">
+  <h2>Cobertura del día</h2>
+
+  <div class="cards">
+    <div class="card"><h3>Programados</h3><p id="programados">0</p></div>
+    <div class="card"><h3>Visitados</h3><p id="visitados">0</p></div>
+    <div class="card"><h3>Pendientes</h3><p id="pendientes">0</p></div>
+    <div class="card"><h3>Cobertura</h3><p id="cobertura">0%</p></div>
+  </div>
+
+  <div class="barra">
+    <div id="barraCobertura"></div>
+  </div>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarCobertura() {
+  const datos = await fetch(`${API}/cobertura/hoy`).then(r => r.json());
+
+  document.getElementById("programados").textContent = datos.programados;
+  document.getElementById("visitados").textContent = datos.visitados;
+  document.getElementById("pendientes").textContent = datos.pendientes;
+  document.getElementById("cobertura").textContent = datos.cobertura + "%";
+
+  document.getElementById("barraCobertura").style.width = datos.cobertura + "%";
+}
+
+cargarCobertura();
+setInterval(cargarCobertura, 30000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Usuarios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>SEC - Usuarios</h1>
+    <p>Alta, baja y edición de vendedores</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Dashboard</a>
+  <a href="mapa.html">Mapa</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="usuarios.html">Usuarios</a>
+  <a href="importar-clientes.html">📥 Importar Excel</a>
+  <a href="visitas.html">Visitas</a>
+  <a href="alertas.html">Alertas</a>
+  <a href="cobertura.html">Cobertura</a>
+  <a href="pendientes.html">Pendientes</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+
+<div class="container">
+
+  <h2>Nuevo usuario</h2>
+
+  <div class="filters">
+    <input id="nombre" placeholder="Nombre">
+    <input id="apellido" placeholder="Apellido">
+    <input id="email" placeholder="Email">
+    <input id="legajo" placeholder="Legajo">
+
+    <select id="rol">
+      <option value="VENDEDOR">VENDEDOR</option>
+      <option value="SUPERVISOR">SUPERVISOR</option>
+      <option value="ADMIN">ADMIN</option>
+    </select>
+
+    <button onclick="crearUsuario()">Crear</button>
+  </div>
+
+  <h2>Usuarios cargados</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Apellido</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Legajo</th>
+        <th>Activo</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="tablaUsuarios"></tbody>
+  </table>
+
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarUsuarios() {
+  const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
+
+  document.getElementById("tablaUsuarios").innerHTML =
+    usuarios.map(u => `
+      <tr>
+        <td><input id="nombre-${u.id}" value="${u.nombre || ""}"></td>
+        <td><input id="apellido-${u.id}" value="${u.apellido || ""}"></td>
+        <td><input id="email-${u.id}" value="${u.email || ""}"></td>
+
+        <td>
+          <select id="rol-${u.id}">
+            <option value="VENDEDOR" ${u.rol === "VENDEDOR" ? "selected" : ""}>VENDEDOR</option>
+            <option value="SUPERVISOR" ${u.rol === "SUPERVISOR" ? "selected" : ""}>SUPERVISOR</option>
+            <option value="ADMIN" ${u.rol === "ADMIN" ? "selected" : ""}>ADMIN</option>
+          </select>
+        </td>
+
+        <td><input id="legajo-${u.id}" value="${u.legajo || ""}"></td>
+
+        <td>
+          <select id="activo-${u.id}">
+            <option value="true" ${u.activo ? "selected" : ""}>Sí</option>
+            <option value="false" ${!u.activo ? "selected" : ""}>No</option>
+          </select>
+        </td>
+
+        <td>
+          <button onclick="guardarUsuario('${u.id}')">Guardar</button>
+          <button onclick="eliminarUsuario('${u.id}')">Eliminar</button>
+        </td>
+      </tr>
+    `).join("");
+}
+
+async function crearUsuario() {
+  const body = {
+    nombre: document.getElementById("nombre").value,
+    apellido: document.getElementById("apellido").value,
+    email: document.getElementById("email").value,
+    rol: document.getElementById("rol").value,
+    legajo: document.getElementById("legajo").value
+  };
+
+  const respuesta = await fetch(`${API}/usuarios`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+
+  const datos = await respuesta.json();
+
+  if (!respuesta.ok) {
+    alert(datos.detalle || datos.error || "Error al crear usuario");
+    return;
+  }
+
+  alert("Usuario creado");
+  cargarUsuarios();
+}
+
+async function guardarUsuario(id) {
+  const body = {
+    nombre: document.getElementById(`nombre-${id}`).value,
+    apellido: document.getElementById(`apellido-${id}`).value,
+    email: document.getElementById(`email-${id}`).value,
+    rol: document.getElementById(`rol-${id}`).value,
+    legajo: document.getElementById(`legajo-${id}`).value,
+    activo: document.getElementById(`activo-${id}`).value === "true"
+  };
+
+  const respuesta = await fetch(`${API}/usuarios/${id}`, {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+
+  const datos = await respuesta.json();
+
+  if (!respuesta.ok) {
+    alert(datos.detalle || datos.error || "Error al guardar usuario");
+    return;
+  }
+
+  alert("Usuario actualizado");
+  cargarUsuarios();
+}
+
+async function eliminarUsuario(id) {
+  if (!confirm("¿Eliminar usuario?")) return;
+
+  const respuesta = await fetch(`${API}/usuarios/${id}`, {
+    method: "DELETE"
+  });
+
+  const datos = await respuesta.json();
+
+  if (!respuesta.ok) {
+    alert(datos.detalle || datos.error || "Error al eliminar usuario");
+    return;
+  }
+
+  alert("Usuario eliminado");
+  cargarUsuarios();
+}
+
+cargarUsuarios();
+</script>
+
+</body>
+</html>

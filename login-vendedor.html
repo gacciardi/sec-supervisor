@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Login Vendedor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+
+  <div>
+    <h1>SEC Vendedor</h1>
+    <p>Ingreso al sistema</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <h2>Ingresar</h2>
+
+  <input
+    id="legajo"
+    type="text"
+    placeholder="Ingrese su legajo"
+    style="width:100%;padding:15px;font-size:18px;"
+  >
+
+  <br><br>
+
+  <button
+    onclick="ingresar()"
+    style="width:100%;padding:18px;font-size:20px;"
+  >
+    Ingresar
+  </button>
+
+  <br><br>
+
+  <p id="mensaje"></p>
+
+</div>
+
+<script>
+
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function ingresar() {
+
+  try {
+
+    const legajo =
+      document.getElementById("legajo").value.trim();
+
+    if (!legajo) {
+
+      document.getElementById("mensaje").textContent =
+        "Ingrese un legajo";
+
+      return;
+    }
+
+    const usuarios =
+      await fetch(`${API}/usuarios`)
+      .then(r => r.json());
+
+    const vendedor =
+      usuarios.find(u =>
+        String(u.legajo || "") === String(legajo)
+        &&
+        u.rol === "VENDEDOR"
+      );
+
+    if (!vendedor) {
+
+      document.getElementById("mensaje").textContent =
+        "Legajo no encontrado";
+
+      return;
+    }
+
+    localStorage.setItem(
+      "vendedorId",
+      vendedor.id
+    );
+
+    localStorage.setItem(
+      "vendedorNombre",
+      vendedor.nombre + " " + vendedor.apellido
+    );
+
+    window.location.href = "vendedor.html";
+
+  }
+  catch (error) {
+
+    console.error(error);
+
+    document.getElementById("mensaje").textContent =
+      "Error al conectar con el servidor";
+  }
+
+}
+
+</script>
+
+</body>
+</html>

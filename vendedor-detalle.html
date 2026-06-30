@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Detalle Vendedor</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    #mapaVendedor {
+      height: 450px;
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <div>
+    <h1>Detalle del Vendedor</h1>
+    <p>Seguimiento individual</p>
+  </div>
+</header>
+
+<nav>
+  <a href="dashboard-vendedores.html">← Volver</a>
+</nav>
+
+<div class="container">
+
+  <h2 id="nombreVendedor">Cargando...</h2>
+
+  <div class="card">
+    <h3>Última posición GPS</h3>
+    <div id="gps">Cargando GPS...</div>
+  </div>
+
+  <div class="card">
+    <h3>Mapa del vendedor</h3>
+    <p>
+      🔵 Recorrido del día |
+      🔵 Punto azul: última posición |
+      🟠 Pendientes
+    </p>
+    <div id="mapaVendedor"></div>
+  </div>
+
+  <div class="card">
+    <h3>Pendientes de hoy</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Canal</th>
+          <th>Frecuencia</th>
+        </tr>
+      </thead>
+      <tbody id="tablaPendientes"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Visitas de hoy</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Llegada</th>
+          <th>Salida</th>
+          <th>Permanencia</th>
+        </tr>
+      </thead>
+      <tbody id="tablaVisitas"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+const params = new URLSearchParams(window.location.search);
+const vendedorId = params.get("id");
+
+let mapaVendedor;
+let capaMapa;
+
+function coordenadaValida(lat, lng) {
+  return (
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat !== 0 &&
+    lng !== 0 &&
+    lat > -40 &&
+    lat < -30 &&
+    lng > -65 &&
+    lng < -55
+  );
+}
+
+async function cargarDetalle() {
+  if (!vendedorId) {
+    document.getElementById("nombreVendedor").textContent =
+      "Falta ID del vendedor";
+    return;
+  }
+
+  const datos = await fetch(`${API}/dashboard/vendedores/${vendedorId}`)
+    .then(r => r.json());
+
+  const recorrido = await fetch(`${API}/gps-logs/vendedor/${vendedorId}/hoy`)
+    .then(r => r.json());
+
+  document.getElementById("nombreVendedor").textContent =
+    `${datos.vendedor.nombre} ${datos.vendedor.apellido} - Legajo ${datos.vendedor.legajo || ""}`;
+
+  if (datos.ultimo_gps) {
+    document.getElementById("gps").innerHTML = `
+      Latitud: ${datos.ultimo_gps.latitud}<br>
+      Longitud: ${datos.ultimo_gps.longitud}<br>
+      Fecha: ${new Date(datos.ultimo_gps.fecha_hora).toLocaleString()}
+    `;
+  } else {
+    document.getElementById("gps").innerHTML = "Sin posición registrada";
+  }
+
+  document.getElementById("tablaPendientes").innerHTML =
+    datos.pendientes.map(p => `
+      <tr>
+        <td>${p.codigo_cliente || ""}</td>
+        <td>${p.nombre || ""}</td>
+        <td>${p.canal || ""}</td>
+        <td>${p.frecuencia || ""}</td>
+      </tr>
+    `).join("");
+
+  document.getElementById("tablaVisitas").innerHTML =
+    datos.visitas.map(v => `
+      <tr>
+        <td>${v.cliente || ""}</td>
+        <td>${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}</td>
+        <td>${v.hora_salida ? new Date(v.hora_salida).toLocaleString() : ""}</td>
+        <td>${v.permanencia_segundos || 0} seg</td>
+      </tr>
+    `).join("");
+
+  dibujarMapa(datos, recorrido);
+}
+
+function dibujarMapa(datos, recorrido) {
+  if (!mapaVendedor) {
+    mapaVendedor = L.map("mapaVendedor").setView([-34.7073, -58.6757], 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19
+    }).addTo(mapaVendedor);
+  }
+
+  if (capaMapa) {
+    capaMapa.clearLayers();
+  }
+
+  capaMapa = L.layerGroup().addTo(mapaVendedor);
+
+  const puntosMapa = [];
+
+  const puntosRecorrido = recorrido
+    .map(r => [Number(r.latitud), Number(r.longitud)])
+    .filter(p => coordenadaValida(p[0], p[1]));
+
+  if (puntosRecorrido.length > 1) {
+    L.polyline(puntosRecorrido, {
+      color: "blue",
+      weight: 5,
+      opacity: 0.75
+    })
+    .addTo(capaMapa)
+    .bindPopup("Recorrido del día");
+
+    puntosMapa.push(...puntosRecorrido);
+  }
+
+  if (datos.ultimo_gps) {
+    const lat = Number(datos.ultimo_gps.latitud);
+    const lng = Number(datos.ultimo_gps.longitud);
+
+    if (coordenadaValida(lat, lng)) {
+      puntosMapa.push([lat, lng]);
+
+      L.circleMarker([lat, lng], {
+        radius: 16,
+        color: "blue",
+        fillColor: "blue",
+        fillOpacity: 1
+      })
+      .addTo(capaMapa)
+      .bindPopup(`
+        <b>${datos.vendedor.nombre} ${datos.vendedor.apellido}</b><br>
+        Última posición GPS
+      `);
+    }
+  }
+
+  datos.pendientes.forEach(p => {
+    const lat = Number(p.latitud);
+    const lng = Number(p.longitud);
+
+    if (coordenadaValida(lat, lng)) {
+      puntosMapa.push([lat, lng]);
+
+      L.circleMarker([lat, lng], {
+        radius: 10,
+        color: "orange",
+        fillColor: "orange",
+        fillOpacity: 0.9
+      })
+      .addTo(capaMapa)
+      .bindPopup(`
+        <b>${p.nombre}</b><br>
+        Código: ${p.codigo_cliente || ""}<br>
+        Canal: ${p.canal || ""}<br>
+        Frecuencia: ${p.frecuencia || ""}<br>
+        Estado: <b>PENDIENTE</b>
+      `);
+    }
+  });
+
+  if (puntosMapa.length > 0) {
+    mapaVendedor.fitBounds(puntosMapa, {
+      padding: [50, 50],
+      maxZoom: 17
+    });
+  } else {
+    mapaVendedor.setView([-34.7073, -58.6757], 13);
+  }
+}
+
+cargarDetalle();
+
+setInterval(cargarDetalle, 30000);
+</script>
+
+</body>
+</html>

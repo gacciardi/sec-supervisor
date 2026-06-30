@@ -56,6 +56,18 @@
   <button id="btnNavegarProximo" class="btn-navegar">Navegar</button>
   <button onclick="omitirProximoCliente()" class="btn-omitir">Omitir por ahora</button>
 </div>
+<div id="clienteEncontrado" class="proximo"
+     style="display:none;
+            background:#dcfce7;
+            border:2px solid #22c55e;
+            top:250px;">
+
+  <h3 style="color:#166534;">
+    ✅ CLIENTE ENCONTRADO
+  </h3>
+
+  <div id="textoClienteEncontrado"></div>
+</div>
 
 <div id="mapa"></div>
 
@@ -63,7 +75,14 @@
   <h3 id="clienteActual">Cliente actual</h3>
   <p id="direccionActual"></p>
   <p id="horaLlegada"></p>
-  <button class="btn-finalizar" onclick="finalizarVisitaManual()">FINALIZAR VISITA</button>
+
+  <button class="btn-navegar" onclick="registrarEntradaManual()">
+    ENTRÉ AL CLIENTE
+  </button>
+
+  <button class="btn-finalizar" onclick="finalizarVisitaManual()">
+    SALÍ DEL CLIENTE
+  </button>
 </div>
 
 <div id="panelListado" class="panel">
@@ -419,6 +438,9 @@ async function procesarGPS(lat,lng){
     const datos=await respuesta.json();
 
     if(datos.estado==="DENTRO"){
+       mostrarClienteEncontrado(
+    datos.cliente
+  );
       document.getElementById("panelVisita").style.display="block";
       document.getElementById("clienteActual").textContent=datos.cliente||"Cliente";
       document.getElementById("direccionActual").textContent="Visita en curso";
@@ -583,6 +605,39 @@ function centrarMapa(){
   if(ubicacionActual){
     mapa.setView([ubicacionActual.lat,ubicacionActual.lng],17);
   }
+}
+async function registrarEntradaManual(){
+
+  if(proximoCliente){
+
+    mostrarClienteEncontrado(
+      proximoCliente.nombre
+    );
+
+    alert(
+      "Respaldo manual. La visita seguirá registrándose automáticamente por geocerca."
+    );
+  }
+}
+function mostrarClienteEncontrado(nombre){
+
+  const panel =
+    document.getElementById(
+      "clienteEncontrado"
+    );
+
+  document.getElementById(
+    "textoClienteEncontrado"
+  ).innerHTML = `
+    <b>${nombre}</b><br>
+    Visita iniciada
+  `;
+
+  panel.style.display = "block";
+
+  setTimeout(()=>{
+    panel.style.display = "none";
+  },4000);
 }
 
 function cerrarSesion(){

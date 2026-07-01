@@ -114,13 +114,25 @@ function renderAlertas(alertas){
     document.getElementById("alertas").innerHTML=`
       <div class="card" style="background:#fee2e2;border-color:#ef4444">
         <h3>⚠ Alertas</h3>
-        ${alertas.map(a=>`<div>🔴 ${a.descripcion}</div>`).join("")}
+        ${alertas.map(a=>`
+          <div style="margin-bottom:10px">
+            🔴 ${a.descripcion || ""}<br>
+            <span class="mini">
+              🕒 ${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}
+            </span>
+            ${
+              a.latitud && a.longitud
+              ? `<br><span class="mini">📍 ${a.latitud}, ${a.longitud}</span>`
+              : ""
+            }
+          </div>
+        `).join("")}
       </div>
     `;
   }else{
     document.getElementById("alertas").innerHTML=`
       <div class="card" style="background:#dcfce7;border-color:#22c55e">
-        ✅ Sin alertas operativas
+        ✅ Sin alertas del día
       </div>
     `;
   }

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SEC - Administración</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<script>
+if(
+  localStorage.getItem("esAdmin")
+  !== "true"
+){
+  window.location =
+    "admin-login.html";
+}
+</script>
+
+<header class="header-sec">
+  <img
+    id="logoEmpresa"
+    src="assets/logo-rebesa.jpg"
+    class="logo-rebesa"
+  >
+
+  <div>
+    <h1 id="nombreEmpresa">
+      REBESA
+    </h1>
+
+    <p>Administración SEC</p>
+  </div>
+</header>
+
+<div class="container">
+
+<h2>Empresa</h2>
+
+<input
+id="nuevoNombre"
+placeholder="Nombre empresa"
+style="width:100%;padding:12px;"
+>
+
+<br><br>
+
+<input
+type="file"
+id="nuevoLogo"
+accept="image/*"
+>
+
+<br><br>
+
+<button
+onclick="guardarEmpresa()"
+class="btn"
+>
+Guardar cambios
+</button>
+
+</div>
+
+<script>
+
+function cargarEmpresa(){
+
+  const nombre =
+    localStorage.getItem(
+      "nombreEmpresa"
+    );
+
+  const logo =
+    localStorage.getItem(
+      "logoEmpresa"
+    );
+
+  if(nombre){
+    document.getElementById(
+      "nombreEmpresa"
+    ).textContent = nombre;
+  }
+
+  if(logo){
+    document.getElementById(
+      "logoEmpresa"
+    ).src = logo;
+  }
+}
+
+function guardarEmpresa(){
+
+  const nombre =
+    document.getElementById(
+      "nuevoNombre"
+    ).value;
+
+  if(nombre){
+    localStorage.setItem(
+      "nombreEmpresa",
+      nombre
+    );
+
+    document.getElementById(
+      "nombreEmpresa"
+    ).textContent = nombre;
+  }
+
+  const archivo =
+    document.getElementById(
+      "nuevoLogo"
+    ).files[0];
+
+  if(archivo){
+
+    const reader =
+      new FileReader();
+
+    reader.onload =
+      function(e){
+
+        localStorage.setItem(
+          "logoEmpresa",
+          e.target.result
+        );
+
+        document.getElementById(
+          "logoEmpresa"
+        ).src =
+          e.target.result;
+      };
+
+    reader.readAsDataURL(
+      archivo
+    );
+  }
+
+  alert(
+    "Datos guardados."
+  );
+}
+
+cargarEmpresa();
+
+</script>
+
+</body>
+</html>

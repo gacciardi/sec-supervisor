@@ -5,21 +5,22 @@
   <title>SEC - Alertas</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header class="header-sec">
-
   <img
     src="assets/logo-rebesa.jpg"
-    alt="Rebesa"
+    alt="Empresa"
     class="logo-rebesa"
   >
 
   <div>
-    <h1>SEC - Alertas</h1>
+    <h1>
+      <span class="nombre-empresa-sec">REBESA</span> - Alertas
+    </h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
-
 </header>
 
 <nav>
@@ -71,3 +72,8 @@ async function cargarAlertas() {
 cargarAlertas();
 setInterval(cargarAlertas, 30000);
 </script>
+
+<script src="config-sec.js"></script>
+
+</body>
+</html>

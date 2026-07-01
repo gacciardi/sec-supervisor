@@ -46,6 +46,31 @@
 
 const API = "https://sec-backend-gg4j.onrender.com";
 
+async function obtenerUbicacion() {
+  return new Promise((resolve) => {
+
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          latitud: pos.coords.latitude,
+          longitud: pos.coords.longitude
+        });
+      },
+      () => resolve(null),
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  });
+}
+
 async function ingresar() {
 
   try {
@@ -54,10 +79,8 @@ async function ingresar() {
       document.getElementById("legajo").value.trim();
 
     if (!legajo) {
-
       document.getElementById("mensaje").textContent =
         "Ingrese un legajo";
-
       return;
     }
 
@@ -73,12 +96,16 @@ async function ingresar() {
       );
 
     if (!vendedor) {
-
       document.getElementById("mensaje").textContent =
         "Legajo no encontrado";
-
       return;
     }
+
+    /*
+    ===============================
+    GUARDAR LOGIN
+    ===============================
+    */
 
     localStorage.setItem(
       "vendedorId",
@@ -90,7 +117,41 @@ async function ingresar() {
       vendedor.nombre + " " + vendedor.apellido
     );
 
-    window.location.href = "vendedor.html";
+    /*
+    ===============================
+    ALERTA DE LOGIN
+    ===============================
+    */
+
+    try {
+
+      const gps =
+        await obtenerUbicacion();
+
+      await fetch(`${API}/alertas`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          vendedor_id: vendedor.id,
+          tipo: "LOGIN",
+          prioridad: "BAJA",
+          descripcion:
+            `${vendedor.nombre} ${vendedor.apellido} inició sesión`,
+          latitud: gps?.latitud || null,
+          longitud: gps?.longitud || null
+        })
+      });
+
+    } catch (e) {
+      console.log(
+        "No se pudo registrar alerta de login"
+      );
+    }
+
+    window.location.href =
+      "vendedor.html";
 
   }
   catch (error) {
@@ -104,6 +165,3 @@ async function ingresar() {
 }
 
 </script>
-
-</body>
-</html>

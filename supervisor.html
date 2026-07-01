@@ -102,7 +102,7 @@ async function cargarSupervisor(){
 
   vendedoresGlobal=await fetch(`${API}/dashboard/vendedores`).then(r=>r.json());
   gpsGlobal=await fetch(`${API}/gps-logs/ultimos`).then(r=>r.json());
-  const alertas=await fetch(`${API}/dashboard/alertas-operativas`).then(r=>r.json());
+  const alertas=await fetch(`${API}/alertas`).then(r=>r.json());
 
   renderAlertas(alertas);
   renderListaVendedores();

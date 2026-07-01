@@ -8,141 +8,128 @@
 <body>
 
 <script>
-if(
-  localStorage.getItem("esAdmin")
-  !== "true"
-){
-  window.location =
-    "admin-login.html";
+if (localStorage.getItem("esAdmin") !== "true") {
+  window.location = "admin-login.html";
 }
 </script>
 
 <header class="header-sec">
-  <img
-    id="logoEmpresa"
-    src="assets/logo-rebesa.jpg"
-    class="logo-rebesa"
-  >
+  <img id="logoEmpresa" src="assets/logo-rebesa.jpg" class="logo-rebesa">
 
   <div>
-    <h1 id="nombreEmpresa">
-      REBESA
-    </h1>
-
+    <h1 id="nombreEmpresa">REBESA</h1>
     <p>Administración SEC</p>
   </div>
 </header>
 
 <div class="container">
 
-<h2>Empresa</h2>
+  <h2>Empresa</h2>
 
-<input
-id="nuevoNombre"
-placeholder="Nombre empresa"
-style="width:100%;padding:12px;"
->
+  <input
+    id="nuevoNombre"
+    placeholder="Nombre empresa"
+    style="width:100%;padding:12px;"
+  >
 
-<br><br>
+  <br><br>
 
-<input
-type="file"
-id="nuevoLogo"
-accept="image/*"
->
+  <input
+    type="file"
+    id="nuevoLogo"
+    accept="image/*"
+  >
 
-<br><br>
+  <br><br>
 
-<button
-onclick="guardarEmpresa()"
-class="btn"
->
-Guardar cambios
-</button>
+  <button onclick="guardarEmpresa()" class="btn">
+    Guardar cambios
+  </button>
+
+  <br><br>
+
+  <button onclick="cerrarAdmin()" class="btn">
+    Cerrar sesión administrador
+  </button>
 
 </div>
 
 <script>
+const API = "https://sec-backend-gg4j.onrender.com";
 
-function cargarEmpresa(){
+async function cargarEmpresa() {
+  try {
+    const config = await fetch(`${API}/configuracion`)
+      .then(r => r.json());
 
-  const nombre =
-    localStorage.getItem(
-      "nombreEmpresa"
-    );
+    if (config.nombre_empresa) {
+      document.getElementById("nombreEmpresa").textContent =
+        config.nombre_empresa;
 
-  const logo =
-    localStorage.getItem(
-      "logoEmpresa"
-    );
+      document.getElementById("nuevoNombre").value =
+        config.nombre_empresa;
+    }
 
-  if(nombre){
-    document.getElementById(
-      "nombreEmpresa"
-    ).textContent = nombre;
-  }
+    if (config.logo_base64) {
+      document.getElementById("logoEmpresa").src =
+        config.logo_base64;
+    }
 
-  if(logo){
-    document.getElementById(
-      "logoEmpresa"
-    ).src = logo;
+  } catch (error) {
+    alert("No se pudo cargar la configuración.");
   }
 }
 
-function guardarEmpresa(){
+async function guardarEmpresa() {
+  try {
+    let logoBase64 = null;
 
-  const nombre =
-    document.getElementById(
-      "nuevoNombre"
-    ).value;
+    const archivo =
+      document.getElementById("nuevoLogo").files[0];
 
-  if(nombre){
-    localStorage.setItem(
-      "nombreEmpresa",
-      nombre
-    );
+    if (archivo) {
+      logoBase64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(archivo);
+      });
+    }
 
-    document.getElementById(
-      "nombreEmpresa"
-    ).textContent = nombre;
+    const nombre =
+      document.getElementById("nuevoNombre").value;
+
+    const respuesta = await fetch(`${API}/configuracion`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        nombre_empresa: nombre,
+        logo_base64: logoBase64
+      })
+    });
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(datos.error || datos.detalle || "Error al guardar configuración");
+      return;
+    }
+
+    alert("Configuración guardada.");
+    cargarEmpresa();
+
+  } catch (error) {
+    alert("Error al guardar configuración.");
   }
+}
 
-  const archivo =
-    document.getElementById(
-      "nuevoLogo"
-    ).files[0];
-
-  if(archivo){
-
-    const reader =
-      new FileReader();
-
-    reader.onload =
-      function(e){
-
-        localStorage.setItem(
-          "logoEmpresa",
-          e.target.result
-        );
-
-        document.getElementById(
-          "logoEmpresa"
-        ).src =
-          e.target.result;
-      };
-
-    reader.readAsDataURL(
-      archivo
-    );
-  }
-
-  alert(
-    "Datos guardados."
-  );
+function cerrarAdmin() {
+  localStorage.removeItem("esAdmin");
+  window.location = "admin-login.html";
 }
 
 cargarEmpresa();
-
 </script>
 
 </body>

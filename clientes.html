@@ -8,9 +8,9 @@
 <body>
 
 <header class="header-sec">
-  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
   <div>
-    <h1>SEC - Clientes</h1>
+    <h1><span class="nombre-empresa-sec">REBESA</span> - Clientes</h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
 </header>
@@ -53,7 +53,7 @@
   <h2>Clientes cargados</h2>
 
   <div class="filters">
-    <input type="text" id="buscarCliente" placeholder="Buscar cliente o código..." oninput="renderizarClientes()">
+    <input type="text" id="buscarCliente" placeholder="Buscar cliente, código, dirección o localidad...">
 
     <select id="filtroCanal" onchange="renderizarClientes()">
       <option value="">Todos los canales</option>
@@ -61,6 +61,19 @@
 
     <select id="filtroFrecuencia" onchange="renderizarClientes()">
       <option value="">Todas las frecuencias</option>
+    </select>
+  </div>
+
+  <div style="margin:15px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <button onclick="paginaAnterior()">⬅ Anterior</button>
+    <span id="infoPagina">Cargando...</span>
+    <button onclick="paginaSiguiente()">Siguiente ➡</button>
+
+    <select id="limitePagina" onchange="cambiarLimite()">
+      <option value="25">25 por página</option>
+      <option value="50" selected>50 por página</option>
+      <option value="100">100 por página</option>
+      <option value="200">200 por página</option>
     </select>
   </div>
 
@@ -93,6 +106,19 @@ let frecuencias = [];
 let vendedores = [];
 let clientesGlobal = [];
 
+let totalClientes = 0;
+let limit = 50;
+let offset = 0;
+let timerBusqueda = null;
+
+function esc(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 async function cargarDatos() {
   canales = await fetch(`${API}/canales`).then(r => r.json());
   frecuencias = await fetch(`${API}/frecuencias`).then(r => r.json());
@@ -102,23 +128,31 @@ async function cargarDatos() {
 
   document.getElementById("filtroCanal").innerHTML =
     `<option value="">Todos los canales</option>` +
-    canales.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+    canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
 
   document.getElementById("filtroFrecuencia").innerHTML =
     `<option value="">Todas las frecuencias</option>` +
-    frecuencias.map(f => `<option value="${f.id}">${f.nombre}</option>`).join("");
+    frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
 
   document.getElementById("nuevoCanal").innerHTML =
     `<option value="">Canal</option>` +
-    canales.map(c => `<option value="${c.id}">${c.nombre}</option>`).join("");
+    canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
 
   document.getElementById("nuevoFrecuencia").innerHTML =
     `<option value="">Frecuencia</option>` +
-    frecuencias.map(f => `<option value="${f.id}">${f.nombre}</option>`).join("");
+    frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
 
   document.getElementById("nuevoVendedor").innerHTML =
     `<option value="">Vendedor</option>` +
-    vendedores.map(v => `<option value="${v.id}">${v.nombre} ${v.apellido}</option>`).join("");
+    vendedores.map(v => `<option value="${v.id}">${esc(v.nombre)} ${esc(v.apellido)}</option>`).join("");
+
+  document.getElementById("buscarCliente").addEventListener("input", () => {
+    clearTimeout(timerBusqueda);
+    timerBusqueda = setTimeout(() => {
+      offset = 0;
+      cargarClientes();
+    }, 400);
+  });
 
   await cargarClientes();
 }
@@ -128,7 +162,7 @@ function opcionesCanales(id) {
     <option value="">Sin canal</option>
     ${canales.map(c => `
       <option value="${c.id}" ${c.id === id ? "selected" : ""}>
-        ${c.nombre}
+        ${esc(c.nombre)}
       </option>
     `).join("")}
   `;
@@ -139,7 +173,7 @@ function opcionesFrecuencias(id) {
     <option value="">Sin frecuencia</option>
     ${frecuencias.map(f => `
       <option value="${f.id}" ${f.id === id ? "selected" : ""}>
-        ${f.nombre}
+        ${esc(f.nombre)}
       </option>
     `).join("")}
   `;
@@ -150,40 +184,44 @@ function opcionesVendedores(id) {
     <option value="">Sin vendedor</option>
     ${vendedores.map(v => `
       <option value="${v.id}" ${v.id === id ? "selected" : ""}>
-        ${v.nombre} ${v.apellido}
+        ${esc(v.nombre)} ${esc(v.apellido)}
       </option>
     `).join("")}
   `;
 }
 
 async function cargarClientes() {
-  clientesGlobal = await fetch(`${API}/clientes`).then(r => r.json());
+  const buscar = document.getElementById("buscarCliente").value.trim();
+
+  const url =
+    `${API}/clientes?limit=${limit}&offset=${offset}&buscar=${encodeURIComponent(buscar)}`;
+
+  const datos = await fetch(url).then(r => r.json());
+
+  clientesGlobal = datos.clientes || [];
+  totalClientes = datos.total || 0;
+
   renderizarClientes();
+  actualizarInfoPagina();
 }
 
 function renderizarClientes() {
-  const texto = document.getElementById("buscarCliente").value.toLowerCase();
   const canal = document.getElementById("filtroCanal").value;
   const frecuencia = document.getElementById("filtroFrecuencia").value;
 
   const clientes = clientesGlobal.filter(c => {
-    const okTexto =
-      String(c.nombre || "").toLowerCase().includes(texto) ||
-      String(c.codigo_cliente || "").toLowerCase().includes(texto);
-
     const okCanal = !canal || c.canal_id === canal;
     const okFrecuencia = !frecuencia || c.frecuencia_id === frecuencia;
-
-    return okTexto && okCanal && okFrecuencia;
+    return okCanal && okFrecuencia;
   });
 
   document.getElementById("tablaClientes").innerHTML =
     clientes.map(c => `
       <tr>
-        <td><input id="codigo-${c.id}" value="${c.codigo_cliente || ""}"></td>
-        <td><input id="nombre-${c.id}" value="${c.nombre || ""}"></td>
-        <td><input id="direccion-${c.id}" value="${c.direccion || ""}"></td>
-        <td><input id="localidad-${c.id}" value="${c.localidad || ""}"></td>
+        <td><input id="codigo-${c.id}" value="${esc(c.codigo_cliente)}"></td>
+        <td><input id="nombre-${c.id}" value="${esc(c.nombre)}"></td>
+        <td><input id="direccion-${c.id}" value="${esc(c.direccion)}"></td>
+        <td><input id="localidad-${c.id}" value="${esc(c.localidad)}"></td>
 
         <td>
           <select id="canal-${c.id}">
@@ -203,9 +241,9 @@ function renderizarClientes() {
           </select>
         </td>
 
-        <td><input id="latitud-${c.id}" value="${c.latitud ?? ""}"></td>
-        <td><input id="longitud-${c.id}" value="${c.longitud ?? ""}"></td>
-        <td><input id="radio-${c.id}" value="${c.radio_geocerca || 15}"></td>
+        <td><input id="latitud-${c.id}" value="${esc(c.latitud)}"></td>
+        <td><input id="longitud-${c.id}" value="${esc(c.longitud)}"></td>
+        <td><input id="radio-${c.id}" value="${esc(c.radio_geocerca || 15)}"></td>
 
         <td>
           <button onclick="abrirGeoref('${c.id}')">📍 Ubicar</button>
@@ -214,6 +252,32 @@ function renderizarClientes() {
         </td>
       </tr>
     `).join("");
+}
+
+function actualizarInfoPagina() {
+  const desde = totalClientes === 0 ? 0 : offset + 1;
+  const hasta = Math.min(offset + limit, totalClientes);
+
+  document.getElementById("infoPagina").textContent =
+    `Mostrando ${desde} a ${hasta} de ${totalClientes} clientes`;
+}
+
+function paginaAnterior() {
+  if (offset === 0) return;
+  offset = Math.max(0, offset - limit);
+  cargarClientes();
+}
+
+function paginaSiguiente() {
+  if (offset + limit >= totalClientes) return;
+  offset += limit;
+  cargarClientes();
+}
+
+function cambiarLimite() {
+  limit = Number(document.getElementById("limitePagina").value);
+  offset = 0;
+  cargarClientes();
 }
 
 async function crearCliente() {
@@ -254,6 +318,7 @@ async function crearCliente() {
   document.getElementById("nuevoLongitud").value = "";
   document.getElementById("nuevoRadio").value = "15";
 
+  offset = 0;
   cargarClientes();
 }
 
@@ -298,6 +363,8 @@ function abrirGeoref(id) {
 
 cargarDatos();
 </script>
+
+<script src="config-sec.js"></script>
 
 </body>
 </html>

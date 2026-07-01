@@ -54,7 +54,7 @@
 const API = "https://sec-backend-gg4j.onrender.com";
 
 async function cargarAlertas() {
-  const alertas = await fetch(`${API}/dashboard/alertas-operativas`)
+  const alertas = await fetch(`${API}/alertas`)
     .then(r => r.json());
 
   document.getElementById("tablaAlertas").innerHTML =
@@ -63,7 +63,7 @@ async function cargarAlertas() {
         <td>${a.tipo || ""}</td>
         <td>${a.prioridad || ""}</td>
         <td>${a.descripcion || ""}</td>
-        <td>${new Date().toLocaleString()}</td>
+        <td>${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}</td>
       </tr>
     `).join("");
 }
@@ -71,6 +71,3 @@ async function cargarAlertas() {
 cargarAlertas();
 setInterval(cargarAlertas, 30000);
 </script>
-
-</body>
-</html>

@@ -8,9 +8,9 @@
 <body>
 
 <header class="header-sec">
-  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
   <div>
-    <h1>SEC - Usuarios</h1>
+    <h1><span class="nombre-empresa-sec">REBESA</span> - Usuarios</h1>
     <p>Alta, baja y edición de vendedores</p>
   </div>
 </header>
@@ -44,6 +44,13 @@
       <option value="ADMIN">ADMIN</option>
     </select>
 
+    <input id="horaAlertaLogin" type="time" value="08:45">
+
+    <select id="alertaLoginActiva">
+      <option value="true">Alerta login activa</option>
+      <option value="false">Alerta login inactiva</option>
+    </select>
+
     <button onclick="crearUsuario()">Crear</button>
   </div>
 
@@ -58,6 +65,8 @@
         <th>Rol</th>
         <th>Legajo</th>
         <th>Activo</th>
+        <th>Hora alerta login</th>
+        <th>Alerta login</th>
         <th>Acción</th>
       </tr>
     </thead>
@@ -69,15 +78,28 @@
 <script>
 const API = "https://sec-backend-gg4j.onrender.com";
 
+function esc(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function formatearHora(valor) {
+  if (!valor) return "08:45";
+  return String(valor).substring(0, 5);
+}
+
 async function cargarUsuarios() {
   const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
 
   document.getElementById("tablaUsuarios").innerHTML =
     usuarios.map(u => `
       <tr>
-        <td><input id="nombre-${u.id}" value="${u.nombre || ""}"></td>
-        <td><input id="apellido-${u.id}" value="${u.apellido || ""}"></td>
-        <td><input id="email-${u.id}" value="${u.email || ""}"></td>
+        <td><input id="nombre-${u.id}" value="${esc(u.nombre)}"></td>
+        <td><input id="apellido-${u.id}" value="${esc(u.apellido)}"></td>
+        <td><input id="email-${u.id}" value="${esc(u.email)}"></td>
 
         <td>
           <select id="rol-${u.id}">
@@ -87,12 +109,27 @@ async function cargarUsuarios() {
           </select>
         </td>
 
-        <td><input id="legajo-${u.id}" value="${u.legajo || ""}"></td>
+        <td><input id="legajo-${u.id}" value="${esc(u.legajo)}"></td>
 
         <td>
           <select id="activo-${u.id}">
             <option value="true" ${u.activo ? "selected" : ""}>Sí</option>
             <option value="false" ${!u.activo ? "selected" : ""}>No</option>
+          </select>
+        </td>
+
+        <td>
+          <input
+            id="horaAlertaLogin-${u.id}"
+            type="time"
+            value="${formatearHora(u.hora_alerta_login)}"
+          >
+        </td>
+
+        <td>
+          <select id="alertaLoginActiva-${u.id}">
+            <option value="true" ${u.alerta_login_activa !== false ? "selected" : ""}>Activa</option>
+            <option value="false" ${u.alerta_login_activa === false ? "selected" : ""}>Inactiva</option>
           </select>
         </td>
 
@@ -110,7 +147,9 @@ async function crearUsuario() {
     apellido: document.getElementById("apellido").value,
     email: document.getElementById("email").value,
     rol: document.getElementById("rol").value,
-    legajo: document.getElementById("legajo").value
+    legajo: document.getElementById("legajo").value,
+    hora_alerta_login: document.getElementById("horaAlertaLogin").value || "08:45",
+    alerta_login_activa: document.getElementById("alertaLoginActiva").value === "true"
   };
 
   const respuesta = await fetch(`${API}/usuarios`, {
@@ -137,7 +176,9 @@ async function guardarUsuario(id) {
     email: document.getElementById(`email-${id}`).value,
     rol: document.getElementById(`rol-${id}`).value,
     legajo: document.getElementById(`legajo-${id}`).value,
-    activo: document.getElementById(`activo-${id}`).value === "true"
+    activo: document.getElementById(`activo-${id}`).value === "true",
+    hora_alerta_login: document.getElementById(`horaAlertaLogin-${id}`).value || "08:45",
+    alerta_login_activa: document.getElementById(`alertaLoginActiva-${id}`).value === "true"
   };
 
   const respuesta = await fetch(`${API}/usuarios/${id}`, {
@@ -177,6 +218,8 @@ async function eliminarUsuario(id) {
 
 cargarUsuarios();
 </script>
+
+<script src="config-sec.js"></script>
 
 </body>
 </html>

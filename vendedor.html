@@ -602,22 +602,109 @@ function mostrarListado(){
 
 function cerrarPanelListado(){document.getElementById("panelListado").style.display="none";}
 
-function verVisitas(){
-  const lista=document.getElementById("listaVisitas");
+function verVisitas() {
+  const lista = document.getElementById("listaVisitas");
 
-  if(visitas.length===0){
-    lista.innerHTML="Todavía no hay visitas realizadas.";
+  if (visitas.length === 0) {
+    lista.innerHTML =
+      "Todavía no hay visitas realizadas.";
   } else {
-    lista.innerHTML=visitas.map(v=>`
-      <div class="item-panel">
-        <b>🟢 ${v.cliente||""}</b><br>
-        Llegada: ${v.hora_llegada?new Date(v.hora_llegada).toLocaleTimeString():"-"}<br>
-        Salida: ${v.hora_salida?new Date(v.hora_salida).toLocaleTimeString():"-"}<br>
-        Permanencia: ${v.permanencia_segundos||0} segundos
-      </div>
-    `).join("");
+
+    const agrupadas = {};
+
+    visitas.forEach(v => {
+      const nombre = v.cliente || "Sin nombre";
+
+      if (!agrupadas[nombre]) {
+        agrupadas[nombre] = {
+          cliente: nombre,
+          llegada: v.hora_llegada,
+          salida: v.hora_salida,
+          permanencia: 0,
+          registros: 0
+        };
+      }
+
+      agrupadas[nombre].registros++;
+
+      agrupadas[nombre].permanencia +=
+        Number(v.permanencia_segundos || 0);
+
+      if (
+        v.hora_llegada &&
+        (
+          !agrupadas[nombre].llegada ||
+          new Date(v.hora_llegada) <
+          new Date(agrupadas[nombre].llegada)
+        )
+      ) {
+        agrupadas[nombre].llegada =
+          v.hora_llegada;
+      }
+
+      if (
+        v.hora_salida &&
+        (
+          !agrupadas[nombre].salida ||
+          new Date(v.hora_salida) >
+          new Date(agrupadas[nombre].salida)
+        )
+      ) {
+        agrupadas[nombre].salida =
+          v.hora_salida;
+      }
+    });
+
+    lista.innerHTML =
+      Object.values(agrupadas)
+      .map(v => `
+        <div class="item-panel">
+
+          <b>🟢 ${v.cliente}</b><br>
+
+          Llegada:
+          ${
+            v.llegada
+            ? new Date(v.llegada)
+                .toLocaleTimeString()
+            : "-"
+          }
+          <br>
+
+          Salida:
+          ${
+            v.salida
+            ? new Date(v.salida)
+                .toLocaleTimeString()
+            : "-"
+          }
+          <br>
+
+          Permanencia:
+          ${Math.round(v.permanencia / 60)}
+          minutos
+          <br>
+
+          Registros:
+          ${v.registros}
+
+        </div>
+      `)
+      .join("");
   }
 
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelVisita"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "block";
+}
   document.getElementById("panelListado").style.display="none";
   document.getElementById("panelVisita").style.display="none";
   document.getElementById("panelHistorial").style.display="block";

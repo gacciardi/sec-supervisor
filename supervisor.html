@@ -270,27 +270,30 @@ async function seleccionarVendedor(id){
   });
 
   detalle.visitas.forEach(vis=>{
-    if(!vis.latitud_llegada || !vis.longitud_llegada)return;
+  const lat = Number(vis.latitud_llegada);
+  const lng = Number(vis.longitud_llegada);
 
-    const lat=Number(vis.latitud_llegada);
-    const lng=Number(vis.longitud_llegada);
+  console.log("VISITA", vis.cliente, lat, lng);
 
-    if(!coordValida(lat,lng))return;
+  if (!coordValida(lat, lng)) {
+    console.log("COORDENADA INVALIDA");
+    return;
+  }
 
-    puntos.push([lat,lng]);
+  puntos.push([lat, lng]);
 
-    L.circleMarker([lat,lng],{
-      radius:10,
-      color:"green",
-      fillColor:"green",
-      fillOpacity:.9
-    })
-    .addTo(capaDetalle)
-    .bindPopup(`
-      <b>${vis.cliente}</b><br>
-      Estado: <b>VISITADO</b>
-    `);
-  });
+  L.circleMarker([lat, lng], {
+    radius: 10,
+    color: "green",
+    fillColor: "green",
+    fillOpacity: .9
+  })
+  .addTo(capaDetalle)
+  .bindPopup(`
+    <b>${vis.cliente}</b><br>
+    Estado: <b>VISITADO</b>
+  `);
+});
 
   if(puntos.length){
     mapa.fitBounds(puntos,{padding:[60,60],maxZoom:16});

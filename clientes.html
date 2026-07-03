@@ -43,6 +43,7 @@
 
     <select id="nuevoCanal"></select>
     <select id="nuevoFrecuencia"></select>
+    <select id="nuevoRuta"></select>
     <select id="nuevoVendedor"></select>
 
     <button onclick="crearCliente()">Crear cliente</button>
@@ -61,6 +62,10 @@
 
     <select id="filtroFrecuencia" onchange="renderizarClientes()">
       <option value="">Todas las frecuencias</option>
+    </select>
+
+    <select id="filtroRuta" onchange="renderizarClientes()">
+      <option value="">Todas las rutas</option>
     </select>
   </div>
 
@@ -86,6 +91,7 @@
         <th>Localidad</th>
         <th>Canal</th>
         <th>Frecuencia</th>
+        <th>Ruta</th>
         <th>Vendedor</th>
         <th>Latitud</th>
         <th>Longitud</th>
@@ -104,6 +110,7 @@ const API = "https://sec-backend-gg4j.onrender.com";
 let canales = [];
 let frecuencias = [];
 let vendedores = [];
+let rutas = [];
 let clientesGlobal = [];
 
 let totalClientes = 0;
@@ -122,6 +129,7 @@ function esc(valor) {
 async function cargarDatos() {
   canales = await fetch(`${API}/canales`).then(r => r.json());
   frecuencias = await fetch(`${API}/frecuencias`).then(r => r.json());
+  rutas = await fetch(`${API}/rutas`).then(r => r.json());
 
   const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
   vendedores = usuarios.filter(u => u.rol === "VENDEDOR" && u.activo);
@@ -134,6 +142,10 @@ async function cargarDatos() {
     `<option value="">Todas las frecuencias</option>` +
     frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
 
+  document.getElementById("filtroRuta").innerHTML =
+    `<option value="">Todas las rutas</option>` +
+    rutas.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
+
   document.getElementById("nuevoCanal").innerHTML =
     `<option value="">Canal</option>` +
     canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
@@ -141,6 +153,10 @@ async function cargarDatos() {
   document.getElementById("nuevoFrecuencia").innerHTML =
     `<option value="">Frecuencia</option>` +
     frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
+
+  document.getElementById("nuevoRuta").innerHTML =
+    `<option value="">Ruta</option>` +
+    rutas.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
 
   document.getElementById("nuevoVendedor").innerHTML =
     `<option value="">Vendedor</option>` +
@@ -158,43 +174,28 @@ async function cargarDatos() {
 }
 
 function opcionesCanales(id) {
-  return `
-    <option value="">Sin canal</option>
-    ${canales.map(c => `
-      <option value="${c.id}" ${c.id === id ? "selected" : ""}>
-        ${esc(c.nombre)}
-      </option>
-    `).join("")}
-  `;
+  return `<option value="">Sin canal</option>` +
+    canales.map(c => `<option value="${c.id}" ${c.id === id ? "selected" : ""}>${esc(c.nombre)}</option>`).join("");
 }
 
 function opcionesFrecuencias(id) {
-  return `
-    <option value="">Sin frecuencia</option>
-    ${frecuencias.map(f => `
-      <option value="${f.id}" ${f.id === id ? "selected" : ""}>
-        ${esc(f.nombre)}
-      </option>
-    `).join("")}
-  `;
+  return `<option value="">Sin frecuencia</option>` +
+    frecuencias.map(f => `<option value="${f.id}" ${f.id === id ? "selected" : ""}>${esc(f.nombre)}</option>`).join("");
+}
+
+function opcionesRutas(id) {
+  return `<option value="">Sin ruta</option>` +
+    rutas.map(r => `<option value="${r.id}" ${r.id === id ? "selected" : ""}>${esc(r.nombre)}</option>`).join("");
 }
 
 function opcionesVendedores(id) {
-  return `
-    <option value="">Sin vendedor</option>
-    ${vendedores.map(v => `
-      <option value="${v.id}" ${v.id === id ? "selected" : ""}>
-        ${esc(v.nombre)} ${esc(v.apellido)}
-      </option>
-    `).join("")}
-  `;
+  return `<option value="">Sin vendedor</option>` +
+    vendedores.map(v => `<option value="${v.id}" ${v.id === id ? "selected" : ""}>${esc(v.nombre)} ${esc(v.apellido)}</option>`).join("");
 }
 
 async function cargarClientes() {
   const buscar = document.getElementById("buscarCliente").value.trim();
-
-  const url =
-    `${API}/clientes?limit=${limit}&offset=${offset}&buscar=${encodeURIComponent(buscar)}`;
+  const url = `${API}/clientes?limit=${limit}&offset=${offset}&buscar=${encodeURIComponent(buscar)}`;
 
   const datos = await fetch(url).then(r => r.json());
 
@@ -208,11 +209,13 @@ async function cargarClientes() {
 function renderizarClientes() {
   const canal = document.getElementById("filtroCanal").value;
   const frecuencia = document.getElementById("filtroFrecuencia").value;
+  const ruta = document.getElementById("filtroRuta").value;
 
   const clientes = clientesGlobal.filter(c => {
     const okCanal = !canal || c.canal_id === canal;
     const okFrecuencia = !frecuencia || c.frecuencia_id === frecuencia;
-    return okCanal && okFrecuencia;
+    const okRuta = !ruta || c.ruta_id === ruta;
+    return okCanal && okFrecuencia && okRuta;
   });
 
   document.getElementById("tablaClientes").innerHTML =
@@ -223,23 +226,10 @@ function renderizarClientes() {
         <td><input id="direccion-${c.id}" value="${esc(c.direccion)}"></td>
         <td><input id="localidad-${c.id}" value="${esc(c.localidad)}"></td>
 
-        <td>
-          <select id="canal-${c.id}">
-            ${opcionesCanales(c.canal_id)}
-          </select>
-        </td>
-
-        <td>
-          <select id="frecuencia-${c.id}">
-            ${opcionesFrecuencias(c.frecuencia_id)}
-          </select>
-        </td>
-
-        <td>
-          <select id="vendedor-${c.id}">
-            ${opcionesVendedores(c.vendedor_id)}
-          </select>
-        </td>
+        <td><select id="canal-${c.id}">${opcionesCanales(c.canal_id)}</select></td>
+        <td><select id="frecuencia-${c.id}">${opcionesFrecuencias(c.frecuencia_id)}</select></td>
+        <td><select id="ruta-${c.id}">${opcionesRutas(c.ruta_id)}</select></td>
+        <td><select id="vendedor-${c.id}">${opcionesVendedores(c.vendedor_id)}</select></td>
 
         <td><input id="latitud-${c.id}" value="${esc(c.latitud)}"></td>
         <td><input id="longitud-${c.id}" value="${esc(c.longitud)}"></td>
@@ -291,6 +281,7 @@ async function crearCliente() {
     radio_geocerca: document.getElementById("nuevoRadio").value || 15,
     canal_id: document.getElementById("nuevoCanal").value || null,
     frecuencia_id: document.getElementById("nuevoFrecuencia").value || null,
+    ruta_id: document.getElementById("nuevoRuta").value || null,
     vendedor_id: document.getElementById("nuevoVendedor").value || null,
     activo: true
   };
@@ -317,6 +308,7 @@ async function crearCliente() {
   document.getElementById("nuevoLatitud").value = "";
   document.getElementById("nuevoLongitud").value = "";
   document.getElementById("nuevoRadio").value = "15";
+  document.getElementById("nuevoRuta").value = "";
 
   offset = 0;
   cargarClientes();
@@ -335,6 +327,7 @@ async function guardarCliente(id) {
     radio_geocerca: document.getElementById(`radio-${id}`).value || 15,
     canal_id: document.getElementById(`canal-${id}`).value || null,
     frecuencia_id: document.getElementById(`frecuencia-${id}`).value || null,
+    ruta_id: document.getElementById(`ruta-${id}`).value || null,
     vendedor_id: document.getElementById(`vendedor-${id}`).value || null,
     categoria: cliente ? cliente.categoria : null,
     activo: cliente ? cliente.activo : true

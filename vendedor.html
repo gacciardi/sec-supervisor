@@ -117,6 +117,7 @@ let ubicacionActual = null;
 let visitaActualId = null;
 let proximoCliente = null;
 let clientesOmitidos = new Set();
+let sugerenciaPausada = false;
 
 let ultimaActualizacion = 0;
 let ultimaPosicionEnviada = null;
@@ -341,6 +342,12 @@ function dibujarMapa(visitadosNombres, ajustarMapa = false){
 }
 
 function calcularProximoCliente(){
+  if (sugerenciaPausada) {
+  document.getElementById(
+    "proximoCliente"
+  ).style.display = "none";
+  return;
+}
   const panel=document.getElementById("proximoCliente");
   const texto=document.getElementById("textoProximo");
   const boton=document.getElementById("btnNavegarProximo");
@@ -389,12 +396,11 @@ function calcularProximoCliente(){
 }
 
 function omitirProximoCliente(){
-  if (proximoCliente) {
-    clientesOmitidos.add(proximoCliente.id);
-  }
+  sugerenciaPausada = true;
 
-  document.getElementById("proximoCliente").style.display="none";
-  calcularProximoCliente();
+  document.getElementById(
+    "proximoCliente"
+  ).style.display = "none";
 }
 
 function mostrarClienteEncontrado(nombre){
@@ -701,13 +707,9 @@ function verVisitas() {
     "panelVisita"
   ).style.display = "none";
 
-  document.getElementById(
+    document.getElementById(
     "panelHistorial"
   ).style.display = "block";
-}
-  document.getElementById("panelListado").style.display="none";
-  document.getElementById("panelVisita").style.display="none";
-  document.getElementById("panelHistorial").style.display="block";
 }
 
 function cerrarPanelVisitas(){document.getElementById("panelHistorial").style.display="none";}
@@ -743,10 +745,15 @@ async function finalizarVisitaManual(){
     alert("Sin conexión. La salida quedó guardada para sincronizar.");
   }
 
-  document.getElementById("panelVisita").style.display="none";
-  visitaActualId=null;
-  await sincronizarOffline();
-  await cargarDatos(false);
+ document.getElementById("panelVisita").style.display="none";
+
+visitaActualId = null;
+
+sugerenciaPausada = false;
+clientesOmitidos.clear();
+
+await sincronizarOffline();
+await cargarDatos(false);
 }
 
 function abrirGoogleMaps(lat,lng){

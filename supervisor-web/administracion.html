@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SEC - Administración</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<script>
+if (localStorage.getItem("esAdmin") !== "true") {
+  window.location = "admin-login.html";
+}
+</script>
+
+<header class="header-sec">
+  <img id="logoEmpresa" src="assets/logo-rebesa.jpg" class="logo-rebesa">
+
+  <div>
+    <h1 id="nombreEmpresa">REBESA</h1>
+    <p>Administración SEC</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <h2>Empresa</h2>
+
+  <input
+    id="nuevoNombre"
+    placeholder="Nombre empresa"
+    style="width:100%;padding:12px;"
+  >
+
+  <br><br>
+
+  <input
+    type="file"
+    id="nuevoLogo"
+    accept="image/*"
+  >
+
+  <br><br>
+
+  <button onclick="guardarEmpresa()" class="btn">
+    Guardar cambios
+  </button>
+
+  <br><br>
+
+  <button onclick="cerrarAdmin()" class="btn">
+    Cerrar sesión administrador
+  </button>
+
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+async function cargarEmpresa() {
+  try {
+    const config = await fetch(`${API}/configuracion`)
+      .then(r => r.json());
+
+    if (config.nombre_empresa) {
+      document.getElementById("nombreEmpresa").textContent =
+        config.nombre_empresa;
+
+      document.getElementById("nuevoNombre").value =
+        config.nombre_empresa;
+    }
+
+    if (config.logo_base64) {
+      document.getElementById("logoEmpresa").src =
+        config.logo_base64;
+    }
+
+  } catch (error) {
+    alert("No se pudo cargar la configuración.");
+  }
+}
+
+async function guardarEmpresa() {
+  try {
+    let logoBase64 = null;
+
+    const archivo =
+      document.getElementById("nuevoLogo").files[0];
+
+    if (archivo) {
+      logoBase64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.readAsDataURL(archivo);
+      });
+    }
+
+    const nombre =
+      document.getElementById("nuevoNombre").value;
+
+    const respuesta = await fetch(`${API}/configuracion`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        nombre_empresa: nombre,
+        logo_base64: logoBase64
+      })
+    });
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(datos.error || datos.detalle || "Error al guardar configuración");
+      return;
+    }
+
+    alert("Configuración guardada.");
+    cargarEmpresa();
+
+  } catch (error) {
+    alert("Error al guardar configuración.");
+  }
+}
+
+function cerrarAdmin() {
+  localStorage.removeItem("esAdmin");
+  window.location = "admin-login.html";
+}
+
+cargarEmpresa();
+</script>
+
+</body>
+</html>

@@ -2,119 +2,144 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>SEC - Dashboard Supervisor</title>
+  <title>SEC - Menú Principal</title>
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    .menu-principal {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-top: 25px;
+      align-items: stretch;
+    }
+
+    .menu-card {
+      background: white;
+      border-radius: 18px;
+      padding: 25px;
+      text-decoration: none;
+      color: #111827;
+      box-shadow: 0 4px 14px rgba(0,0,0,.12);
+      transition: .2s;
+      border: 1px solid #e5e7eb;
+      min-height: 115px;
+      display: block;
+    }
+
+    .menu-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    }
+
+    .menu-card h3 {
+      margin: 0 0 8px 0;
+      color: #071b3a;
+      font-size: 22px;
+    }
+
+    .menu-card p {
+      margin: 0;
+      color: #4b5563;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
 
 <header class="header-sec">
-
-  <img
-    src="assets/logo-rebesa.jpg"
-    alt="Rebesa"
-    class="logo-rebesa"
-  >
-
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
   <div>
-    <h1>SEC - Alertas</h1>
+    <h1>
+      <span class="nombre-empresa-sec">REBESA</span> - Menú Principal
+    </h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
-
 </header>
 
-
-
 <nav>
-  <a href="index.html">Dashboard</a>
+  <a href="index.html">Inicio</a>
+  <a href="supervisor.html">Supervisor</a>
+  <a href="dashboard-vendedores.html">Vendedores</a>
   <a href="mapa.html">Mapa</a>
   <a href="clientes.html">Clientes</a>
   <a href="visitas.html">Visitas</a>
-  <a href="alertas.html">Alertas</a>
-  <a href="pendientes.html">Pendientes</a>
-  <a href="dashboard-vendedores.html">Vendedores</a>
-  <a href="usuarios.html">Usuarios</a>
   <a href="login-vendedor.html">App Vendedor</a>
+  <a href="admin-login.html">Administración</a>
 </nav>
 
 <div class="container">
 
-  <div class="cards">
-    <div class="card"><h3>Usuarios</h3><p id="totalUsuarios">0</p></div>
-    <div class="card"><h3>Clientes</h3><p id="totalClientes">0</p></div>
-    <div class="card"><h3>Canales</h3><p id="totalCanales">0</p></div>
-    <div class="card"><h3>Visitas</h3><p id="totalVisitas">0</p></div>
-    <div class="card"><h3>Alertas</h3><p id="totalAlertas">0</p></div>
+  <h2>Accesos del sistema</h2>
+
+  <div class="menu-principal">
+
+    <a class="menu-card" href="supervisor.html">
+      <h3>🖥️ Supervisor</h3>
+      <p>Centro de control con vendedores, recorrido y alertas.</p>
+    </a>
+
+    <a class="menu-card" href="dashboard-vendedores.html">
+      <h3>👥 Dashboard Vendedores</h3>
+      <p>Rendimiento, cobertura, pendientes y último GPS.</p>
+    </a>
+
+    <a class="menu-card" href="mapa.html">
+      <h3>🗺️ Mapa General</h3>
+      <p>Vista de clientes, estados y ubicaciones GPS.</p>
+    </a>
+
+    <a class="menu-card" href="clientes.html">
+      <h3>🏪 Clientes</h3>
+      <p>Alta, edición, búsqueda, geolocalización e importación.</p>
+    </a>
+
+    <a class="menu-card" href="visitas.html">
+      <h3>✅ Visitas</h3>
+      <p>Registro de visitas, llegadas, salidas y permanencia.</p>
+    </a>
+
+    <a class="menu-card" href="alertas.html">
+      <h3>⚠️ Alertas</h3>
+      <p>Alertas operativas y desvíos detectados.</p>
+    </a>
+
+    <a class="menu-card" href="pendientes.html">
+      <h3>📌 Pendientes</h3>
+      <p>Clientes programados aún no visitados.</p>
+    </a>
+
+    <a class="menu-card" href="cobertura.html">
+      <h3>📊 Cobertura</h3>
+      <p>Avance diario por vendedor y cumplimiento.</p>
+    </a>
+
+    <a class="menu-card" href="usuarios.html">
+      <h3>👤 Usuarios</h3>
+      <p>Administración de vendedores y supervisores.</p>
+    </a>
+
+    <a class="menu-card" href="importar-clientes.html">
+      <h3>📥 Importar Excel</h3>
+      <p>Carga masiva de clientes, coordenadas y frecuencias.</p>
+    </a>
+
+    <a class="menu-card" href="login-vendedor.html">
+      <h3>📱 App Vendedor</h3>
+      <p>Ingreso móvil para recorrido, GPS y geocercas.</p>
+    </a>
+
+    <a class="menu-card" href="admin-login.html">
+      <h3>⚙️ Administración</h3>
+      <p>Configuración general del sistema, empresa y logo.</p>
+    </a>
+
   </div>
-
-  <h2>Últimas visitas</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Vendedor</th>
-        <th>Llegada</th>
-        <th>Salida</th>
-        <th>Permanencia</th>
-      </tr>
-    </thead>
-    <tbody id="tablaVisitas"></tbody>
-  </table>
-
-  <h2>Alertas</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Tipo</th>
-        <th>Prioridad</th>
-        <th>Descripción</th>
-        <th>Fecha</th>
-      </tr>
-    </thead>
-    <tbody id="tablaAlertas"></tbody>
-  </table>
 
 </div>
 
-<script>
-  const API = "https://sec-backend-gg4j.onrender.com";
-
-  async function cargarDashboard() {
-    const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
-    const clientes = await fetch(`${API}/clientes`).then(r => r.json());
-    const canales = await fetch(`${API}/canales`).then(r => r.json());
-    const visitas = await fetch(`${API}/visitas`).then(r => r.json());
-    const alertas = await fetch(`${API}/alertas`).then(r => r.json());
-
-    document.getElementById("totalUsuarios").textContent = usuarios.length;
-    document.getElementById("totalClientes").textContent = clientes.length;
-    document.getElementById("totalCanales").textContent = canales.length;
-    document.getElementById("totalVisitas").textContent = visitas.length;
-    document.getElementById("totalAlertas").textContent = alertas.length;
-
-    document.getElementById("tablaVisitas").innerHTML = visitas.map(v => `
-      <tr>
-        <td>${v.cliente || ""}</td>
-        <td>${v.vendedor || ""}</td>
-        <td>${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}</td>
-        <td>${v.hora_salida ? new Date(v.hora_salida).toLocaleString() : ""}</td>
-        <td>${v.permanencia_segundos || 0} seg</td>
-      </tr>
-    `).join("");
-
-    document.getElementById("tablaAlertas").innerHTML = alertas.map(a => `
-      <tr>
-        <td>${a.tipo || ""}</td>
-        <td>${a.prioridad || ""}</td>
-        <td>${a.descripcion || ""}</td>
-        <td>${a.fecha_hora || ""}</td>
-      </tr>
-    `).join("");
-  }
-
-  cargarDashboard();
-  setInterval(cargarDashboard, 30000);
-</script>
+<script src="config-sec.js"></script>
 
 </body>
 </html>

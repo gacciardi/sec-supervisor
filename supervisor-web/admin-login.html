@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SEC - Administración</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" class="logo-rebesa">
+  <div>
+    <h1>SEC Administración</h1>
+    <p>Ingreso administrador</p>
+  </div>
+</header>
+
+<div class="container">
+
+<h2>Ingresar</h2>
+
+<input
+id="usuario"
+placeholder="Usuario"
+style="width:100%;padding:15px;"
+>
+
+<br><br>
+
+<input
+id="password"
+type="password"
+placeholder="Contraseña"
+style="width:100%;padding:15px;"
+>
+
+<br><br>
+
+<button
+onclick="ingresar()"
+style="width:100%;padding:18px;"
+>
+Ingresar
+</button>
+
+<br><br>
+
+<p id="mensaje"></p>
+
+</div>
+
+<script>
+
+function ingresar(){
+
+  const usuario =
+    document.getElementById("usuario").value;
+
+  const password =
+    document.getElementById("password").value;
+
+  if(
+    usuario==="Guille3301" &&
+    password==="Sec"
+  ){
+    localStorage.setItem(
+      "esAdmin",
+      "true"
+    );
+
+    window.location =
+      "administracion.html";
+  }
+  else{
+    document.getElementById(
+      "mensaje"
+    ).textContent =
+      "Usuario o contraseña incorrectos";
+  }
+}
+
+</script>
+
+</body>
+</html>

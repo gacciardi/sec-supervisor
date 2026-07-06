@@ -1,27 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8">
-  <title>SEC - Visitas</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>SEC - Visitas</title>
+<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <header class="header-sec">
-
-  <img
-    src="assets/logo-rebesa.jpg"
-    alt="Rebesa"
-    class="logo-rebesa"
-  >
+  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
 
   <div>
     <h1>SEC - Visitas</h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
-
 </header>
 
 <nav>
@@ -37,15 +30,28 @@
 
   <h2>Historial de Visitas</h2>
 
+  <div class="filters">
+
+    <select id="filtroVendedor" onchange="filtrar()">
+      <option value="">Todos los vendedores</option>
+    </select>
+
+    <button onclick="exportarCSV()">
+      📥 Exportar actividad
+    </button>
+
+  </div>
+
   <table>
     <thead>
       <tr>
         <th>Cliente</th>
         <th>Vendedor</th>
         <th>Fecha</th>
-        <th>Llegada</th>
-        <th>Salida</th>
+        <th>Primera llegada</th>
+        <th>Última salida</th>
         <th>Permanencia</th>
+        <th>Registros</th>
       </tr>
     </thead>
 
@@ -57,30 +63,173 @@
 
 <script>
 
-const API = "https://sec-backend-gg4j.onrender.com";
+const API =
+  "https://sec-backend-gg4j.onrender.com";
+
+let visitasGlobal = [];
+let usuarios = [];
+
+async function cargarUsuarios() {
+
+  usuarios =
+    await fetch(`${API}/usuarios`)
+      .then(r => r.json());
+
+  document.getElementById(
+    "filtroVendedor"
+  ).innerHTML =
+    `<option value="">Todos los vendedores</option>` +
+    usuarios
+      .filter(
+        u =>
+          u.rol === "VENDEDOR" &&
+          u.activo
+      )
+      .map(
+        u =>
+          `<option value="${u.nombre} ${u.apellido}">
+            ${u.nombre} ${u.apellido}
+          </option>`
+      )
+      .join("");
+}
 
 async function cargarVisitas() {
 
-  const visitas = await fetch(`${API}/visitas`)
-    .then(r => r.json());
+  visitasGlobal =
+    await fetch(`${API}/visitas`)
+      .then(r => r.json());
 
-  document.getElementById("tablaVisitas").innerHTML =
+  renderizar();
+}
+
+function renderizar() {
+
+  const vendedor =
+    document.getElementById(
+      "filtroVendedor"
+    ).value;
+
+  const visitas =
+    visitasGlobal.filter(v => {
+
+      if (!vendedor)
+        return true;
+
+      return (
+        v.vendedor === vendedor
+      );
+    });
+
+  document.getElementById(
+    "tablaVisitas"
+  ).innerHTML =
     visitas.map(v => `
       <tr>
         <td>${v.cliente || ""}</td>
         <td>${v.vendedor || ""}</td>
         <td>${v.fecha || ""}</td>
-        <td>${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}</td>
-        <td>${v.hora_salida ? new Date(v.hora_salida).toLocaleString() : ""}</td>
-        <td>${v.permanencia_segundos || 0} seg</td>
+
+        <td>
+          ${
+            v.primera_llegada
+              ? new Date(
+                  v.primera_llegada
+                ).toLocaleString()
+              : ""
+          }
+        </td>
+
+        <td>
+          ${
+            v.ultima_salida
+              ? new Date(
+                  v.ultima_salida
+                ).toLocaleString()
+              : ""
+          }
+        </td>
+
+        <td>
+          ${Number(
+            v.permanencia_minutos || 0
+          ).toFixed(1)} min
+        </td>
+
+        <td>
+          ${v.registros || 1}
+        </td>
+
       </tr>
     `).join("");
-
 }
 
-cargarVisitas();
+function filtrar() {
+  renderizar();
+}
 
-setInterval(cargarVisitas, 30000);
+function exportarCSV() {
+
+  const vendedor =
+    document.getElementById(
+      "filtroVendedor"
+    ).value;
+
+  let datos =
+    visitasGlobal;
+
+  if (vendedor) {
+    datos =
+      datos.filter(
+        v =>
+          v.vendedor === vendedor
+      );
+  }
+
+  let csv =
+    "Cliente,Vendedor,Fecha,Primera Llegada,Ultima Salida,Permanencia (min),Registros\n";
+
+  datos.forEach(v => {
+
+    csv +=
+      `"${v.cliente}","${v.vendedor}","${v.fecha}","${v.primera_llegada}","${v.ultima_salida}","${v.permanencia_minutos}","${v.registros}"\n`;
+
+  });
+
+  const blob =
+    new Blob(
+      [csv],
+      {
+        type:
+          "text/csv;charset=utf-8;"
+      }
+    );
+
+  const link =
+    document.createElement("a");
+
+  link.href =
+    URL.createObjectURL(blob);
+
+  link.download =
+    `actividad_${new Date()
+      .toISOString()
+      .slice(0,10)}.csv`;
+
+  link.click();
+}
+
+async function iniciar() {
+  await cargarUsuarios();
+  await cargarVisitas();
+}
+
+iniciar();
+
+setInterval(
+  cargarVisitas,
+  30000
+);
 
 </script>
 

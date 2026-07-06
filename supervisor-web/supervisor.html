@@ -55,7 +55,7 @@ body{margin:0;overflow:hidden;font-family:Arial;background:#f3f4f6}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const API="http://127.0.0.1:7890";
+const API="https://sec-backend-gg4j.onrender.com";
 
 const mapa=L.map("mapa").setView([-34.7073,-58.6757],11);
 
@@ -102,7 +102,7 @@ async function cargarSupervisor(){
 
   vendedoresGlobal=await fetch(`${API}/dashboard/vendedores`).then(r=>r.json());
   gpsGlobal=await fetch(`${API}/gps-logs/ultimos`).then(r=>r.json());
-  const alertas=await fetch(`${API}/dashboard/alertas-operativas`).then(r=>r.json());
+  const alertas=await fetch(`${API}/alertas`).then(r=>r.json());
 
   renderAlertas(alertas);
   renderListaVendedores();
@@ -114,13 +114,25 @@ function renderAlertas(alertas){
     document.getElementById("alertas").innerHTML=`
       <div class="card" style="background:#fee2e2;border-color:#ef4444">
         <h3>⚠ Alertas</h3>
-        ${alertas.map(a=>`<div>🔴 ${a.descripcion}</div>`).join("")}
+        ${alertas.map(a=>`
+          <div style="margin-bottom:10px">
+            🔴 ${a.descripcion || ""}<br>
+            <span class="mini">
+              🕒 ${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}
+            </span>
+            ${
+              a.latitud && a.longitud
+              ? `<br><span class="mini">📍 ${a.latitud}, ${a.longitud}</span>`
+              : ""
+            }
+          </div>
+        `).join("")}
       </div>
     `;
   }else{
     document.getElementById("alertas").innerHTML=`
       <div class="card" style="background:#dcfce7;border-color:#22c55e">
-        ✅ Sin alertas operativas
+        ✅ Sin alertas del día
       </div>
     `;
   }
@@ -258,27 +270,30 @@ async function seleccionarVendedor(id){
   });
 
   detalle.visitas.forEach(vis=>{
-    if(!vis.latitud_llegada || !vis.longitud_llegada)return;
+  const lat = Number(vis.latitud_llegada);
+  const lng = Number(vis.longitud_llegada);
 
-    const lat=Number(vis.latitud_llegada);
-    const lng=Number(vis.longitud_llegada);
+  console.log("VISITA", vis.cliente, lat, lng);
 
-    if(!coordValida(lat,lng))return;
+  if (!coordValida(lat, lng)) {
+    console.log("COORDENADA INVALIDA");
+    return;
+  }
 
-    puntos.push([lat,lng]);
+  puntos.push([lat, lng]);
 
-    L.circleMarker([lat,lng],{
-      radius:10,
-      color:"green",
-      fillColor:"green",
-      fillOpacity:.9
-    })
-    .addTo(capaDetalle)
-    .bindPopup(`
-      <b>${vis.cliente}</b><br>
-      Estado: <b>VISITADO</b>
-    `);
-  });
+  L.circleMarker([lat, lng], {
+    radius: 10,
+    color: "green",
+    fillColor: "green",
+    fillOpacity: .9
+  })
+  .addTo(capaDetalle)
+  .bindPopup(`
+    <b>${vis.cliente}</b><br>
+    Estado: <b>VISITADO</b>
+  `);
+});
 
   if(puntos.length){
     mapa.fitBounds(puntos,{padding:[60,60],maxZoom:16});

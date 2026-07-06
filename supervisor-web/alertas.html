@@ -5,21 +5,22 @@
   <title>SEC - Alertas</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header class="header-sec">
-
   <img
     src="assets/logo-rebesa.jpg"
-    alt="Rebesa"
+    alt="Empresa"
     class="logo-rebesa"
   >
 
   <div>
-    <h1>SEC - Alertas</h1>
+    <h1>
+      <span class="nombre-empresa-sec">REBESA</span> - Alertas
+    </h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
-
 </header>
 
 <nav>
@@ -54,7 +55,7 @@
 const API = "https://sec-backend-gg4j.onrender.com";
 
 async function cargarAlertas() {
-  const alertas = await fetch(`${API}/dashboard/alertas-operativas`)
+  const alertas = await fetch(`${API}/alertas`)
     .then(r => r.json());
 
   document.getElementById("tablaAlertas").innerHTML =
@@ -63,7 +64,7 @@ async function cargarAlertas() {
         <td>${a.tipo || ""}</td>
         <td>${a.prioridad || ""}</td>
         <td>${a.descripcion || ""}</td>
-        <td>${new Date().toLocaleString()}</td>
+        <td>${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}</td>
       </tr>
     `).join("");
 }
@@ -71,6 +72,8 @@ async function cargarAlertas() {
 cargarAlertas();
 setInterval(cargarAlertas, 30000);
 </script>
+
+<script src="config-sec.js"></script>
 
 </body>
 </html>

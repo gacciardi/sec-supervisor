@@ -41,11 +41,7 @@
 
   <div class="card">
     <h3>Mapa del vendedor</h3>
-    <p>
-      🔵 Recorrido / última posición |
-      🟠 Pendientes |
-      🟢 Visitados
-    </p>
+    <p>🔵 Recorrido / última posición | 🟠 Pendientes | 🟢 Visitados</p>
     <div id="mapaVendedor"></div>
   </div>
 
@@ -72,7 +68,7 @@
           <th>Cliente</th>
           <th>Llegada</th>
           <th>Salida</th>
-          <th>Permanencia</th>
+          <th>Permanencia total</th>
         </tr>
       </thead>
       <tbody id="tablaVisitas"></tbody>
@@ -113,6 +109,68 @@ function formatoPermanencia(segundos) {
   return `${minutos} min`;
 }
 
+function agruparVisitas(visitas) {
+  const agrupadas = {};
+
+  visitas.forEach(v => {
+    const clave =
+      v.cliente_id ||
+      v.codigo_cliente ||
+      v.cliente ||
+      "sin_id";
+
+    if (!agrupadas[clave]) {
+      agrupadas[clave] = {
+        cliente_id: v.cliente_id,
+        codigo_cliente: v.codigo_cliente,
+        cliente: v.cliente,
+        direccion: v.direccion,
+        localidad: v.localidad,
+        hora_llegada: v.hora_llegada,
+        hora_salida: v.hora_salida,
+        permanencia_segundos: 0,
+        latitud_llegada: v.latitud_llegada,
+        longitud_llegada: v.longitud_llegada
+      };
+    }
+
+    agrupadas[clave].permanencia_segundos +=
+      Number(v.permanencia_segundos || 0);
+
+    if (
+      v.hora_llegada &&
+      (
+        !agrupadas[clave].hora_llegada ||
+        new Date(v.hora_llegada) <
+        new Date(agrupadas[clave].hora_llegada)
+      )
+    ) {
+      agrupadas[clave].hora_llegada = v.hora_llegada;
+    }
+
+    if (
+      v.hora_salida &&
+      (
+        !agrupadas[clave].hora_salida ||
+        new Date(v.hora_salida) >
+        new Date(agrupadas[clave].hora_salida)
+      )
+    ) {
+      agrupadas[clave].hora_salida = v.hora_salida;
+    }
+
+    if (!agrupadas[clave].latitud_llegada && v.latitud_llegada) {
+      agrupadas[clave].latitud_llegada = v.latitud_llegada;
+    }
+
+    if (!agrupadas[clave].longitud_llegada && v.longitud_llegada) {
+      agrupadas[clave].longitud_llegada = v.longitud_llegada;
+    }
+  });
+
+  return Object.values(agrupadas);
+}
+
 async function cargarDetalle() {
   if (!vendedorId) {
     document.getElementById("nombreVendedor").textContent =
@@ -132,6 +190,9 @@ async function cargarDetalle() {
     return;
   }
 
+  const visitasAgrupadas =
+    agruparVisitas(datos.visitas || []);
+
   document.getElementById("nombreVendedor").textContent =
     `${datos.vendedor.nombre} ${datos.vendedor.apellido} - Legajo ${datos.vendedor.legajo || ""}`;
 
@@ -142,11 +203,12 @@ async function cargarDetalle() {
       Fecha: ${new Date(datos.ultimo_gps.fecha_hora).toLocaleString()}
     `;
   } else {
-    document.getElementById("gps").innerHTML = "Sin posición registrada";
+    document.getElementById("gps").innerHTML =
+      "Sin posición registrada";
   }
 
   document.getElementById("tablaPendientes").innerHTML =
-    datos.pendientes.map(p => `
+    (datos.pendientes || []).map(p => `
       <tr>
         <td>${p.codigo_cliente || ""}</td>
         <td>${p.nombre || ""}</td>
@@ -156,7 +218,7 @@ async function cargarDetalle() {
     `).join("");
 
   document.getElementById("tablaVisitas").innerHTML =
-    datos.visitas.map(v => `
+    visitasAgrupadas.map(v => `
       <tr>
         <td>${v.cliente || ""}</td>
         <td>${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}</td>
@@ -165,10 +227,10 @@ async function cargarDetalle() {
       </tr>
     `).join("");
 
-  dibujarMapa(datos, recorrido);
+  dibujarMapa(datos, recorrido, visitasAgrupadas);
 }
 
-function dibujarMapa(datos, recorrido) {
+function dibujarMapa(datos, recorrido, visitasAgrupadas) {
   if (!mapaVendedor) {
     mapaVendedor = L.map("mapaVendedor").setView([-34.7073, -58.6757], 13);
 
@@ -222,7 +284,7 @@ function dibujarMapa(datos, recorrido) {
     }
   }
 
-  datos.pendientes.forEach(p => {
+  (datos.pendientes || []).forEach(p => {
     const lat = Number(p.latitud);
     const lng = Number(p.longitud);
 
@@ -246,7 +308,7 @@ function dibujarMapa(datos, recorrido) {
     }
   });
 
-  datos.visitas.forEach(v => {
+  visitasAgrupadas.forEach(v => {
     const lat = Number(v.latitud_llegada);
     const lng = Number(v.longitud_llegada);
 
@@ -265,7 +327,7 @@ function dibujarMapa(datos, recorrido) {
         Código: ${v.codigo_cliente || ""}<br>
         Llegada: ${v.hora_llegada ? new Date(v.hora_llegada).toLocaleString() : ""}<br>
         Salida: ${v.hora_salida ? new Date(v.hora_salida).toLocaleString() : ""}<br>
-        Permanencia: ${formatoPermanencia(v.permanencia_segundos)}<br>
+        Permanencia total: ${formatoPermanencia(v.permanencia_segundos)}<br>
         Estado: <b>VISITADO</b>
       `);
     }

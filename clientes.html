@@ -242,6 +242,12 @@ function renderizarClientes() {
           <button onclick="guardarCliente('${c.id}')">Guardar</button>
           <br><br>
 
+          <br><br>
+          <button style="background:#dc2626;color:white"
+          onclick="eliminarCliente('${c.id}')">
+           🗑️ Eliminar
+          </button>
+
           <button style="background:#ff9800;color:white" onclick="abrirEjecucion('${c.id}')">
             🚨 Ejecución
           </button>
@@ -390,6 +396,24 @@ async function abrirEjecucion(clienteId) {
   }
 
   alert("Cliente agregado a EJECUCIÓN de hoy.");
+}
+
+async function eliminarCliente(id) {
+  if (!confirm("¿Seguro que querés eliminar este cliente?")) return;
+
+  const r = await fetch(`${API}/clientes/${id}`, {
+    method: "DELETE"
+  });
+
+  const datos = await r.json();
+
+  if (!r.ok) {
+    alert(datos.error || datos.detalle || "Error al eliminar cliente");
+    return;
+  }
+
+  alert("Cliente eliminado");
+  cargarClientes();
 }
 
 function abrirGeoref(id) {

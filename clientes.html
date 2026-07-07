@@ -238,7 +238,13 @@ function renderizarClientes() {
         <td>
           <button onclick="abrirGeoref('${c.id}')">📍 Ubicar</button>
           <br><br>
+
           <button onclick="guardarCliente('${c.id}')">Guardar</button>
+          <br><br>
+
+          <button style="background:#ff9800;color:white" onclick="abrirEjecucion('${c.id}')">
+            🚨 Ejecución
+          </button>
         </td>
       </tr>
     `).join("");
@@ -348,6 +354,42 @@ async function guardarCliente(id) {
 
   alert("Cliente actualizado");
   cargarClientes();
+}
+
+async function abrirEjecucion(clienteId) {
+  const vendedorId = document.getElementById(`vendedor-${clienteId}`).value;
+  const rutaId = document.getElementById(`ruta-${clienteId}`).value;
+
+  if (!vendedorId) {
+    alert("Primero debe asignar un vendedor al cliente.");
+    return;
+  }
+
+  const motivo = prompt("Motivo de la visita:", "EJECUCION");
+
+  if (motivo === null) return;
+
+  const r = await fetch(`${API}/clientes-extra`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      cliente_id: clienteId,
+      vendedor_id: vendedorId,
+      ruta_id: rutaId || null,
+      motivo: motivo || "EJECUCION"
+    })
+  });
+
+  const datos = await r.json();
+
+  if (!r.ok) {
+    alert(datos.detalle || datos.error || "Error al agregar ejecución");
+    return;
+  }
+
+  alert("Cliente agregado a EJECUCIÓN de hoy.");
 }
 
 function abrirGeoref(id) {

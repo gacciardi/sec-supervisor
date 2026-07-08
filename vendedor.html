@@ -119,6 +119,17 @@ let proximoCliente = null;
 let clientesOmitidos = new Set();
 let sugerenciaPausada = false;
 
+const FECHA_HOY = new Date().toISOString().slice(0, 10);
+const KEY_INICIO_DIA = `sec_inicio_dia_${vendedorId}_${FECHA_HOY}`;
+const KEY_PRIMERA_PENDIENTE = `sec_primera_pendiente_${vendedorId}_${FECHA_HOY}`;
+const KEY_PRIMERA_DETECTADA = `sec_primera_detectada_${vendedorId}_${FECHA_HOY}`;
+
+let primeraVisitaPendienteDeSalida =
+  localStorage.getItem(KEY_PRIMERA_PENDIENTE) === "true";
+
+let primeraVisitaDetectada =
+  localStorage.getItem(KEY_PRIMERA_DETECTADA) === "true";
+
 let ultimaActualizacion = 0;
 let ultimaPosicionEnviada = null;
 let primeraCargaMapa = true;
@@ -146,6 +157,29 @@ function distanciaMetros(lat1,lon1,lat2,lon2){
   const dLon=(lon2-lon1)*rad;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function inicioElegidoHoy(){
+  return !!localStorage.getItem(KEY_INICIO_DIA) || visitas.length > 0;
+}
+
+function guardarEstadoPrimeraVisita(){
+  localStorage.setItem(KEY_PRIMERA_PENDIENTE, String(primeraVisitaPendienteDeSalida));
+  localStorage.setItem(KEY_PRIMERA_DETECTADA, String(primeraVisitaDetectada));
+}
+
+function activarAlgoritmoProximoCliente(){
+  primeraVisitaPendienteDeSalida = false;
+  primeraVisitaDetectada = false;
+  sugerenciaPausada = false;
+  clientesOmitidos.clear();
+  guardarEstadoPrimeraVisita();
+  calcularProximoCliente();
+}
+
+function pausarSugerenciasInicio(){
+  sugerenciaPausada = true;
+  document.getElementById("proximoCliente").style.display = "none";
 }
 
 function leerColaOffline(){
@@ -266,6 +300,16 @@ async function cargarDatos(ajustarMapa = false){
     recorrido=await fetch(`${API}/gps-logs/vendedor/${vendedorId}/hoy`).then(r=>r.json());
     visitas=detalle.visitas||[];
 
+    if (visitas.length > 0 && !localStorage.getItem(KEY_INICIO_DIA)) {
+      localStorage.setItem(KEY_INICIO_DIA, "VISITAS_EXISTENTES");
+    }
+
+    const debeElegirInicio = !inicioElegidoHoy();
+
+    if (debeElegirInicio) {
+      pausarSugerenciasInicio();
+    }
+
     const visitadosNombres=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
     const visitadosCantidad=clientes.filter(c=>visitadosNombres.has(String(c.nombre||"").toLowerCase())).length;
 
@@ -274,7 +318,13 @@ async function cargarDatos(ajustarMapa = false){
     document.getElementById("total").textContent=clientes.length;
 
     dibujarMapa(visitadosNombres, ajustarMapa);
-    calcularProximoCliente();
+
+    if (debeElegirInicio) {
+      mostrarSeleccionInicio();
+    } else {
+      calcularProximoCliente();
+    }
+
     actualizarEstadoConexion();
 
   } catch (error) {
@@ -464,6 +514,11 @@ async function procesarGPS(lat,lng){
     const datos=await respuesta.json();
 
     if(datos.estado==="DENTRO"){
+      if (primeraVisitaPendienteDeSalida) {
+        primeraVisitaDetectada = true;
+        guardarEstadoPrimeraVisita();
+      }
+
       mostrarClienteEncontrado(datos.cliente);
 
       document.getElementById("panelVisita").style.display="block";
@@ -480,6 +535,10 @@ async function procesarGPS(lat,lng){
     if(datos.estado==="FUERA"){
       document.getElementById("panelVisita").style.display="none";
       visitaActualId=null;
+
+      if (primeraVisitaPendienteDeSalida && primeraVisitaDetectada) {
+        activarAlgoritmoProximoCliente();
+      }
     }
 
   } catch {
@@ -558,6 +617,11 @@ async function registrarEntradaManual(){
 
     visitaActualId = datos.visita ? datos.visita.id : visitaActualId;
 
+    if (primeraVisitaPendienteDeSalida) {
+      primeraVisitaDetectada = true;
+      guardarEstadoPrimeraVisita();
+    }
+
     mostrarClienteEncontrado(datos.cliente);
 
     document.getElementById("panelVisita").style.display="block";
@@ -573,9 +637,47 @@ async function registrarEntradaManual(){
   }
 }
 
-function mostrarListado(){
+function empezarPorCliente(clienteId){
+  const cliente = clientes.find(c => c.id === clienteId);
+
+  if (!cliente) {
+    alert("Cliente no encontrado.");
+    return;
+  }
+
+  const lat = Number(cliente.latitud);
+  const lng = Number(cliente.longitud);
+
+  if (!coordValida(lat, lng)) {
+    alert("Este cliente no tiene coordenadas válidas para navegar.");
+    return;
+  }
+
+  localStorage.setItem(KEY_INICIO_DIA, clienteId);
+
+  primeraVisitaPendienteDeSalida = true;
+  primeraVisitaDetectada = false;
+  sugerenciaPausada = true;
+  guardarEstadoPrimeraVisita();
+
+  document.getElementById("panelListado").style.display = "none";
+  document.getElementById("proximoCliente").style.display = "none";
+
+  abrirGoogleMaps(lat, lng);
+}
+
+function mostrarSeleccionInicio(){
+  mostrarListado(true);
+}
+
+function mostrarListado(modoInicio = false){
   const lista=document.getElementById("listaClientes");
+  const titulo = document.querySelector("#panelListado h3");
   const visitados=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+
+  titulo.textContent = modoInicio
+    ? "Elegí dónde comenzar hoy"
+    : "Clientes de hoy";
 
   if(clientes.length===0){
     lista.innerHTML="No hay clientes programados para hoy.";
@@ -595,6 +697,12 @@ function mostrarListado(){
             puedeNavegar
             ? `<button class="btn-navegar" onclick="abrirGoogleMaps(${lat},${lng})">Navegar</button>`
             : `<p style="color:#991b1b;">Sin coordenadas</p>`
+          }
+
+          ${
+            modoInicio && puedeNavegar && !hecho
+            ? `<button class="btn-navegar" style="background:#16a34a" onclick="empezarPorCliente('${c.id}')">▶ Empezar aquí</button>`
+            : ""
           }
         </div>
       `;
@@ -749,8 +857,7 @@ async function finalizarVisitaManual(){
 
 visitaActualId = null;
 
-sugerenciaPausada = false;
-clientesOmitidos.clear();
+activarAlgoritmoProximoCliente();
 
 await sincronizarOffline();
 await cargarDatos(false);
@@ -785,4 +892,4 @@ setInterval(()=>cargarDatos(false),180000);
 </script>
 
 </body>
-</html>
+</htm

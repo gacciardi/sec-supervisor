@@ -329,47 +329,68 @@
 
   <div class="indicadores">
 
-    <div class="indicador">
-      <strong id="indicadorVisitas">
-        0
-      </strong>
+  <div class="indicador">
+    <strong id="indicadorProgramados">
+      0
+    </strong>
 
-      <span>
-        Clientes visitados
-      </span>
-    </div>
-
-    <div class="indicador">
-      <strong id="indicadorRegistros">
-        0
-      </strong>
-
-      <span>
-        Registros de visitas
-      </span>
-    </div>
-
-    <div class="indicador">
-      <strong id="indicadorPermanencia">
-        0 min
-      </strong>
-
-      <span>
-        Permanencia total
-      </span>
-    </div>
-
-    <div class="indicador">
-      <strong id="indicadorPromedio">
-        0 min
-      </strong>
-
-      <span>
-        Promedio por cliente
-      </span>
-    </div>
-
+    <span>
+      Clientes programados
+    </span>
   </div>
+
+  <div class="indicador">
+    <strong id="indicadorVisitas">
+      0
+    </strong>
+
+    <span>
+      Clientes visitados
+    </span>
+  </div>
+
+  <div class="indicador">
+    <strong id="indicadorPendientes">
+      0
+    </strong>
+
+    <span>
+      Clientes pendientes
+    </span>
+  </div>
+
+  <div class="indicador">
+    <strong id="indicadorCobertura">
+      0 %
+    </strong>
+
+    <span>
+      Cobertura
+    </span>
+  </div>
+
+  <div class="indicador">
+    <strong id="indicadorPermanencia">
+      0 min
+    </strong>
+
+    <span>
+      Permanencia total
+    </span>
+  </div>
+
+  <div class="indicador">
+    <strong id="indicadorPromedio">
+      0 min
+    </strong>
+
+    <span>
+      Promedio por cliente
+    </span>
+  </div>
+
+</div>
+
 
   <div class="tabla-contenedor">
 
@@ -408,6 +429,12 @@ const API =
 let visitasGlobal = [];
 let resumenGlobal = [];
 let usuarios = [];
+
+let coberturaGlobal = {
+  programados: null,
+  pendientes: null,
+  cobertura: null
+};
 
 function fechaLocal(fecha) {
   const anio = fecha.getFullYear();
@@ -720,6 +747,112 @@ async function cargarUsuarios() {
   );
 }
 
+async function cargarCoberturaHoy() {
+  const desde =
+    document.getElementById(
+      "fechaDesde"
+    ).value;
+
+  const hasta =
+    document.getElementById(
+      "fechaHasta"
+    ).value;
+
+  const vendedorId =
+    document.getElementById(
+      "filtroVendedor"
+    ).value;
+
+  const hoy = fechaLocal(new Date());
+
+  coberturaGlobal = {
+    programados: null,
+    pendientes: null,
+    cobertura: null
+  };
+
+  if (
+    desde !== hoy ||
+    hasta !== hoy
+  ) {
+    return;
+  }
+
+  const respuesta = await fetch(
+    `${API}/dashboard/vendedores`
+  );
+
+  if (!respuesta.ok) {
+    return;
+  }
+
+  const datos = await respuesta.json();
+
+  const vendedoresDashboard =
+    Array.isArray(datos)
+      ? datos
+      : datos.vendedores || [];
+
+  let seleccionados =
+    vendedoresDashboard;
+
+  if (vendedorId) {
+    seleccionados =
+      vendedoresDashboard.filter(
+        vendedor =>
+          vendedor.vendedor_id ===
+          vendedorId
+      );
+  }
+
+  const programados =
+    seleccionados.reduce(
+      (total, vendedor) =>
+        total +
+        Number(
+          vendedor.programados || 0
+        ),
+      0
+    );
+
+  const pendientes =
+    seleccionados.reduce(
+      (total, vendedor) =>
+        total +
+        Number(
+          vendedor.pendientes || 0
+        ),
+      0
+    );
+
+  const visitados =
+    seleccionados.reduce(
+      (total, vendedor) =>
+        total +
+        Number(
+          vendedor.visitados || 0
+        ),
+      0
+    );
+
+  const cobertura =
+    programados > 0
+      ? Math.min(
+          100,
+          (
+            visitados /
+            programados
+          ) * 100
+        )
+      : 0;
+
+  coberturaGlobal = {
+    programados,
+    pendientes,
+    cobertura
+  };
+}
+
 async function cargarVisitas() {
   ocultarError();
 
@@ -770,10 +903,20 @@ async function cargarVisitas() {
       );
     }
 
-    const [
-      respuestaVisitas,
-      respuestaResumen
-    ] = await Promise.all([
+   const [
+  respuestaVisitas,
+  respuestaResumen
+] = await Promise.all([
+  fetch(
+    `${API}/visitas?${parametros.toString()}`
+  ),
+
+  fetch(
+    `${API}/visitas/resumen?${parametros.toString()}`
+  ),
+
+  cargarCoberturaHoy()
+]);
       fetch(
         `${API}/visitas?${parametros.toString()}`
       ),
@@ -781,7 +924,7 @@ async function cargarVisitas() {
       fetch(
         `${API}/visitas/resumen?${parametros.toString()}`
       )
-    ]);
+    ;
 
     const datosVisitas =
       await respuestaVisitas.json();
@@ -933,14 +1076,66 @@ function actualizarIndicadores() {
   const cantidadClientes =
     visitasGlobal.length;
 
-  const registros =
+  const minutos =
     visitasGlobal.reduce(
       (total, visita) =>
         total +
-        Number(visita.registros || 0),
+        Number(
+          visita.permanencia_minutos || 0
+        ),
       0
     );
 
+  const promedio =
+    cantidadClientes > 0
+      ? minutos / cantidadClientes
+      : 0;
+
+  document.getElementById(
+    "indicadorVisitas"
+  ).textContent =
+    cantidadClientes;
+
+  document.getElementById(
+    "indicadorPermanencia"
+  ).textContent =
+    formatearDuracion(minutos);
+
+  document.getElementById(
+    "indicadorPromedio"
+  ).textContent =
+    formatearDuracion(promedio);
+
+  const programados =
+    coberturaGlobal.programados;
+
+  const pendientes =
+    coberturaGlobal.pendientes;
+
+  const cobertura =
+    coberturaGlobal.cobertura;
+
+  document.getElementById(
+    "indicadorProgramados"
+  ).textContent =
+    programados === null
+      ? "—"
+      : programados;
+
+  document.getElementById(
+    "indicadorPendientes"
+  ).textContent =
+    pendientes === null
+      ? "—"
+      : pendientes;
+
+  document.getElementById(
+    "indicadorCobertura"
+  ).textContent =
+    cobertura === null
+      ? "—"
+      : `${cobertura.toFixed(1)} %`;
+}
   const minutos =
     visitasGlobal.reduce(
       (total, visita) =>
@@ -975,7 +1170,7 @@ function actualizarIndicadores() {
     "indicadorPromedio"
   ).textContent =
     formatearDuracion(promedio);
-}
+
 
 function crearDatosHojaVisitas() {
   return visitasGlobal.map(visita => ({

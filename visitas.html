@@ -1,15 +1,190 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>SEC - Visitas</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>SEC - Visitas</title>
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
+  <style>
+    .panel-filtros {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.10);
+    }
+
+    .grupo-filtros {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .campo-filtro {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 170px;
+    }
+
+    .campo-filtro label {
+      font-size: 13px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .campo-filtro select,
+    .campo-filtro input {
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .acciones-filtro {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-consultar {
+      background: #071b3a;
+      color: white;
+      border: none;
+      padding: 11px 18px;
+      border-radius: 9px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-excel {
+      background: #15803d;
+      color: white;
+      border: none;
+      padding: 11px 18px;
+      border-radius: 9px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-consultar:disabled,
+    .btn-excel:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .resumen-periodo {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: bold;
+    }
+
+    .indicadores {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .indicador {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.09);
+      text-align: center;
+    }
+
+    .indicador strong {
+      display: block;
+      font-size: 25px;
+      color: #071b3a;
+      margin-bottom: 4px;
+    }
+
+    .indicador span {
+      color: #4b5563;
+      font-size: 13px;
+    }
+
+    .tabla-contenedor {
+      overflow-x: auto;
+      background: white;
+      border-radius: 12px;
+    }
+
+    table {
+      min-width: 1100px;
+      width: 100%;
+    }
+
+    .visita-abierta {
+      color: #d97706;
+      font-weight: bold;
+    }
+
+    .sin-resultados {
+      text-align: center;
+      padding: 25px;
+      color: #6b7280;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 9px;
+      margin: 12px 0;
+      display: none;
+    }
+
+    .cargando {
+      padding: 20px;
+      text-align: center;
+      color: #374151;
+      font-weight: bold;
+      display: none;
+    }
+
+    @media (max-width: 700px) {
+      .campo-filtro {
+        width: 100%;
+      }
+
+      .acciones-filtro {
+        width: 100%;
+      }
+
+      .btn-consultar,
+      .btn-excel {
+        flex: 1;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <header class="header-sec">
-  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Rebesa"
+    class="logo-rebesa"
+  >
 
   <div>
     <h1>SEC - Visitas</h1>
@@ -30,208 +205,1045 @@
 
   <h2>Historial de Visitas</h2>
 
-  <div class="filters">
+  <div class="panel-filtros">
 
-    <select id="filtroVendedor" onchange="filtrar()">
-      <option value="">Todos los vendedores</option>
-    </select>
+    <div class="grupo-filtros">
 
-    <button onclick="exportarCSV()">
-      📥 Exportar actividad
-    </button>
+      <div class="campo-filtro">
+        <label for="periodoRapido">
+          Período
+        </label>
+
+        <select
+          id="periodoRapido"
+          onchange="cambiarPeriodo()"
+        >
+          <option value="hoy">
+            Hoy
+          </option>
+
+          <option value="ayer">
+            Ayer
+          </option>
+
+          <option value="estaSemana">
+            Esta semana
+          </option>
+
+          <option value="semanaPasada">
+            Semana pasada
+          </option>
+
+          <option value="esteMes">
+            Este mes
+          </option>
+
+          <option value="mesAnterior">
+            Mes anterior
+          </option>
+
+          <option value="personalizado">
+            Personalizado
+          </option>
+        </select>
+      </div>
+
+      <div class="campo-filtro">
+        <label for="fechaDesde">
+          Desde
+        </label>
+
+        <input
+          type="date"
+          id="fechaDesde"
+          onchange="seleccionarPersonalizado()"
+        >
+      </div>
+
+      <div class="campo-filtro">
+        <label for="fechaHasta">
+          Hasta
+        </label>
+
+        <input
+          type="date"
+          id="fechaHasta"
+          onchange="seleccionarPersonalizado()"
+        >
+      </div>
+
+      <div class="campo-filtro">
+        <label for="filtroVendedor">
+          Vendedor
+        </label>
+
+        <select id="filtroVendedor">
+          <option value="">
+            Todos los vendedores
+          </option>
+        </select>
+      </div>
+
+      <div class="acciones-filtro">
+
+        <button
+          id="btnConsultar"
+          class="btn-consultar"
+          onclick="cargarVisitas()"
+        >
+          🔍 Consultar
+        </button>
+
+        <button
+          id="btnExcel"
+          class="btn-excel"
+          onclick="exportarExcel()"
+        >
+          📊 Descargar Excel
+        </button>
+
+      </div>
+
+    </div>
+
+    <div
+      id="resumenPeriodo"
+      class="resumen-periodo"
+    >
+      Preparando período...
+    </div>
 
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Vendedor</th>
-        <th>Fecha</th>
-        <th>Primera llegada</th>
-        <th>Última salida</th>
-        <th>Permanencia</th>
-        <th>Registros</th>
-      </tr>
-    </thead>
+  <div
+    id="mensajeError"
+    class="error"
+  ></div>
 
-    <tbody id="tablaVisitas"></tbody>
+  <div
+    id="cargando"
+    class="cargando"
+  >
+    Cargando historial...
+  </div>
 
-  </table>
+  <div class="indicadores">
+
+    <div class="indicador">
+      <strong id="indicadorVisitas">
+        0
+      </strong>
+
+      <span>
+        Clientes visitados
+      </span>
+    </div>
+
+    <div class="indicador">
+      <strong id="indicadorRegistros">
+        0
+      </strong>
+
+      <span>
+        Registros de visitas
+      </span>
+    </div>
+
+    <div class="indicador">
+      <strong id="indicadorPermanencia">
+        0 min
+      </strong>
+
+      <span>
+        Permanencia total
+      </span>
+    </div>
+
+    <div class="indicador">
+      <strong id="indicadorPromedio">
+        0 min
+      </strong>
+
+      <span>
+        Promedio por cliente
+      </span>
+    </div>
+
+  </div>
+
+  <div class="tabla-contenedor">
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Vendedor</th>
+          <th>Ruta</th>
+          <th>Canal</th>
+          <th>Primera llegada</th>
+          <th>Última salida</th>
+          <th>Permanencia</th>
+          <th>Registros</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+
+      <tbody id="tablaVisitas"></tbody>
+
+    </table>
+
+  </div>
 
 </div>
 
-<script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
+<script>
 const API =
   "https://sec-backend-gg4j.onrender.com";
 
 let visitasGlobal = [];
+let resumenGlobal = [];
 let usuarios = [];
 
+function fechaLocal(fecha) {
+  const anio = fecha.getFullYear();
+
+  const mes = String(
+    fecha.getMonth() + 1
+  ).padStart(2, "0");
+
+  const dia = String(
+    fecha.getDate()
+  ).padStart(2, "0");
+
+  return `${anio}-${mes}-${dia}`;
+}
+
+function inicioSemana(fecha) {
+  const copia = new Date(fecha);
+
+  const diaSemana =
+    copia.getDay() === 0
+      ? 7
+      : copia.getDay();
+
+  copia.setDate(
+    copia.getDate() - diaSemana + 1
+  );
+
+  copia.setHours(0, 0, 0, 0);
+
+  return copia;
+}
+
+function finSemana(fecha) {
+  const inicio = inicioSemana(fecha);
+
+  const fin = new Date(inicio);
+
+  fin.setDate(
+    fin.getDate() + 6
+  );
+
+  return fin;
+}
+
+function cambiarPeriodo() {
+  const periodo =
+    document.getElementById(
+      "periodoRapido"
+    ).value;
+
+  const hoy = new Date();
+
+  let desde = new Date(hoy);
+  let hasta = new Date(hoy);
+
+  if (periodo === "ayer") {
+    desde.setDate(
+      desde.getDate() - 1
+    );
+
+    hasta = new Date(desde);
+  }
+
+  if (periodo === "estaSemana") {
+    desde = inicioSemana(hoy);
+    hasta = finSemana(hoy);
+
+    if (hasta > hoy) {
+      hasta = new Date(hoy);
+    }
+  }
+
+  if (periodo === "semanaPasada") {
+    const referencia =
+      new Date(hoy);
+
+    referencia.setDate(
+      referencia.getDate() - 7
+    );
+
+    desde =
+      inicioSemana(referencia);
+
+    hasta =
+      finSemana(referencia);
+  }
+
+  if (periodo === "esteMes") {
+    desde = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth(),
+      1
+    );
+
+    hasta = new Date(hoy);
+  }
+
+  if (periodo === "mesAnterior") {
+    desde = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth() - 1,
+      1
+    );
+
+    hasta = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth(),
+      0
+    );
+  }
+
+  if (periodo === "personalizado") {
+    actualizarResumenPeriodo();
+    return;
+  }
+
+  document.getElementById(
+    "fechaDesde"
+  ).value = fechaLocal(desde);
+
+  document.getElementById(
+    "fechaHasta"
+  ).value = fechaLocal(hasta);
+
+  actualizarResumenPeriodo();
+}
+
+function seleccionarPersonalizado() {
+  document.getElementById(
+    "periodoRapido"
+  ).value = "personalizado";
+
+  actualizarResumenPeriodo();
+}
+
+function actualizarResumenPeriodo() {
+  const desde =
+    document.getElementById(
+      "fechaDesde"
+    ).value;
+
+  const hasta =
+    document.getElementById(
+      "fechaHasta"
+    ).value;
+
+  const vendedorSelect =
+    document.getElementById(
+      "filtroVendedor"
+    );
+
+  const vendedorTexto =
+    vendedorSelect.options[
+      vendedorSelect.selectedIndex
+    ]?.text || "Todos los vendedores";
+
+  document.getElementById(
+    "resumenPeriodo"
+  ).textContent =
+    `Período: ${formatearFecha(desde)} al ` +
+    `${formatearFecha(hasta)} — ` +
+    `${vendedorTexto}`;
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) return "";
+
+  const partes =
+    String(fecha)
+      .slice(0, 10)
+      .split("-");
+
+  if (partes.length !== 3) {
+    return fecha;
+  }
+
+  return (
+    `${partes[2]}/` +
+    `${partes[1]}/` +
+    `${partes[0]}`
+  );
+}
+
+function formatearFechaHora(valor) {
+  if (!valor) return "";
+
+  return new Date(valor)
+    .toLocaleString(
+      "es-AR",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+}
+
+function formatearHora(valor) {
+  if (!valor) return "";
+
+  return new Date(valor)
+    .toLocaleTimeString(
+      "es-AR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+}
+
+function formatearDuracion(minutos) {
+  const total =
+    Number(minutos || 0);
+
+  if (total < 60) {
+    return `${total.toFixed(1)} min`;
+  }
+
+  const horas =
+    Math.floor(total / 60);
+
+  const minutosRestantes =
+    Math.round(total % 60);
+
+  return (
+    `${horas} h ` +
+    `${minutosRestantes} min`
+  );
+}
+
+function mostrarError(mensaje) {
+  const elemento =
+    document.getElementById(
+      "mensajeError"
+    );
+
+  elemento.textContent = mensaje;
+  elemento.style.display = "block";
+}
+
+function ocultarError() {
+  document.getElementById(
+    "mensajeError"
+  ).style.display = "none";
+}
+
+function activarCargando(estado) {
+  document.getElementById(
+    "cargando"
+  ).style.display =
+    estado ? "block" : "none";
+
+  document.getElementById(
+    "btnConsultar"
+  ).disabled = estado;
+
+  document.getElementById(
+    "btnExcel"
+  ).disabled = estado;
+}
+
 async function cargarUsuarios() {
+  const respuesta =
+    await fetch(`${API}/usuarios`);
+
+  if (!respuesta.ok) {
+    throw new Error(
+      "No se pudieron cargar los vendedores"
+    );
+  }
 
   usuarios =
-    await fetch(`${API}/usuarios`)
-      .then(r => r.json());
+    await respuesta.json();
+
+  const vendedores =
+    usuarios.filter(
+      usuario =>
+        usuario.rol === "VENDEDOR"
+    );
 
   document.getElementById(
     "filtroVendedor"
   ).innerHTML =
-    `<option value="">Todos los vendedores</option>` +
-    usuarios
-      .filter(
-        u =>
-          u.rol === "VENDEDOR" &&
-          u.activo
-      )
-      .map(
-        u =>
-          `<option value="${u.nombre} ${u.apellido}">
-            ${u.nombre} ${u.apellido}
-          </option>`
-      )
+    `
+      <option value="">
+        Todos los vendedores
+      </option>
+    ` +
+    vendedores
+      .map(usuario => `
+        <option value="${usuario.id}">
+          ${usuario.nombre || ""}
+          ${usuario.apellido || ""}
+          ${
+            usuario.activo
+              ? ""
+              : " (inactivo)"
+          }
+        </option>
+      `)
       .join("");
+
+  document.getElementById(
+    "filtroVendedor"
+  ).addEventListener(
+    "change",
+    actualizarResumenPeriodo
+  );
 }
 
 async function cargarVisitas() {
+  ocultarError();
 
-  visitasGlobal =
-    await fetch(`${API}/visitas`)
-      .then(r => r.json());
+  const desde =
+    document.getElementById(
+      "fechaDesde"
+    ).value;
 
-  renderizar();
+  const hasta =
+    document.getElementById(
+      "fechaHasta"
+    ).value;
+
+  const vendedorId =
+    document.getElementById(
+      "filtroVendedor"
+    ).value;
+
+  if (!desde || !hasta) {
+    mostrarError(
+      "Seleccioná las fechas desde y hasta."
+    );
+
+    return;
+  }
+
+  if (desde > hasta) {
+    mostrarError(
+      "La fecha desde no puede ser posterior a la fecha hasta."
+    );
+
+    return;
+  }
+
+  activarCargando(true);
+
+  try {
+    const parametros =
+      new URLSearchParams({
+        desde,
+        hasta
+      });
+
+    if (vendedorId) {
+      parametros.set(
+        "vendedor_id",
+        vendedorId
+      );
+    }
+
+    const [
+      respuestaVisitas,
+      respuestaResumen
+    ] = await Promise.all([
+      fetch(
+        `${API}/visitas?${parametros.toString()}`
+      ),
+
+      fetch(
+        `${API}/visitas/resumen?${parametros.toString()}`
+      )
+    ]);
+
+    const datosVisitas =
+      await respuestaVisitas.json();
+
+    const datosResumen =
+      await respuestaResumen.json();
+
+    if (!respuestaVisitas.ok) {
+      throw new Error(
+        datosVisitas.error ||
+        datosVisitas.detalle ||
+        "No se pudo cargar el historial"
+      );
+    }
+
+    if (!respuestaResumen.ok) {
+      throw new Error(
+        datosResumen.error ||
+        datosResumen.detalle ||
+        "No se pudo cargar el resumen"
+      );
+    }
+
+    visitasGlobal =
+      datosVisitas.visitas || [];
+
+    resumenGlobal =
+      datosResumen.resumen || [];
+
+    renderizar();
+    actualizarIndicadores();
+    actualizarResumenPeriodo();
+
+  } catch (error) {
+    console.error(error);
+
+    visitasGlobal = [];
+    resumenGlobal = [];
+
+    renderizar();
+    actualizarIndicadores();
+
+    mostrarError(
+      error.message ||
+      "Error cargando las visitas"
+    );
+
+  } finally {
+    activarCargando(false);
+  }
 }
 
 function renderizar() {
-
-  const vendedor =
+  const cuerpo =
     document.getElementById(
-      "filtroVendedor"
-    ).value;
-
-  const visitas =
-    visitasGlobal.filter(v => {
-
-      if (!vendedor)
-        return true;
-
-      return (
-        v.vendedor === vendedor
-      );
-    });
-
-  document.getElementById(
-    "tablaVisitas"
-  ).innerHTML =
-    visitas.map(v => `
-      <tr>
-        <td>${v.cliente || ""}</td>
-        <td>${v.vendedor || ""}</td>
-        <td>${v.fecha || ""}</td>
-
-        <td>
-          ${
-            v.primera_llegada
-              ? new Date(
-                  v.primera_llegada
-                ).toLocaleString()
-              : ""
-          }
-        </td>
-
-        <td>
-          ${
-            v.ultima_salida
-              ? new Date(
-                  v.ultima_salida
-                ).toLocaleString()
-              : ""
-          }
-        </td>
-
-        <td>
-          ${Number(
-            v.permanencia_minutos || 0
-          ).toFixed(1)} min
-        </td>
-
-        <td>
-          ${v.registros || 1}
-        </td>
-
-      </tr>
-    `).join("");
-}
-
-function filtrar() {
-  renderizar();
-}
-
-function exportarCSV() {
-
-  const vendedor =
-    document.getElementById(
-      "filtroVendedor"
-    ).value;
-
-  let datos =
-    visitasGlobal;
-
-  if (vendedor) {
-    datos =
-      datos.filter(
-        v =>
-          v.vendedor === vendedor
-      );
-  }
-
-  let csv =
-    "Cliente,Vendedor,Fecha,Primera Llegada,Ultima Salida,Permanencia (min),Registros\n";
-
-  datos.forEach(v => {
-
-    csv +=
-      `"${v.cliente}","${v.vendedor}","${v.fecha}","${v.primera_llegada}","${v.ultima_salida}","${v.permanencia_minutos}","${v.registros}"\n`;
-
-  });
-
-  const blob =
-    new Blob(
-      [csv],
-      {
-        type:
-          "text/csv;charset=utf-8;"
-      }
+      "tablaVisitas"
     );
 
-  const link =
-    document.createElement("a");
+  if (visitasGlobal.length === 0) {
+    cuerpo.innerHTML = `
+      <tr>
+        <td
+          colspan="11"
+          class="sin-resultados"
+        >
+          No se encontraron visitas para el período seleccionado.
+        </td>
+      </tr>
+    `;
 
-  link.href =
-    URL.createObjectURL(blob);
+    return;
+  }
 
-  link.download =
-    `actividad_${new Date()
-      .toISOString()
-      .slice(0,10)}.csv`;
+  cuerpo.innerHTML =
+    visitasGlobal
+      .map(visita => `
+        <tr>
+          <td>
+            ${formatearFecha(visita.fecha)}
+          </td>
 
-  link.click();
+          <td>
+            ${visita.codigo_cliente || ""}
+          </td>
+
+          <td>
+            ${visita.cliente || ""}
+          </td>
+
+          <td>
+            ${visita.vendedor || ""}
+          </td>
+
+          <td>
+            ${visita.ruta || ""}
+          </td>
+
+          <td>
+            ${visita.canal || ""}
+          </td>
+
+          <td>
+            ${formatearFechaHora(
+              visita.primera_llegada
+            )}
+          </td>
+
+          <td>
+            ${
+              visita.ultima_salida
+                ? formatearFechaHora(
+                    visita.ultima_salida
+                  )
+                : `
+                  <span class="visita-abierta">
+                    En curso
+                  </span>
+                `
+            }
+          </td>
+
+          <td>
+            ${formatearDuracion(
+              visita.permanencia_minutos
+            )}
+          </td>
+
+          <td>
+            ${visita.registros || 0}
+          </td>
+
+          <td>
+            ${
+              visita.visita_abierta
+                ? `
+                  <span class="visita-abierta">
+                    ABIERTA
+                  </span>
+                `
+                : "CERRADA"
+            }
+          </td>
+        </tr>
+      `)
+      .join("");
+}
+
+function actualizarIndicadores() {
+  const cantidadClientes =
+    visitasGlobal.length;
+
+  const registros =
+    visitasGlobal.reduce(
+      (total, visita) =>
+        total +
+        Number(visita.registros || 0),
+      0
+    );
+
+  const minutos =
+    visitasGlobal.reduce(
+      (total, visita) =>
+        total +
+        Number(
+          visita.permanencia_minutos || 0
+        ),
+      0
+    );
+
+  const promedio =
+    cantidadClientes > 0
+      ? minutos / cantidadClientes
+      : 0;
+
+  document.getElementById(
+    "indicadorVisitas"
+  ).textContent =
+    cantidadClientes;
+
+  document.getElementById(
+    "indicadorRegistros"
+  ).textContent =
+    registros;
+
+  document.getElementById(
+    "indicadorPermanencia"
+  ).textContent =
+    formatearDuracion(minutos);
+
+  document.getElementById(
+    "indicadorPromedio"
+  ).textContent =
+    formatearDuracion(promedio);
+}
+
+function crearDatosHojaVisitas() {
+  return visitasGlobal.map(visita => ({
+    "Fecha":
+      formatearFecha(visita.fecha),
+
+    "Código cliente":
+      visita.codigo_cliente || "",
+
+    "Cliente":
+      visita.cliente || "",
+
+    "Dirección":
+      visita.direccion || "",
+
+    "Localidad":
+      visita.localidad || "",
+
+    "Vendedor":
+      visita.vendedor || "",
+
+    "Ruta":
+      visita.ruta || "",
+
+    "Canal":
+      visita.canal || "",
+
+    "Categoría":
+      visita.categoria || "",
+
+    "Primera llegada":
+      formatearFechaHora(
+        visita.primera_llegada
+      ),
+
+    "Última salida":
+      visita.ultima_salida
+        ? formatearFechaHora(
+            visita.ultima_salida
+          )
+        : "En curso",
+
+    "Permanencia minutos":
+      Number(
+        visita.permanencia_minutos || 0
+      ),
+
+    "Registros":
+      Number(visita.registros || 0),
+
+    "Estado":
+      visita.visita_abierta
+        ? "ABIERTA"
+        : "CERRADA"
+  }));
+}
+
+function crearDatosHojaResumen() {
+  return resumenGlobal.map(
+    (resumen, indice) => ({
+      "Puesto":
+        indice + 1,
+
+      "Vendedor":
+        resumen.vendedor || "",
+
+      "Clientes visitados":
+        Number(
+          resumen.clientes_visitados || 0
+        ),
+
+      "Registros":
+        Number(
+          resumen.registros || 0
+        ),
+
+      "Permanencia total minutos":
+        Number(
+          resumen.permanencia_total_minutos || 0
+        ),
+
+      "Promedio minutos por cliente":
+        Number(
+          resumen.promedio_minutos_cliente || 0
+        ),
+
+      "Días con actividad":
+        Number(
+          resumen.dias_con_actividad || 0
+        ),
+
+      "Primera visita":
+        formatearFechaHora(
+          resumen.primera_visita
+        ),
+
+      "Última actividad":
+        formatearFechaHora(
+          resumen.ultima_actividad
+        )
+    })
+  );
+}
+
+function ajustarAnchosHoja(
+  hoja,
+  anchos
+) {
+  hoja["!cols"] =
+    anchos.map(ancho => ({
+      wch: ancho
+    }));
+}
+
+function exportarExcel() {
+  if (
+    typeof XLSX === "undefined"
+  ) {
+    alert(
+      "No se pudo cargar el generador de Excel."
+    );
+
+    return;
+  }
+
+  if (visitasGlobal.length === 0) {
+    alert(
+      "No hay visitas para exportar."
+    );
+
+    return;
+  }
+
+  const datosVisitas =
+    crearDatosHojaVisitas();
+
+  const datosResumen =
+    crearDatosHojaResumen();
+
+  const hojaVisitas =
+    XLSX.utils.json_to_sheet(
+      datosVisitas
+    );
+
+  const hojaResumen =
+    XLSX.utils.json_to_sheet(
+      datosResumen
+    );
+
+  ajustarAnchosHoja(
+    hojaVisitas,
+    [
+      12,
+      16,
+      30,
+      32,
+      20,
+      25,
+      12,
+      18,
+      12,
+      20,
+      20,
+      22,
+      12,
+      12
+    ]
+  );
+
+  ajustarAnchosHoja(
+    hojaResumen,
+    [
+      10,
+      28,
+      20,
+      14,
+      28,
+      30,
+      20,
+      22,
+      22
+    ]
+  );
+
+  hojaVisitas["!autofilter"] = {
+    ref: hojaVisitas["!ref"]
+  };
+
+  hojaResumen["!autofilter"] = {
+    ref: hojaResumen["!ref"]
+  };
+
+  hojaVisitas["!freeze"] = {
+    xSplit: 0,
+    ySplit: 1
+  };
+
+  hojaResumen["!freeze"] = {
+    xSplit: 0,
+    ySplit: 1
+  };
+
+  const libro =
+    XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    libro,
+    hojaVisitas,
+    "Visitas"
+  );
+
+  XLSX.utils.book_append_sheet(
+    libro,
+    hojaResumen,
+    "Resumen vendedores"
+  );
+
+  const desde =
+    document.getElementById(
+      "fechaDesde"
+    ).value;
+
+  const hasta =
+    document.getElementById(
+      "fechaHasta"
+    ).value;
+
+  const nombreArchivo =
+    desde === hasta
+      ? `SEC_Visitas_${desde}.xlsx`
+      : `SEC_Visitas_${desde}_al_${hasta}.xlsx`;
+
+  XLSX.writeFile(
+    libro,
+    nombreArchivo
+  );
 }
 
 async function iniciar() {
-  await cargarUsuarios();
-  await cargarVisitas();
+  try {
+    cambiarPeriodo();
+    await cargarUsuarios();
+    actualizarResumenPeriodo();
+    await cargarVisitas();
+
+  } catch (error) {
+    console.error(error);
+
+    mostrarError(
+      error.message ||
+      "No se pudo iniciar la pantalla de visitas"
+    );
+  }
 }
 
 iniciar();
 
+/*
+Actualiza los datos cada 3 minutos.
+No descarga ningún Excel automáticamente.
+*/
 setInterval(
   cargarVisitas,
-  30000
+  180000
 );
-
 </script>
+
+<script src="config-sec.js"></script>
 
 </body>
 </html>

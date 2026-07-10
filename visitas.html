@@ -699,8 +699,7 @@ function activarCargando(estado) {
 }
 
 async function cargarUsuarios() {
-  const respuesta =
-    await fetch(`${API}/usuarios`);
+  const respuesta = await fetch(`${API}/usuarios`);
 
   if (!respuesta.ok) {
     throw new Error(
@@ -708,40 +707,45 @@ async function cargarUsuarios() {
     );
   }
 
-  usuarios =
-    await respuesta.json();
+  const datos = await respuesta.json();
 
-  const vendedores =
-    usuarios.filter(
-      usuario =>
-        usuario.rol === "VENDEDOR"
-    );
+  usuarios = Array.isArray(datos)
+    ? datos
+    : datos.usuarios || [];
 
-  document.getElementById(
+  const vendedores = usuarios.filter(usuario => {
+    const rol = String(
+      usuario.rol || ""
+    ).toUpperCase();
+
+    return rol === "VENDEDOR";
+  });
+
+  const select = document.getElementById(
     "filtroVendedor"
-  ).innerHTML =
-    `
-      <option value="">
-        Todos los vendedores
+  );
+
+  select.innerHTML = `
+    <option value="">
+      Todos los vendedores
+    </option>
+  `;
+
+  select.innerHTML += vendedores
+    .map(usuario => `
+      <option value="${usuario.id}">
+        ${usuario.nombre || ""}
+        ${usuario.apellido || ""}
+        ${
+          usuario.activo === false
+            ? " (inactivo)"
+            : ""
+        }
       </option>
-    ` +
-    vendedores
-      .map(usuario => `
-        <option value="${usuario.id}">
-          ${usuario.nombre || ""}
-          ${usuario.apellido || ""}
-          ${
-            usuario.activo
-              ? ""
-              : " (inactivo)"
-          }
-        </option>
-      `)
-      .join("");
+    `)
+    .join("");
 
-  document.getElementById(
-    "filtroVendedor"
-  ).addEventListener(
+  select.addEventListener(
     "change",
     actualizarResumenPeriodo
   );

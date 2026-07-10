@@ -333,6 +333,8 @@ function dibujarMapa(datos, recorrido, visitasAgrupadas) {
     }
   });
 
+  if (!mapaVendedor._vistaInicialAjustada) {
+
   if (puntosMapa.length > 0) {
     mapaVendedor.fitBounds(puntosMapa, {
       padding: [50, 50],
@@ -341,6 +343,9 @@ function dibujarMapa(datos, recorrido, visitasAgrupadas) {
   } else {
     mapaVendedor.setView([-34.7073, -58.6757], 13);
   }
+
+  mapaVendedor._vistaInicialAjustada = true;
+}
 }
 
 cargarDetalle();

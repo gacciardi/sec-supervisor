@@ -4,60 +4,428 @@
   <meta charset="UTF-8">
   <title>SEC - Vendedor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  >
 
   <style>
-    body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;overflow:hidden}
-    .topbar{height:92px;background:#071b3a;color:white;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;box-sizing:border-box;font-weight:bold;border-bottom-left-radius:24px;border-bottom-right-radius:24px;z-index:1000;position:relative}
-    .titulo{font-size:18px;line-height:22px}.vendedor{font-size:14px;text-align:right}
-    .gps-pill{position:absolute;right:14px;top:54px;background:#dcfce7;color:#166534;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:bold}
-    .offline-pill{position:absolute;left:14px;top:54px;background:#e0f2fe;color:#075985;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:bold}
-    .stats{position:absolute;top:72px;left:12px;right:12px;background:white;border-radius:18px;display:flex;justify-content:space-around;padding:14px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:1001}
-    .stat{flex:1;text-align:center;font-size:13px;border-right:1px solid #e5e7eb;color:#1f2937}.stat:last-child{border-right:none}.stat strong{font-size:26px;display:block;color:#071b3a;margin-bottom:2px}
-    #mapa{position:absolute;top:130px;bottom:72px;left:0;right:0;width:100%;z-index:1}
-    .legend{position:absolute;top:142px;left:50%;transform:translateX(-50%);background:white;padding:8px 12px;border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,.2);z-index:1000;font-size:13px;white-space:nowrap}
-    .proximo{position:absolute;top:182px;left:12px;right:12px;background:white;border-radius:18px;padding:12px;box-shadow:0 4px 14px rgba(0,0,0,.22);z-index:1000;display:none}
-    .proximo h3{margin:0 0 6px 0;color:#071b3a;font-size:16px}.proximo div{font-size:13px;color:#374151}
-    .cliente-encontrado{position:absolute;top:250px;left:12px;right:12px;background:#dcfce7;border:2px solid #22c55e;border-radius:18px;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,.22);z-index:1100;display:none}
-    .cliente-encontrado h3{margin:0 0 6px 0;color:#166534;font-size:18px}
-    .cliente-encontrado div{font-size:14px;color:#166534}
-    .panel{position:fixed;bottom:86px;left:12px;right:12px;background:white;border-radius:20px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.25);display:none;z-index:1000;max-height:60vh;overflow:auto}
-    .panel h3{margin:0 0 10px 0;color:#071b3a;font-size:20px}.panel p{margin:3px 0;color:#374151}
-    .item-panel{background:white;border:1px solid #ddd;border-radius:12px;padding:12px;margin-bottom:10px}
-    .btn-finalizar,.btn-panel{background:#071b3a;color:white;border:none;padding:13px;border-radius:12px;width:100%;font-size:15px;font-weight:bold;margin-top:10px}
-    .btn-navegar{width:100%;padding:10px;background:#0b55c7;color:white;border:none;border-radius:10px;margin-top:8px;font-weight:bold}
-    .btn-omitir{width:100%;padding:10px;background:#6b7280;color:white;border:none;border-radius:10px;margin-top:8px;font-weight:bold}
-    .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:72px;background:white;display:flex;justify-content:space-around;align-items:center;box-shadow:0 -3px 14px rgba(0,0,0,.18);z-index:1000;border-top-left-radius:20px;border-top-right-radius:20px}
-    .bottom-nav button{border:none;background:none;font-size:12px;color:#071b3a;font-weight:bold;display:flex;flex-direction:column;align-items:center;gap:4px}
-    .bottom-nav .principal{background:#0b55c7;color:white;width:70px;height:70px;border-radius:50%;margin-top:-34px;box-shadow:0 4px 12px rgba(0,0,0,.25);justify-content:center}
-    .numero-marker{color:white;font-weight:bold;font-size:13px;text-align:center;line-height:28px;width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35)}
-    .marker-rojo{background:#dc2626}.marker-verde{background:#16a34a}
-    .leaflet-popup-content button{width:100%;padding:9px;border:none;border-radius:8px;background:#071b3a;color:white;font-weight:bold;margin-top:8px}
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      overflow: hidden;
+    }
+
+    .topbar {
+      height: 92px;
+      background: #071b3a;
+      color: white;
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      box-sizing: border-box;
+      font-weight: bold;
+      border-bottom-left-radius: 24px;
+      border-bottom-right-radius: 24px;
+      z-index: 1000;
+      position: relative;
+    }
+
+    .titulo {
+      font-size: 18px;
+      line-height: 22px;
+    }
+
+    .vendedor {
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .gps-pill {
+      position: absolute;
+      right: 14px;
+      top: 54px;
+      background: #dcfce7;
+      color: #166534;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .offline-pill {
+      position: absolute;
+      left: 14px;
+      top: 54px;
+      background: #e0f2fe;
+      color: #075985;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .stats {
+      position: absolute;
+      top: 72px;
+      left: 12px;
+      right: 12px;
+      background: white;
+      border-radius: 18px;
+      display: flex;
+      justify-content: space-around;
+      padding: 14px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.18);
+      z-index: 1001;
+    }
+
+    .stat {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      border-right: 1px solid #e5e7eb;
+      color: #1f2937;
+    }
+
+    .stat:last-child {
+      border-right: none;
+    }
+
+    .stat strong {
+      font-size: 26px;
+      display: block;
+      color: #071b3a;
+      margin-bottom: 2px;
+    }
+
+    #mapa {
+      position: absolute;
+      top: 130px;
+      bottom: 72px;
+      left: 0;
+      right: 0;
+      width: 100%;
+      z-index: 1;
+    }
+
+    .legend {
+      position: absolute;
+      top: 142px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 8px 12px;
+      border-radius: 14px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.2);
+      z-index: 1000;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .proximo {
+      position: absolute;
+      top: 182px;
+      left: 12px;
+      right: 12px;
+      background: white;
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.22);
+      z-index: 1000;
+      display: none;
+    }
+
+    .proximo h3 {
+      margin: 0 0 6px 0;
+      color: #071b3a;
+      font-size: 16px;
+    }
+
+    .proximo div {
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .cliente-encontrado {
+      position: absolute;
+      top: 250px;
+      left: 12px;
+      right: 12px;
+      background: #dcfce7;
+      border: 2px solid #22c55e;
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.22);
+      z-index: 1100;
+      display: none;
+    }
+
+    .cliente-encontrado h3 {
+      margin: 0 0 6px 0;
+      color: #166534;
+      font-size: 18px;
+    }
+
+    .cliente-encontrado div {
+      font-size: 14px;
+      color: #166534;
+    }
+
+    .panel {
+      position: fixed;
+      bottom: 86px;
+      left: 12px;
+      right: 12px;
+      background: white;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.25);
+      display: none;
+      z-index: 1200;
+      max-height: 60vh;
+      overflow: auto;
+    }
+
+    .panel h3 {
+      margin: 0 0 10px 0;
+      color: #071b3a;
+      font-size: 20px;
+    }
+
+    .panel p {
+      margin: 3px 0;
+      color: #374151;
+    }
+
+    .item-panel {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .panel-cercanos {
+      border: 3px solid #f59e0b;
+      background: #fffbeb;
+      z-index: 1500;
+    }
+
+    .panel-cercanos h3 {
+      color: #92400e;
+    }
+
+    .cliente-cercano {
+      background: white;
+      border: 1px solid #fbbf24;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .cliente-cercano strong {
+      color: #071b3a;
+      font-size: 17px;
+    }
+
+    .distancia-cercano {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .btn-finalizar,
+    .btn-panel {
+      background: #071b3a;
+      color: white;
+      border: none;
+      padding: 13px;
+      border-radius: 12px;
+      width: 100%;
+      font-size: 15px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .btn-navegar {
+      width: 100%;
+      padding: 10px;
+      background: #0b55c7;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .btn-seleccionar {
+      width: 100%;
+      padding: 12px;
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 9px;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .btn-omitir {
+      width: 100%;
+      padding: 10px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .btn-ninguno {
+      width: 100%;
+      padding: 12px;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: white;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -3px 14px rgba(0,0,0,.18);
+      z-index: 1000;
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+    }
+
+    .bottom-nav button {
+      border: none;
+      background: none;
+      font-size: 12px;
+      color: #071b3a;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bottom-nav .principal {
+      background: #0b55c7;
+      color: white;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      margin-top: -34px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.25);
+      justify-content: center;
+    }
+
+    .numero-marker {
+      color: white;
+      font-weight: bold;
+      font-size: 13px;
+      text-align: center;
+      line-height: 28px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    }
+
+    .marker-rojo {
+      background: #dc2626;
+    }
+
+    .marker-verde {
+      background: #16a34a;
+    }
+
+    .leaflet-popup-content button {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      background: #071b3a;
+      color: white;
+      font-weight: bold;
+      margin-top: 8px;
+    }
   </style>
 </head>
 
 <body>
 
 <div class="topbar">
-  <div class="titulo">☰ SEC<br>Vendedor</div>
+  <div class="titulo">
+    ☰ SEC<br>
+    Vendedor
+  </div>
+
   <div class="vendedor" id="legajoTexto"></div>
   <div id="offlineEstado" class="offline-pill">Online</div>
   <div id="gpsEstado" class="gps-pill">GPS iniciando</div>
 </div>
 
 <div class="stats">
-  <div class="stat"><strong id="pendientes">0</strong>Pendientes</div>
-  <div class="stat"><strong id="visitados">0</strong>Visitados</div>
-  <div class="stat"><strong id="total">0</strong>Total</div>
+  <div class="stat">
+    <strong id="pendientes">0</strong>
+    Pendientes
+  </div>
+
+  <div class="stat">
+    <strong id="visitados">0</strong>
+    Visitados
+  </div>
+
+  <div class="stat">
+    <strong id="total">0</strong>
+    Total
+  </div>
 </div>
 
-<div class="legend">🔴 Pendiente &nbsp;&nbsp; 🟢 Visitado &nbsp;&nbsp; 🔵 Recorrido</div>
+<div class="legend">
+  🔴 Pendiente &nbsp;&nbsp;
+  🟢 Visitado &nbsp;&nbsp;
+  🔵 Recorrido
+</div>
 
 <div id="proximoCliente" class="proximo">
   <h3>Próximo cliente recomendado</h3>
   <div id="textoProximo"></div>
-  <button id="btnNavegarProximo" class="btn-navegar">Navegar</button>
-  <button onclick="omitirProximoCliente()" class="btn-omitir">Omitir por ahora</button>
+
+  <button
+    id="btnNavegarProximo"
+    class="btn-navegar"
+  >
+    Navegar
+  </button>
+
+  <button
+    onclick="omitirProximoCliente()"
+    class="btn-omitir"
+  >
+    Omitir por ahora
+  </button>
 </div>
 
 <div id="clienteEncontrado" class="cliente-encontrado">
@@ -72,33 +440,90 @@
   <p id="direccionActual"></p>
   <p id="horaLlegada"></p>
 
-  <button class="btn-navegar" onclick="registrarEntradaManual()">
+  <button
+    class="btn-navegar"
+    onclick="registrarEntradaManual()"
+  >
     ENTRÉ AL CLIENTE
   </button>
 
-  <button class="btn-finalizar" onclick="finalizarVisitaManual()">
+  <button
+    class="btn-finalizar"
+    onclick="finalizarVisitaManual()"
+  >
     SALÍ DEL CLIENTE
+  </button>
+</div>
+
+<div id="panelClientesCercanos" class="panel panel-cercanos">
+  <h3>📍 Hay varios clientes cerca</h3>
+
+  <p>
+    Elegí el comercio en el que estás ahora.
+  </p>
+
+  <div id="listaClientesCercanos"></div>
+
+  <button
+    class="btn-ninguno"
+    onclick="cerrarClientesCercanos()"
+  >
+    Ninguno de estos
   </button>
 </div>
 
 <div id="panelListado" class="panel">
   <h3>Clientes de hoy</h3>
   <div id="listaClientes"></div>
-  <button class="btn-panel" onclick="cerrarPanelListado()">Cerrar</button>
+
+  <button
+    class="btn-panel"
+    onclick="cerrarPanelListado()"
+  >
+    Cerrar
+  </button>
 </div>
 
 <div id="panelHistorial" class="panel">
   <h3>Visitas realizadas</h3>
   <div id="listaVisitas"></div>
-  <button class="btn-panel" onclick="cerrarPanelVisitas()">Cerrar</button>
+
+  <button
+    class="btn-panel"
+    onclick="cerrarPanelVisitas()"
+  >
+    Cerrar
+  </button>
 </div>
 
 <div class="bottom-nav">
-  <button onclick="mostrarListado()">☰<span>Listado</span></button>
-  <button onclick="registrarEntradaManual()">✅<span>Entré</span></button>
-  <button class="principal" onclick="forzarActualizar()">✓<span>Actualizar</span></button>
-  <button onclick="finalizarVisitaManual()">🚪<span>Salí</span></button>
-  <button onclick="cerrarSesion()">👤<span>Salir</span></button>
+  <button onclick="mostrarListado()">
+    ☰
+    <span>Listado</span>
+  </button>
+
+  <button onclick="registrarEntradaManual()">
+    ✅
+    <span>Entré</span>
+  </button>
+
+  <button
+    class="principal"
+    onclick="forzarActualizar()"
+  >
+    ✓
+    <span>Actualizar</span>
+  </button>
+
+  <button onclick="finalizarVisitaManual()">
+    🚪
+    <span>Salí</span>
+  </button>
+
+  <button onclick="cerrarSesion()">
+    👤
+    <span>Salir</span>
+  </button>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -109,20 +534,31 @@ const API = "https://sec-backend-gg4j.onrender.com";
 const vendedorId = localStorage.getItem("vendedorId");
 const vendedorNombre = localStorage.getItem("vendedorNombre");
 
-let mapa, capa;
+let mapa;
+let capa;
+
 let clientes = [];
 let visitas = [];
 let recorrido = [];
+
 let ubicacionActual = null;
 let visitaActualId = null;
 let proximoCliente = null;
+
 let clientesOmitidos = new Set();
 let sugerenciaPausada = false;
+let seleccionandoClienteCercano = false;
 
 const FECHA_HOY = new Date().toISOString().slice(0, 10);
-const KEY_INICIO_DIA = `sec_inicio_dia_${vendedorId}_${FECHA_HOY}`;
-const KEY_PRIMERA_PENDIENTE = `sec_primera_pendiente_${vendedorId}_${FECHA_HOY}`;
-const KEY_PRIMERA_DETECTADA = `sec_primera_detectada_${vendedorId}_${FECHA_HOY}`;
+
+const KEY_INICIO_DIA =
+  `sec_inicio_dia_${vendedorId}_${FECHA_HOY}`;
+
+const KEY_PRIMERA_PENDIENTE =
+  `sec_primera_pendiente_${vendedorId}_${FECHA_HOY}`;
+
+const KEY_PRIMERA_DETECTADA =
+  `sec_primera_detectada_${vendedorId}_${FECHA_HOY}`;
 
 let primeraVisitaPendienteDeSalida =
   localStorage.getItem(KEY_PRIMERA_PENDIENTE) === "true";
@@ -137,74 +573,124 @@ let enviandoGPS = false;
 
 const COLA_OFFLINE = "sec_cola_offline_vendedor";
 
-const MIN_METROS_ENVIO = 20;
-const MIN_MS_ENTRE_ENVIO_GPS = 60000;
+const MIN_METROS_ENVIO = 10;
+const MIN_MS_ENTRE_ENVIO_GPS = 15000;
 const MIN_MS_RECARGA_DATOS = 120000;
 
 let ultimoEnvioGPS = 0;
 
-if (!vendedorId) window.location.href = "login-vendedor.html";
-
-document.getElementById("legajoTexto").textContent = vendedorNombre || "Vendedor";
-
-function coordValida(lat,lng){
-  return !isNaN(lat)&&!isNaN(lng)&&lat!==0&&lng!==0&&lat>-40&&lat<-30&&lng>-65&&lng<-55;
+if (!vendedorId) {
+  window.location.href = "login-vendedor.html";
 }
 
-function distanciaMetros(lat1,lon1,lat2,lon2){
-  const R=6371000, rad=Math.PI/180;
-  const dLat=(lat2-lat1)*rad;
-  const dLon=(lon2-lon1)*rad;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+document.getElementById("legajoTexto").textContent =
+  vendedorNombre || "Vendedor";
+
+function coordValida(lat, lng) {
+  return (
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat !== 0 &&
+    lng !== 0 &&
+    lat > -40 &&
+    lat < -30 &&
+    lng > -65 &&
+    lng < -55
+  );
 }
 
-function inicioElegidoHoy(){
-  return !!localStorage.getItem(KEY_INICIO_DIA) || visitas.length > 0;
+function distanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const rad = Math.PI / 180;
+
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) *
+      Math.cos(lat2 * rad) *
+      Math.sin(dLon / 2) ** 2;
+
+  return (
+    R *
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    )
+  );
 }
 
-function guardarEstadoPrimeraVisita(){
-  localStorage.setItem(KEY_PRIMERA_PENDIENTE, String(primeraVisitaPendienteDeSalida));
-  localStorage.setItem(KEY_PRIMERA_DETECTADA, String(primeraVisitaDetectada));
+function inicioElegidoHoy() {
+  return (
+    !!localStorage.getItem(KEY_INICIO_DIA) ||
+    visitas.length > 0
+  );
 }
 
-function activarAlgoritmoProximoCliente(){
+function guardarEstadoPrimeraVisita() {
+  localStorage.setItem(
+    KEY_PRIMERA_PENDIENTE,
+    String(primeraVisitaPendienteDeSalida)
+  );
+
+  localStorage.setItem(
+    KEY_PRIMERA_DETECTADA,
+    String(primeraVisitaDetectada)
+  );
+}
+
+function activarAlgoritmoProximoCliente() {
   primeraVisitaPendienteDeSalida = false;
   primeraVisitaDetectada = false;
   sugerenciaPausada = false;
+
   clientesOmitidos.clear();
+
   guardarEstadoPrimeraVisita();
   calcularProximoCliente();
 }
 
-function pausarSugerenciasInicio(){
+function pausarSugerenciasInicio() {
   sugerenciaPausada = true;
-  document.getElementById("proximoCliente").style.display = "none";
+
+  document.getElementById(
+    "proximoCliente"
+  ).style.display = "none";
 }
 
-function leerColaOffline(){
+function leerColaOffline() {
   try {
-    return JSON.parse(localStorage.getItem(COLA_OFFLINE) || "[]");
+    return JSON.parse(
+      localStorage.getItem(COLA_OFFLINE) || "[]"
+    );
   } catch {
     return [];
   }
 }
 
-function guardarColaOffline(cola){
-  localStorage.setItem(COLA_OFFLINE, JSON.stringify(cola));
+function guardarColaOffline(cola) {
+  localStorage.setItem(
+    COLA_OFFLINE,
+    JSON.stringify(cola)
+  );
+
   actualizarEstadoConexion();
 }
 
-function agregarAColaOffline(evento){
+function agregarAColaOffline(evento) {
   const cola = leerColaOffline();
+
   cola.push({
     ...evento,
     fecha_local: new Date().toISOString()
   });
+
   guardarColaOffline(cola);
 }
 
-function actualizarEstadoConexion(){
+function actualizarEstadoConexion() {
   const cola = leerColaOffline();
   const el = document.getElementById("offlineEstado");
 
@@ -226,41 +712,50 @@ function actualizarEstadoConexion(){
   }
 }
 
-async function enviarEvento(evento){
+async function enviarEvento(evento) {
   if (evento.tipo === "gps_automatico") {
     return fetch(`${API}/gps-logs/automatico`, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(evento.payload)
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(evento.payload)
     });
   }
 
   if (evento.tipo === "salida_visita") {
     return fetch(`${API}/visitas/salida`, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(evento.payload)
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(evento.payload)
     });
   }
 
   if (evento.tipo === "entrada_manual") {
     return fetch(`${API}/visitas/entrada-manual`, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(evento.payload)
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(evento.payload)
     });
   }
 
-  throw new Error("Tipo de evento offline no reconocido");
+  throw new Error(
+    "Tipo de evento offline no reconocido"
+  );
 }
 
-async function sincronizarOffline(){
+async function sincronizarOffline() {
   if (!navigator.onLine) {
     actualizarEstadoConexion();
     return;
   }
 
-  let cola = leerColaOffline();
+  const cola = leerColaOffline();
+
   if (cola.length === 0) {
     actualizarEstadoConexion();
     return;
@@ -270,8 +765,11 @@ async function sincronizarOffline(){
 
   for (const evento of cola) {
     try {
-      const r = await enviarEvento(evento);
-      if (!r.ok) pendientes.push(evento);
+      const respuesta = await enviarEvento(evento);
+
+      if (!respuesta.ok) {
+        pendientes.push(evento);
+      }
     } catch {
       pendientes.push(evento);
     }
@@ -284,168 +782,366 @@ async function sincronizarOffline(){
   }
 }
 
-window.addEventListener("online", sincronizarOffline);
-window.addEventListener("offline", actualizarEstadoConexion);
+window.addEventListener(
+  "online",
+  sincronizarOffline
+);
 
-function iniciarMapa(){
-  mapa=L.map("mapa",{zoomControl:true}).setView([-34.7073,-58.6757],14);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(mapa);
-  capa=L.layerGroup().addTo(mapa);
+window.addEventListener(
+  "offline",
+  actualizarEstadoConexion
+);
+
+function iniciarMapa() {
+  mapa = L.map("mapa", {
+    zoomControl: true
+  }).setView(
+    [-34.7073, -58.6757],
+    14
+  );
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom: 19
+    }
+  ).addTo(mapa);
+
+  capa = L.layerGroup().addTo(mapa);
 }
 
-async function cargarDatos(ajustarMapa = false){
+async function cargarDatos(ajustarMapa = false) {
   try {
-    const detalle=await fetch(`${API}/dashboard/vendedores/${vendedorId}`).then(r=>r.json());
-    clientes=await fetch(`${API}/clientes/vendedor/${vendedorId}/hoy`).then(r=>r.json());
-    recorrido=await fetch(`${API}/gps-logs/vendedor/${vendedorId}/hoy`).then(r=>r.json());
-    visitas=detalle.visitas||[];
+    const detalle = await fetch(
+      `${API}/dashboard/vendedores/${vendedorId}`
+    ).then(r => r.json());
 
-    if (visitas.length > 0 && !localStorage.getItem(KEY_INICIO_DIA)) {
-      localStorage.setItem(KEY_INICIO_DIA, "VISITAS_EXISTENTES");
+    clientes = await fetch(
+      `${API}/clientes/vendedor/${vendedorId}/hoy`
+    ).then(r => r.json());
+
+    recorrido = await fetch(
+      `${API}/gps-logs/vendedor/${vendedorId}/hoy`
+    ).then(r => r.json());
+
+    visitas = detalle.visitas || [];
+
+    if (
+      visitas.length > 0 &&
+      !localStorage.getItem(KEY_INICIO_DIA)
+    ) {
+      localStorage.setItem(
+        KEY_INICIO_DIA,
+        "VISITAS_EXISTENTES"
+      );
     }
 
-    const debeElegirInicio = !inicioElegidoHoy();
+    const debeElegirInicio =
+      !inicioElegidoHoy();
 
     if (debeElegirInicio) {
       pausarSugerenciasInicio();
     }
 
-    const visitadosNombres=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
-    const visitadosCantidad=clientes.filter(c=>visitadosNombres.has(String(c.nombre||"").toLowerCase())).length;
+    const visitadosNombres = new Set(
+      visitas.map(v =>
+        String(v.cliente || "").toLowerCase()
+      )
+    );
 
-    document.getElementById("visitados").textContent=visitadosCantidad;
-    document.getElementById("pendientes").textContent=clientes.length-visitadosCantidad;
-    document.getElementById("total").textContent=clientes.length;
+    const visitadosCantidad =
+      clientes.filter(c =>
+        visitadosNombres.has(
+          String(c.nombre || "").toLowerCase()
+        )
+      ).length;
 
-    dibujarMapa(visitadosNombres, ajustarMapa);
+    document.getElementById(
+      "visitados"
+    ).textContent = visitadosCantidad;
+
+    document.getElementById(
+      "pendientes"
+    ).textContent = Math.max(
+      clientes.length - visitadosCantidad,
+      0
+    );
+
+    document.getElementById(
+      "total"
+    ).textContent = clientes.length;
+
+    dibujarMapa(
+      visitadosNombres,
+      ajustarMapa
+    );
 
     if (debeElegirInicio) {
       mostrarSeleccionInicio();
-    } else {
+    } else if (!seleccionandoClienteCercano) {
       calcularProximoCliente();
     }
 
     actualizarEstadoConexion();
 
   } catch (error) {
+    console.error(
+      "Error cargando datos:",
+      error
+    );
+
     actualizarEstadoConexion();
   }
 }
 
-async function forzarActualizar(){
+async function forzarActualizar() {
   ultimaActualizacion = Date.now();
+
   await sincronizarOffline();
   await cargarDatos(true);
 }
 
-function crearIcono(numero,visitado){
+function crearIcono(numero, visitado) {
   return L.divIcon({
-    className:"",
-    html:`<div class="numero-marker ${visitado?"marker-verde":"marker-rojo"}">${numero}</div>`,
-    iconSize:[32,32],
-    iconAnchor:[16,16]
+    className: "",
+    html: `
+      <div class="numero-marker ${
+        visitado
+          ? "marker-verde"
+          : "marker-rojo"
+      }">
+        ${numero}
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
   });
 }
 
-function dibujarMapa(visitadosNombres, ajustarMapa = false){
+function dibujarMapa(
+  visitadosNombres,
+  ajustarMapa = false
+) {
   capa.clearLayers();
-  const puntos=[];
 
-  const puntosRecorrido=recorrido
-    .map(r=>[Number(r.latitud),Number(r.longitud)])
-    .filter(p=>coordValida(p[0],p[1]));
+  const puntos = [];
 
-  if(puntosRecorrido.length>1){
-    L.polyline(puntosRecorrido,{color:"#0b55c7",weight:5,opacity:.85}).addTo(capa);
+  const puntosRecorrido = recorrido
+    .map(r => [
+      Number(r.latitud),
+      Number(r.longitud)
+    ])
+    .filter(p =>
+      coordValida(p[0], p[1])
+    );
+
+  if (puntosRecorrido.length > 1) {
+    L.polyline(
+      puntosRecorrido,
+      {
+        color: "#0b55c7",
+        weight: 5,
+        opacity: 0.85
+      }
+    ).addTo(capa);
+
     puntos.push(...puntosRecorrido);
   }
 
-  clientes.forEach((c,index)=>{
-    const lat=Number(c.latitud), lng=Number(c.longitud);
-    if(!coordValida(lat,lng)) return;
+  clientes.forEach((c, index) => {
+    const lat = Number(c.latitud);
+    const lng = Number(c.longitud);
 
-    const visitado=visitadosNombres.has(String(c.nombre||"").toLowerCase());
-    puntos.push([lat,lng]);
+    if (!coordValida(lat, lng)) {
+      return;
+    }
 
-    L.marker([lat,lng],{icon:crearIcono(index+1,visitado)})
+    const visitado =
+      visitadosNombres.has(
+        String(c.nombre || "").toLowerCase()
+      );
+
+    puntos.push([lat, lng]);
+
+    L.marker(
+      [lat, lng],
+      {
+        icon: crearIcono(
+          index + 1,
+          visitado
+        )
+      }
+    )
       .addTo(capa)
       .bindPopup(`
-        <b>${index+1}. ${c.nombre||""}</b><br>
-        ${c.direccion||""}<br>
-        ${c.localidad||""}<br>
-        Estado: <b>${visitado?"VISITADO":"PENDIENTE"}</b><br>
-        <button onclick="abrirGoogleMaps(${lat},${lng})">NAVEGAR</button>
+        <b>
+          ${index + 1}. ${c.nombre || ""}
+        </b>
+        <br>
+
+        ${c.direccion || ""}
+        <br>
+
+        ${c.localidad || ""}
+        <br>
+
+        Estado:
+        <b>
+          ${
+            visitado
+              ? "VISITADO"
+              : "PENDIENTE"
+          }
+        </b>
+        <br>
+
+        <button
+          onclick="abrirGoogleMaps(${lat},${lng})"
+        >
+          NAVEGAR
+        </button>
       `);
   });
 
-  if(ubicacionActual){
-    puntos.push([ubicacionActual.lat,ubicacionActual.lng]);
-    L.circleMarker([ubicacionActual.lat,ubicacionActual.lng],{
-      radius:16,color:"#0b55c7",fillColor:"#0b55c7",fillOpacity:1
-    }).addTo(capa).bindPopup("Mi ubicación actual");
+  if (ubicacionActual) {
+    puntos.push([
+      ubicacionActual.lat,
+      ubicacionActual.lng
+    ]);
+
+    L.circleMarker(
+      [
+        ubicacionActual.lat,
+        ubicacionActual.lng
+      ],
+      {
+        radius: 16,
+        color: "#0b55c7",
+        fillColor: "#0b55c7",
+        fillOpacity: 1
+      }
+    )
+      .addTo(capa)
+      .bindPopup("Mi ubicación actual");
   }
 
-  if((primeraCargaMapa || ajustarMapa) && puntos.length>0){
-    mapa.fitBounds(puntos,{padding:[45,45],maxZoom:17});
+  if (
+    (primeraCargaMapa || ajustarMapa) &&
+    puntos.length > 0
+  ) {
+    mapa.fitBounds(
+      puntos,
+      {
+        padding: [45, 45],
+        maxZoom: 17
+      }
+    );
+
     primeraCargaMapa = false;
   }
 }
 
-function calcularProximoCliente(){
-  if (sugerenciaPausada) {
-  document.getElementById(
-    "proximoCliente"
-  ).style.display = "none";
-  return;
-}
-  const panel=document.getElementById("proximoCliente");
-  const texto=document.getElementById("textoProximo");
-  const boton=document.getElementById("btnNavegarProximo");
+function calcularProximoCliente() {
+  const panel =
+    document.getElementById(
+      "proximoCliente"
+    );
 
-  if(!ubicacionActual){
-    panel.style.display="none";
+  const texto =
+    document.getElementById(
+      "textoProximo"
+    );
+
+  const boton =
+    document.getElementById(
+      "btnNavegarProximo"
+    );
+
+  if (
+    sugerenciaPausada ||
+    seleccionandoClienteCercano
+  ) {
+    panel.style.display = "none";
     return;
   }
 
-  const visitados=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+  if (!ubicacionActual) {
+    panel.style.display = "none";
+    return;
+  }
 
-  let mejor=null;
-  let menor=999999999;
+  const visitados = new Set(
+    visitas.map(v =>
+      String(v.cliente || "").toLowerCase()
+    )
+  );
 
-  clientes.forEach(c=>{
-    if(clientesOmitidos.has(c.id)) return;
-    if(visitados.has(String(c.nombre||"").toLowerCase())) return;
+  let mejor = null;
+  let menor = Number.POSITIVE_INFINITY;
 
-    const lat=Number(c.latitud), lng=Number(c.longitud);
-    if(!coordValida(lat,lng)) return;
+  clientes.forEach(c => {
+    if (clientesOmitidos.has(c.id)) {
+      return;
+    }
 
-    const d=distanciaMetros(ubicacionActual.lat,ubicacionActual.lng,lat,lng);
+    if (
+      visitados.has(
+        String(c.nombre || "").toLowerCase()
+      )
+    ) {
+      return;
+    }
 
-    if(d<menor){
-      menor=d;
-      mejor=c;
+    const lat = Number(c.latitud);
+    const lng = Number(c.longitud);
+
+    if (!coordValida(lat, lng)) {
+      return;
+    }
+
+    const distancia = distanciaMetros(
+      ubicacionActual.lat,
+      ubicacionActual.lng,
+      lat,
+      lng
+    );
+
+    if (distancia < menor) {
+      menor = distancia;
+      mejor = c;
     }
   });
 
-  proximoCliente=mejor;
+  proximoCliente = mejor;
 
-  if(!mejor){
-    panel.style.display="none";
+  if (!mejor) {
+    panel.style.display = "none";
     return;
   }
 
-  texto.innerHTML=`
-    <b>${mejor.nombre||""}</b><br>
-    ${mejor.direccion||""}<br>
-    ${mejor.localidad||""}<br>
+  texto.innerHTML = `
+    <b>${mejor.nombre || ""}</b>
+    <br>
+
+    ${mejor.direccion || ""}
+    <br>
+
+    ${mejor.localidad || ""}
+    <br>
+
     A ${Math.round(menor)} metros
   `;
 
-  boton.onclick=()=>abrirGoogleMaps(Number(mejor.latitud),Number(mejor.longitud));
-  panel.style.display="block";
+  boton.onclick = () =>
+    abrirGoogleMaps(
+      Number(mejor.latitud),
+      Number(mejor.longitud)
+    );
+
+  panel.style.display = "block";
 }
 
-function omitirProximoCliente(){
+function omitirProximoCliente() {
   sugerenciaPausada = true;
 
   document.getElementById(
@@ -453,38 +1149,223 @@ function omitirProximoCliente(){
   ).style.display = "none";
 }
 
-function mostrarClienteEncontrado(nombre){
-  const panel = document.getElementById("clienteEncontrado");
+function mostrarClienteEncontrado(nombre) {
+  const panel =
+    document.getElementById(
+      "clienteEncontrado"
+    );
 
-  document.getElementById("textoClienteEncontrado").innerHTML = `
-    <b>${nombre || "Cliente"}</b><br>
+  document.getElementById(
+    "textoClienteEncontrado"
+  ).innerHTML = `
+    <b>${nombre || "Cliente"}</b>
+    <br>
     Visita iniciada
   `;
 
   panel.style.display = "block";
 
-  setTimeout(()=>{
+  setTimeout(() => {
     panel.style.display = "none";
-  },4000);
+  }, 4000);
 }
 
-async function procesarGPS(lat,lng){
-  ubicacionActual={lat,lng};
+function mostrarClientesCercanos(
+  clientesCercanos
+) {
+  if (
+    !Array.isArray(clientesCercanos) ||
+    clientesCercanos.length === 0
+  ) {
+    return;
+  }
 
-  document.getElementById("gpsEstado").textContent="GPS activo";
-  document.getElementById("gpsEstado").style.background="#dcfce7";
-  document.getElementById("gpsEstado").style.color="#166534";
+  seleccionandoClienteCercano = true;
+  sugerenciaPausada = true;
 
-  if(enviandoGPS) return;
+  document.getElementById(
+    "proximoCliente"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "none";
+
+  const lista =
+    document.getElementById(
+      "listaClientesCercanos"
+    );
+
+  lista.innerHTML = clientesCercanos
+    .map(cliente => `
+      <div class="cliente-cercano">
+        <strong>
+          ${cliente.nombre || "Cliente"}
+        </strong>
+        <br>
+
+        ${cliente.direccion || ""}
+        <br>
+
+        ${cliente.localidad || ""}
+        <br>
+
+        <span class="distancia-cercano">
+          A ${cliente.distancia_metros || 0} metros
+        </span>
+
+        <button
+          class="btn-seleccionar"
+          onclick="confirmarClienteCercano('${cliente.id}')"
+        >
+          ✅ Estoy en este cliente
+        </button>
+      </div>
+    `)
+    .join("");
+
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "block";
+}
+
+function cerrarClientesCercanos() {
+  seleccionandoClienteCercano = false;
+  sugerenciaPausada = false;
+
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  calcularProximoCliente();
+}
+
+async function confirmarClienteCercano(
+  clienteId
+) {
+  if (!ubicacionActual) {
+    alert(
+      "Todavía no tengo una ubicación GPS válida."
+    );
+    return;
+  }
+
+  try {
+    const respuesta = await fetch(
+      `${API}/gps-logs/automatico/confirmar-cliente`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          vendedor_id: vendedorId,
+          cliente_id: clienteId,
+          latitud: ubicacionActual.lat,
+          longitud: ubicacionActual.lng
+        })
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(
+        datos.error ||
+        datos.detalle ||
+        "No se pudo confirmar el cliente"
+      );
+      return;
+    }
+
+    seleccionandoClienteCercano = false;
+
+    document.getElementById(
+      "panelClientesCercanos"
+    ).style.display = "none";
+
+    visitaActualId =
+      datos.visita_id ||
+      (datos.visita
+        ? datos.visita.id
+        : null);
+
+    if (primeraVisitaPendienteDeSalida) {
+      primeraVisitaDetectada = true;
+      guardarEstadoPrimeraVisita();
+    }
+
+    mostrarClienteEncontrado(
+      datos.cliente
+    );
+
+    document.getElementById(
+      "panelVisita"
+    ).style.display = "block";
+
+    document.getElementById(
+      "clienteActual"
+    ).textContent =
+      datos.cliente || "Cliente";
+
+    document.getElementById(
+      "direccionActual"
+    ).textContent =
+      "Cliente confirmado manualmente";
+
+    document.getElementById(
+      "horaLlegada"
+    ).textContent =
+      "Llegada: " +
+      new Date().toLocaleTimeString();
+
+    await cargarDatos(false);
+
+  } catch (error) {
+    console.error(
+      "Error confirmando cliente:",
+      error
+    );
+
+    alert(
+      "No se pudo confirmar el cliente."
+    );
+  }
+}
+async function procesarGPS(lat, lng) {
+  ubicacionActual = { lat, lng };
+
+  document.getElementById(
+    "gpsEstado"
+  ).textContent = "GPS activo";
+
+  document.getElementById(
+    "gpsEstado"
+  ).style.background = "#dcfce7";
+
+  document.getElementById(
+    "gpsEstado"
+  ).style.color = "#166534";
+
+  if (enviandoGPS) {
+    return;
+  }
 
   const ahora = Date.now();
 
-  if(ahora - ultimoEnvioGPS < MIN_MS_ENTRE_ENVIO_GPS){
+  if (
+    ahora - ultimoEnvioGPS <
+    MIN_MS_ENTRE_ENVIO_GPS
+  ) {
     calcularProximoCliente();
     return;
   }
 
-  if(ultimaPosicionEnviada){
+  if (ultimaPosicionEnviada) {
     const metros = distanciaMetros(
       ultimaPosicionEnviada.lat,
       ultimaPosicionEnviada.lng,
@@ -492,7 +1373,7 @@ async function procesarGPS(lat,lng){
       lng
     );
 
-    if(metros < MIN_METROS_ENVIO){
+    if (metros < MIN_METROS_ENVIO) {
       calcularProximoCliente();
       return;
     }
@@ -500,311 +1381,753 @@ async function procesarGPS(lat,lng){
 
   enviandoGPS = true;
   ultimoEnvioGPS = ahora;
-  ultimaPosicionEnviada = { lat, lng };
+
+  ultimaPosicionEnviada = {
+    lat,
+    lng
+  };
 
   const evento = {
-    tipo:"gps_automatico",
-    payload:{vendedor_id:vendedorId,latitud:lat,longitud:lng}
+    tipo: "gps_automatico",
+    payload: {
+      vendedor_id: vendedorId,
+      latitud: lat,
+      longitud: lng
+    }
   };
 
   try {
-    if (!navigator.onLine) throw new Error("Offline");
+    if (!navigator.onLine) {
+      throw new Error("Offline");
+    }
 
-    const respuesta=await enviarEvento(evento);
-    const datos=await respuesta.json();
+    const respuesta =
+      await enviarEvento(evento);
 
-    if(datos.estado==="DENTRO"){
-      if (primeraVisitaPendienteDeSalida) {
+    const datos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos.error ||
+        datos.detalle ||
+        "Error enviando GPS"
+      );
+    }
+
+    /*
+    =================================
+    VARIOS CLIENTES CERCANOS
+    =================================
+    */
+
+    if (
+      datos.estado ===
+      "MULTIPLES_CLIENTES"
+    ) {
+      document.getElementById(
+        "panelVisita"
+      ).style.display = "none";
+
+      visitaActualId = null;
+
+      mostrarClientesCercanos(
+        datos.clientes || []
+      );
+
+      ultimaActualizacion =
+        Date.now();
+
+      enviandoGPS = false;
+      return;
+    }
+
+    /*
+    =================================
+    DENTRO DE UN CLIENTE
+    =================================
+    */
+
+    if (datos.estado === "DENTRO") {
+      seleccionandoClienteCercano =
+        false;
+
+      document.getElementById(
+        "panelClientesCercanos"
+      ).style.display = "none";
+
+      sugerenciaPausada = true;
+
+      document.getElementById(
+        "proximoCliente"
+      ).style.display = "none";
+
+      if (
+        primeraVisitaPendienteDeSalida
+      ) {
         primeraVisitaDetectada = true;
         guardarEstadoPrimeraVisita();
       }
 
-      mostrarClienteEncontrado(datos.cliente);
+      mostrarClienteEncontrado(
+        datos.cliente
+      );
 
-      document.getElementById("panelVisita").style.display="block";
-      document.getElementById("clienteActual").textContent=datos.cliente||"Cliente";
-      document.getElementById("direccionActual").textContent="Visita en curso";
-      document.getElementById("horaLlegada").textContent="Llegada: "+new Date().toLocaleTimeString();
+      document.getElementById(
+        "panelVisita"
+      ).style.display = "block";
 
-      visitaActualId=datos.visita_id||(datos.visita?datos.visita.id:visitaActualId);
+      document.getElementById(
+        "clienteActual"
+      ).textContent =
+        datos.cliente || "Cliente";
+
+      document.getElementById(
+        "direccionActual"
+      ).textContent =
+        "Visita en curso";
+
+      document.getElementById(
+        "horaLlegada"
+      ).textContent =
+        "Llegada: " +
+        new Date().toLocaleTimeString();
+
+      visitaActualId =
+        datos.visita_id ||
+        (
+          datos.visita
+            ? datos.visita.id
+            : visitaActualId
+        );
 
       await cargarDatos(false);
-      ultimaActualizacion = Date.now();
+
+      ultimaActualizacion =
+        Date.now();
     }
 
-    if(datos.estado==="FUERA"){
-      document.getElementById("panelVisita").style.display="none";
-      visitaActualId=null;
+    /*
+    =================================
+    SALIDA AUTOMÁTICA
+    =================================
+    */
 
-      if (primeraVisitaPendienteDeSalida && primeraVisitaDetectada) {
+    if (datos.estado === "FUERA") {
+      document.getElementById(
+        "panelVisita"
+      ).style.display = "none";
+
+      visitaActualId = null;
+
+      if (
+        primeraVisitaPendienteDeSalida &&
+        primeraVisitaDetectada
+      ) {
         activarAlgoritmoProximoCliente();
+      } else {
+        sugerenciaPausada = false;
+        clientesOmitidos.clear();
       }
+
+      /*
+      Si al salir del cliente todavía hay otros
+      comercios cercanos, los muestra para elegir.
+      Se excluye el cliente que acaba de cerrar.
+      */
+
+      const clienteCerradoId =
+        datos.visita
+          ? datos.visita.cliente_id
+          : null;
+
+      const cercanosRestantes =
+        Array.isArray(
+          datos.clientes_cercanos
+        )
+          ? datos.clientes_cercanos.filter(
+              cliente =>
+                cliente.id !==
+                clienteCerradoId
+            )
+          : [];
+
+      if (
+        cercanosRestantes.length > 0
+      ) {
+        mostrarClientesCercanos(
+          cercanosRestantes
+        );
+      } else {
+        seleccionandoClienteCercano =
+          false;
+
+        document.getElementById(
+          "panelClientesCercanos"
+        ).style.display = "none";
+
+        calcularProximoCliente();
+      }
+
+      await cargarDatos(false);
+
+      ultimaActualizacion =
+        Date.now();
     }
 
-  } catch {
+  } catch (error) {
+    console.error(
+      "Error procesando GPS:",
+      error
+    );
+
     agregarAColaOffline(evento);
+
+  } finally {
+    enviandoGPS = false;
   }
 
   await sincronizarOffline();
 
-  if(Date.now() - ultimaActualizacion > MIN_MS_RECARGA_DATOS){
-    ultimaActualizacion = Date.now();
+  if (
+    Date.now() - ultimaActualizacion >
+    MIN_MS_RECARGA_DATOS
+  ) {
+    ultimaActualizacion =
+      Date.now();
+
     await cargarDatos(false);
   }
-
-  enviandoGPS = false;
 }
 
-function iniciarGPS(){
-  if(!navigator.geolocation){
-    document.getElementById("gpsEstado").textContent="GPS no disponible";
-    document.getElementById("gpsEstado").style.background="#fee2e2";
-    document.getElementById("gpsEstado").style.color="#991b1b";
+function iniciarGPS() {
+  if (!navigator.geolocation) {
+    document.getElementById(
+      "gpsEstado"
+    ).textContent =
+      "GPS no disponible";
+
+    document.getElementById(
+      "gpsEstado"
+    ).style.background =
+      "#fee2e2";
+
+    document.getElementById(
+      "gpsEstado"
+    ).style.color =
+      "#991b1b";
+
     return;
   }
 
   navigator.geolocation.watchPosition(
-    pos=>{
-      const lat=pos.coords.latitude;
-      const lng=pos.coords.longitude;
-      procesarGPS(lat,lng);
+    posicion => {
+      const lat =
+        posicion.coords.latitude;
+
+      const lng =
+        posicion.coords.longitude;
+
+      procesarGPS(lat, lng);
     },
-    error=>{
-      document.getElementById("gpsEstado").textContent="Error GPS";
-      document.getElementById("gpsEstado").style.background="#fee2e2";
-      document.getElementById("gpsEstado").style.color="#991b1b";
-      console.error(error);
+
+    error => {
+      document.getElementById(
+        "gpsEstado"
+      ).textContent =
+        "Error GPS";
+
+      document.getElementById(
+        "gpsEstado"
+      ).style.background =
+        "#fee2e2";
+
+      document.getElementById(
+        "gpsEstado"
+      ).style.color =
+        "#991b1b";
+
+      console.error(
+        "Error de geolocalización:",
+        error
+      );
     },
+
     {
-      enableHighAccuracy:true,
-      maximumAge:30000,
-      timeout:20000
+      enableHighAccuracy: true,
+      maximumAge: 10000,
+      timeout: 20000
     }
   );
 }
 
-async function registrarEntradaManual(){
-  if(!ubicacionActual){
-    alert("Todavía no tengo ubicación GPS.");
+async function registrarEntradaManual() {
+  if (!ubicacionActual) {
+    alert(
+      "Todavía no tengo ubicación GPS."
+    );
     return;
   }
 
   const confirmar = confirm(
-    "¿Registrar ENTRADA manual?\n\nEsto también actualizará la geolocalización del cliente más cercano."
+    "¿Registrar ENTRADA manual?\n\n" +
+    "Esto también actualizará la " +
+    "geolocalización del cliente más cercano."
   );
 
-  if(!confirmar) return;
+  if (!confirmar) {
+    return;
+  }
 
   const evento = {
-    tipo:"entrada_manual",
-    payload:{
-      vendedor_id:vendedorId,
-      latitud:ubicacionActual.lat,
-      longitud:ubicacionActual.lng
+    tipo: "entrada_manual",
+    payload: {
+      vendedor_id: vendedorId,
+      latitud: ubicacionActual.lat,
+      longitud: ubicacionActual.lng
     }
   };
 
   try {
-    if(!navigator.onLine) throw new Error("Offline");
+    if (!navigator.onLine) {
+      throw new Error("Offline");
+    }
 
-    const respuesta = await enviarEvento(evento);
-    const datos = await respuesta.json();
+    const respuesta =
+      await enviarEvento(evento);
 
-    if(!respuesta.ok){
-      alert(datos.error || datos.detalle || "No se pudo registrar la entrada manual");
+    const datos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(
+        datos.error ||
+        datos.detalle ||
+        "No se pudo registrar la entrada manual"
+      );
+
       return;
     }
 
-    visitaActualId = datos.visita ? datos.visita.id : visitaActualId;
+    visitaActualId =
+      datos.visita_id ||
+      (
+        datos.visita
+          ? datos.visita.id
+          : visitaActualId
+      );
 
-    if (primeraVisitaPendienteDeSalida) {
+    if (
+      primeraVisitaPendienteDeSalida
+    ) {
       primeraVisitaDetectada = true;
       guardarEstadoPrimeraVisita();
     }
 
-    mostrarClienteEncontrado(datos.cliente);
+    sugerenciaPausada = true;
 
-    document.getElementById("panelVisita").style.display="block";
-    document.getElementById("clienteActual").textContent=datos.cliente || "Cliente";
-    document.getElementById("direccionActual").textContent="Entrada manual registrada";
-    document.getElementById("horaLlegada").textContent="Llegada: "+new Date().toLocaleTimeString();
+    document.getElementById(
+      "proximoCliente"
+    ).style.display = "none";
+
+    mostrarClienteEncontrado(
+      datos.cliente
+    );
+
+    document.getElementById(
+      "panelVisita"
+    ).style.display = "block";
+
+    document.getElementById(
+      "clienteActual"
+    ).textContent =
+      datos.cliente || "Cliente";
+
+    document.getElementById(
+      "direccionActual"
+    ).textContent =
+      "Entrada manual registrada";
+
+    document.getElementById(
+      "horaLlegada"
+    ).textContent =
+      "Llegada: " +
+      new Date().toLocaleTimeString();
 
     await cargarDatos(false);
 
-  } catch {
+  } catch (error) {
+    console.error(
+      "Error en entrada manual:",
+      error
+    );
+
     agregarAColaOffline(evento);
-    alert("Sin conexión. La entrada manual quedó guardada para sincronizar.");
+
+    alert(
+      "Sin conexión. La entrada manual " +
+      "quedó guardada para sincronizar."
+    );
   }
 }
 
-function empezarPorCliente(clienteId){
-  const cliente = clientes.find(c => c.id === clienteId);
+function empezarPorCliente(clienteId) {
+  const cliente =
+    clientes.find(
+      c => c.id === clienteId
+    );
 
   if (!cliente) {
     alert("Cliente no encontrado.");
     return;
   }
 
-  const lat = Number(cliente.latitud);
-  const lng = Number(cliente.longitud);
+  const lat =
+    Number(cliente.latitud);
+
+  const lng =
+    Number(cliente.longitud);
 
   if (!coordValida(lat, lng)) {
-    alert("Este cliente no tiene coordenadas válidas para navegar.");
+    alert(
+      "Este cliente no tiene coordenadas " +
+      "válidas para navegar."
+    );
+
     return;
   }
 
-  localStorage.setItem(KEY_INICIO_DIA, clienteId);
+  localStorage.setItem(
+    KEY_INICIO_DIA,
+    clienteId
+  );
 
-  primeraVisitaPendienteDeSalida = true;
-  primeraVisitaDetectada = false;
-  sugerenciaPausada = true;
+  primeraVisitaPendienteDeSalida =
+    true;
+
+  primeraVisitaDetectada =
+    false;
+
+  sugerenciaPausada =
+    true;
+
   guardarEstadoPrimeraVisita();
 
-  document.getElementById("panelListado").style.display = "none";
-  document.getElementById("proximoCliente").style.display = "none";
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+
+  document.getElementById(
+    "proximoCliente"
+  ).style.display = "none";
 
   abrirGoogleMaps(lat, lng);
 }
 
-function mostrarSeleccionInicio(){
+function mostrarSeleccionInicio() {
   mostrarListado(true);
 }
 
-function mostrarListado(modoInicio = false){
-  const lista=document.getElementById("listaClientes");
-  const titulo = document.querySelector("#panelListado h3");
-  const visitados=new Set(visitas.map(v=>String(v.cliente||"").toLowerCase()));
+function mostrarListado(
+  modoInicio = false
+) {
+  const lista =
+    document.getElementById(
+      "listaClientes"
+    );
 
-  titulo.textContent = modoInicio
-    ? "Elegí dónde comenzar hoy"
-    : "Clientes de hoy";
+  const titulo =
+    document.querySelector(
+      "#panelListado h3"
+    );
 
-  if(clientes.length===0){
-    lista.innerHTML="No hay clientes programados para hoy.";
+  const visitados = new Set(
+    visitas.map(v =>
+      String(
+        v.cliente || ""
+      ).toLowerCase()
+    )
+  );
+
+  titulo.textContent =
+    modoInicio
+      ? "Elegí dónde comenzar hoy"
+      : "Clientes de hoy";
+
+  if (clientes.length === 0) {
+    lista.innerHTML =
+      "No hay clientes programados para hoy.";
+
   } else {
-    lista.innerHTML=clientes.map((c,i)=>{
-      const hecho=visitados.has(String(c.nombre||"").toLowerCase());
-      const lat=Number(c.latitud), lng=Number(c.longitud);
-      const puedeNavegar=coordValida(lat,lng);
+    lista.innerHTML =
+      clientes.map((c, i) => {
+        const hecho =
+          visitados.has(
+            String(
+              c.nombre || ""
+            ).toLowerCase()
+          );
 
-      return `
-        <div class="item-panel">
-          <b>${hecho?"🟢":"🔴"} ${i+1}. ${c.nombre||""}</b><br>
-          ${c.direccion||""}<br>
-          ${c.localidad||""}<br>
-          Estado: <b>${hecho?"VISITADO":"PENDIENTE"}</b>
-          ${
-            puedeNavegar
-            ? `<button class="btn-navegar" onclick="abrirGoogleMaps(${lat},${lng})">Navegar</button>`
-            : `<p style="color:#991b1b;">Sin coordenadas</p>`
-          }
+        const lat =
+          Number(c.latitud);
 
-          ${
-            modoInicio && puedeNavegar && !hecho
-            ? `<button class="btn-navegar" style="background:#16a34a" onclick="empezarPorCliente('${c.id}')">▶ Empezar aquí</button>`
-            : ""
-          }
-        </div>
-      `;
-    }).join("");
+        const lng =
+          Number(c.longitud);
+
+        const puedeNavegar =
+          coordValida(lat, lng);
+
+        let distanciaTexto = "";
+
+        if (
+          ubicacionActual &&
+          puedeNavegar
+        ) {
+          const distancia =
+            distanciaMetros(
+              ubicacionActual.lat,
+              ubicacionActual.lng,
+              lat,
+              lng
+            );
+
+          distanciaTexto = `
+            <br>
+            <span
+              style="
+                display:inline-block;
+                margin-top:5px;
+                color:#075985;
+                font-weight:bold;
+              "
+            >
+              📍 A ${Math.round(distancia)} metros
+            </span>
+          `;
+        }
+
+        return `
+          <div class="item-panel">
+            <b>
+              ${
+                hecho
+                  ? "🟢"
+                  : "🔴"
+              }
+
+              ${i + 1}.
+              ${c.nombre || ""}
+            </b>
+
+            <br>
+            ${c.direccion || ""}
+
+            <br>
+            ${c.localidad || ""}
+
+            <br>
+            Estado:
+
+            <b>
+              ${
+                hecho
+                  ? "VISITADO"
+                  : "PENDIENTE"
+              }
+            </b>
+
+            ${distanciaTexto}
+
+            ${
+              puedeNavegar
+                ? `
+                  <button
+                    class="btn-navegar"
+                    onclick="
+                      abrirGoogleMaps(
+                        ${lat},
+                        ${lng}
+                      )
+                    "
+                  >
+                    Navegar
+                  </button>
+                `
+                : `
+                  <p
+                    style="color:#991b1b;"
+                  >
+                    Sin coordenadas
+                  </p>
+                `
+            }
+
+            ${
+              modoInicio &&
+              puedeNavegar &&
+              !hecho
+                ? `
+                  <button
+                    class="btn-seleccionar"
+                    onclick="
+                      empezarPorCliente(
+                        '${c.id}'
+                      )
+                    "
+                  >
+                    ▶ Empezar aquí
+                  </button>
+                `
+                : ""
+            }
+          </div>
+        `;
+      }).join("");
   }
 
-  document.getElementById("panelHistorial").style.display="none";
-  document.getElementById("panelVisita").style.display="none";
-  document.getElementById("panelListado").style.display="block";
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelVisita"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelListado"
+  ).style.display = "block";
 }
 
-function cerrarPanelListado(){document.getElementById("panelListado").style.display="none";}
+function cerrarPanelListado() {
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+}
 
 function verVisitas() {
-  const lista = document.getElementById("listaVisitas");
+  const lista =
+    document.getElementById(
+      "listaVisitas"
+    );
 
   if (visitas.length === 0) {
     lista.innerHTML =
       "Todavía no hay visitas realizadas.";
-  } else {
 
+  } else {
     const agrupadas = {};
 
     visitas.forEach(v => {
-      const nombre = v.cliente || "Sin nombre";
+      const clave =
+        v.cliente_id ||
+        v.codigo_cliente ||
+        v.cliente ||
+        "sin_cliente";
 
-      if (!agrupadas[nombre]) {
-        agrupadas[nombre] = {
-          cliente: nombre,
-          llegada: v.hora_llegada,
-          salida: v.hora_salida,
+      if (!agrupadas[clave]) {
+        agrupadas[clave] = {
+          cliente:
+            v.cliente ||
+            "Sin nombre",
+
+          llegada:
+            v.hora_llegada,
+
+          salida:
+            v.hora_salida,
+
           permanencia: 0,
           registros: 0
         };
       }
 
-      agrupadas[nombre].registros++;
+      agrupadas[clave].registros++;
 
-      agrupadas[nombre].permanencia +=
-        Number(v.permanencia_segundos || 0);
+      agrupadas[clave].permanencia +=
+        Number(
+          v.permanencia_segundos || 0
+        );
 
       if (
         v.hora_llegada &&
         (
-          !agrupadas[nombre].llegada ||
+          !agrupadas[clave].llegada ||
           new Date(v.hora_llegada) <
-          new Date(agrupadas[nombre].llegada)
+          new Date(
+            agrupadas[clave].llegada
+          )
         )
       ) {
-        agrupadas[nombre].llegada =
+        agrupadas[clave].llegada =
           v.hora_llegada;
       }
 
       if (
         v.hora_salida &&
         (
-          !agrupadas[nombre].salida ||
+          !agrupadas[clave].salida ||
           new Date(v.hora_salida) >
-          new Date(agrupadas[nombre].salida)
+          new Date(
+            agrupadas[clave].salida
+          )
         )
       ) {
-        agrupadas[nombre].salida =
+        agrupadas[clave].salida =
           v.hora_salida;
       }
     });
 
     lista.innerHTML =
       Object.values(agrupadas)
-      .map(v => `
-        <div class="item-panel">
+        .map(v => `
+          <div class="item-panel">
+            <b>
+              🟢 ${v.cliente}
+            </b>
 
-          <b>🟢 ${v.cliente}</b><br>
+            <br>
 
-          Llegada:
-          ${
-            v.llegada
-            ? new Date(v.llegada)
-                .toLocaleTimeString()
-            : "-"
-          }
-          <br>
+            Llegada:
+            ${
+              v.llegada
+                ? new Date(
+                    v.llegada
+                  ).toLocaleTimeString()
+                : "-"
+            }
 
-          Salida:
-          ${
-            v.salida
-            ? new Date(v.salida)
-                .toLocaleTimeString()
-            : "-"
-          }
-          <br>
+            <br>
 
-          Permanencia:
-          ${Math.round(v.permanencia / 60)}
-          minutos
-          <br>
+            Salida:
+            ${
+              v.salida
+                ? new Date(
+                    v.salida
+                  ).toLocaleTimeString()
+                : "-"
+            }
 
-          Registros:
-          ${v.registros}
+            <br>
 
-        </div>
-      `)
-      .join("");
+            Permanencia total:
+            ${
+              Math.round(
+                v.permanencia / 60
+              )
+            }
+            minutos
+
+            <br>
+
+            Registros:
+            ${v.registros}
+          </div>
+        `)
+        .join("");
   }
 
   document.getElementById(
@@ -815,81 +2138,161 @@ function verVisitas() {
     "panelVisita"
   ).style.display = "none";
 
-    document.getElementById(
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  document.getElementById(
     "panelHistorial"
   ).style.display = "block";
 }
 
-function cerrarPanelVisitas(){document.getElementById("panelHistorial").style.display="none";}
+function cerrarPanelVisitas() {
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "none";
+}
 
-async function finalizarVisitaManual(){
-  if(!visitaActualId){
-    alert("No hay una visita abierta para cerrar.");
+async function finalizarVisitaManual() {
+  if (!visitaActualId) {
+    alert(
+      "No hay una visita abierta para cerrar."
+    );
+
     return;
   }
 
   const evento = {
-    tipo:"salida_visita",
-    payload:{
-      visita_id:visitaActualId,
-      latitud:ubicacionActual?ubicacionActual.lat:null,
-      longitud:ubicacionActual?ubicacionActual.lng:null
+    tipo: "salida_visita",
+    payload: {
+      visita_id:
+        visitaActualId,
+
+      latitud:
+        ubicacionActual
+          ? ubicacionActual.lat
+          : null,
+
+      longitud:
+        ubicacionActual
+          ? ubicacionActual.lng
+          : null
     }
   };
 
   try {
-    if (!navigator.onLine) throw new Error("Offline");
+    if (!navigator.onLine) {
+      throw new Error("Offline");
+    }
 
-    const respuesta=await enviarEvento(evento);
-    const datos=await respuesta.json();
+    const respuesta =
+      await enviarEvento(evento);
 
-    if(!respuesta.ok){
-      alert(datos.error||datos.detalle||"No se pudo cerrar la visita");
+    const datos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      alert(
+        datos.error ||
+        datos.detalle ||
+        "No se pudo cerrar la visita"
+      );
+
       return;
     }
 
-  } catch {
+  } catch (error) {
+    console.error(
+      "Error cerrando visita:",
+      error
+    );
+
     agregarAColaOffline(evento);
-    alert("Sin conexión. La salida quedó guardada para sincronizar.");
+
+    alert(
+      "Sin conexión. La salida quedó " +
+      "guardada para sincronizar."
+    );
   }
 
- document.getElementById("panelVisita").style.display="none";
+  document.getElementById(
+    "panelVisita"
+  ).style.display = "none";
 
-visitaActualId = null;
+  visitaActualId = null;
 
-activarAlgoritmoProximoCliente();
+  seleccionandoClienteCercano =
+    false;
 
-await sincronizarOffline();
-await cargarDatos(false);
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  activarAlgoritmoProximoCliente();
+
+  await sincronizarOffline();
+  await cargarDatos(false);
 }
 
-function abrirGoogleMaps(lat,lng){
-  window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,"_blank");
+function abrirGoogleMaps(lat, lng) {
+  window.open(
+    `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+    "_blank"
+  );
 }
 
-function centrarMapa(){
+function centrarMapa() {
   cerrarPanelListado();
   cerrarPanelVisitas();
+  cerrarClientesCercanos();
 
-  if(ubicacionActual){
-    mapa.setView([ubicacionActual.lat,ubicacionActual.lng],17);
+  if (ubicacionActual) {
+    mapa.setView(
+      [
+        ubicacionActual.lat,
+        ubicacionActual.lng
+      ],
+      17
+    );
   }
 }
 
-function cerrarSesion(){
+function cerrarSesion() {
   sincronizarOffline();
-  localStorage.removeItem("vendedorId");
-  localStorage.removeItem("vendedorNombre");
-  window.location.href="login-vendedor.html";
+
+  localStorage.removeItem(
+    "vendedorId"
+  );
+
+  localStorage.removeItem(
+    "vendedorNombre"
+  );
+
+  window.location.href =
+    "login-vendedor.html";
 }
+
+/*
+=================================
+INICIAR APLICACIÓN
+=================================
+*/
 
 actualizarEstadoConexion();
 iniciarMapa();
 cargarDatos(true);
 iniciarGPS();
-setInterval(sincronizarOffline,30000);
-setInterval(()=>cargarDatos(false),180000);
+
+setInterval(
+  sincronizarOffline,
+  30000
+);
+
+setInterval(
+  () => cargarDatos(false),
+  180000
+);
 </script>
 
 </body>
-</htm
+</html>

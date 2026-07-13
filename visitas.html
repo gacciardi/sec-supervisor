@@ -879,7 +879,6 @@ async function cargarVisitas() {
     mostrarError(
       "Seleccioná las fechas desde y hasta."
     );
-
     return;
   }
 
@@ -887,7 +886,6 @@ async function cargarVisitas() {
     mostrarError(
       "La fecha desde no puede ser posterior a la fecha hasta."
     );
-
     return;
   }
 
@@ -907,28 +905,20 @@ async function cargarVisitas() {
       );
     }
 
-   const [
-  respuestaVisitas,
-  respuestaResumen
-] = await Promise.all([
-  fetch(
-    `${API}/visitas?${parametros.toString()}`
-  ),
-
-  fetch(
-    `${API}/visitas/resumen?${parametros.toString()}`
-  ),
-
-  cargarCoberturaHoy()
-]);
+    const [
+      respuestaVisitas,
+      respuestaResumen
+    ] = await Promise.all([
       fetch(
         `${API}/visitas?${parametros.toString()}`
       ),
 
       fetch(
         `${API}/visitas/resumen?${parametros.toString()}`
-      )
-    ;
+      ),
+
+      cargarCoberturaHoy()
+    ]);
 
     const datosVisitas =
       await respuestaVisitas.json();
@@ -1140,40 +1130,6 @@ function actualizarIndicadores() {
       ? "—"
       : `${cobertura.toFixed(1)} %`;
 }
-  const minutos =
-    visitasGlobal.reduce(
-      (total, visita) =>
-        total +
-        Number(
-          visita.permanencia_minutos || 0
-        ),
-      0
-    );
-
-  const promedio =
-    cantidadClientes > 0
-      ? minutos / cantidadClientes
-      : 0;
-
-  document.getElementById(
-    "indicadorVisitas"
-  ).textContent =
-    cantidadClientes;
-
-  document.getElementById(
-    "indicadorRegistros"
-  ).textContent =
-    registros;
-
-  document.getElementById(
-    "indicadorPermanencia"
-  ).textContent =
-    formatearDuracion(minutos);
-
-  document.getElementById(
-    "indicadorPromedio"
-  ).textContent =
-    formatearDuracion(promedio);
 
 
 function crearDatosHojaVisitas() {

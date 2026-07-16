@@ -2262,19 +2262,72 @@ function centrarMapa() {
   }
 }
 
-function cerrarSesion() {
-  sincronizarOffline();
-
-  localStorage.removeItem(
-    "vendedorId"
+async function cerrarSesion() {
+  const confirmar = window.confirm(
+    "¿Querés cerrar la sesión y finalizar la jornada?"
   );
 
-  localStorage.removeItem(
-    "vendedorNombre"
-  );
+  if (!confirmar) {
+    return;
+  }
 
-  window.location.href =
-    "login-vendedor.html";
+  try {
+    await sincronizarOffline();
+  } catch (error) {
+    console.error(
+      "No se pudo sincronizar antes de cerrar sesión:",
+      error
+    );
+  }
+
+  try {
+    const respuesta = await fetch(
+      `${API}/usuarios/${vendedorId}/cerrar-sesion`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          latitud: ubicacionActual
+            ? ubicacionActual.lat
+            : null,
+          longitud: ubicacionActual
+            ? ubicacionActual.lng
+            : null
+        }),
+        keepalive: true
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos.error ||
+        datos.detalle ||
+        "No se pudo cerrar la sesión en el servidor"
+      );
+    }
+
+  } catch (error) {
+    console.error(
+      "Error cerrando sesión en el servidor:",
+      error
+    );
+
+    alert(
+      "Se cerrará la aplicación, pero SEC no pudo registrar el cierre de sesión. " +
+      "El vendedor desaparecerá del mapa automáticamente si deja de enviar GPS."
+    );
+  }
+
+  localStorage.removeItem("vendedorId");
+  localStorage.removeItem("vendedorNombre");
+  localStorage.removeItem("sesionVendedorId");
+  localStorage.removeItem("inicioSesionVendedor");
+
+  window.location.href = "login-vendedor.html";
 }
 
 /*

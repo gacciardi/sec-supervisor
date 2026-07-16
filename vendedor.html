@@ -580,6 +580,14 @@ const COLA_OFFLINE = "sec_cola_offline_vendedor";
 
 const MIN_METROS_ENVIO = 10;
 const MIN_MS_ENTRE_ENVIO_GPS = 15000;
+
+/*
+Aunque el vendedor se mueva menos de 10 metros,
+SEC envía obligatoriamente una posición cada
+30 segundos para detectar entradas y salidas.
+*/
+const MAX_MS_SIN_ENVIAR_GPS = 30000;
+
 const MIN_MS_RECARGA_DATOS = 120000;
 
 let ultimoEnvioGPS = 0;
@@ -1371,18 +1379,32 @@ async function procesarGPS(lat, lng) {
   }
 
   if (ultimaPosicionEnviada) {
-    const metros = distanciaMetros(
-      ultimaPosicionEnviada.lat,
-      ultimaPosicionEnviada.lng,
-      lat,
-      lng
-    );
+  const metros = distanciaMetros(
+    ultimaPosicionEnviada.lat,
+    ultimaPosicionEnviada.lng,
+    lat,
+    lng
+  );
 
-    if (metros < MIN_METROS_ENVIO) {
-      calcularProximoCliente();
-      return;
-    }
+  const tiempoSinEnviar =
+    ahora - ultimoEnvioGPS;
+
+  /*
+  Si se movió menos de 10 metros, normalmente
+  no enviamos otro GPS.
+
+  Pero después de 30 segundos lo enviamos
+  igualmente para que el backend vuelva a
+  controlar geocercas, entradas y salidas.
+  */
+  if (
+    metros < MIN_METROS_ENVIO &&
+    tiempoSinEnviar < MAX_MS_SIN_ENVIAR_GPS
+  ) {
+    calcularProximoCliente();
+    return;
   }
+}
 
   enviandoGPS = true;
   ultimoEnvioGPS = ahora;

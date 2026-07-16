@@ -2,17 +2,175 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>SEC - Mapa Inteligente</title>
+
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  >
+
   <style>
-    #mapa { height: calc(100vh - 150px); width: 100%; }
+    body {
+      margin: 0;
+    }
+
+    .cards-estados {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 12px;
+      background: #f3f4f6;
+    }
+
+    .card-estado {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,.10);
+      cursor: pointer;
+      border: 3px solid transparent;
+    }
+
+    .card-estado.seleccionada {
+      border-color: #071b3a;
+    }
+
+    .card-estado h3 {
+      margin: 0 0 5px;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .card-estado p {
+      margin: 0;
+      font-size: 26px;
+      font-weight: bold;
+      color: #071b3a;
+    }
+
+    .barra-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 14px;
+      background: white;
+      border-bottom: 1px solid #d1d5db;
+      font-size: 13px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    #mapa {
+      height: calc(100vh - 290px);
+      min-height: 430px;
+      width: 100%;
+    }
+
+    .popup-vendedor {
+      min-width: 220px;
+      line-height: 1.55;
+    }
+
+    .popup-vendedor h3 {
+      margin: 0 0 7px;
+      color: #071b3a;
+    }
+
+    .estado-popup {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: white;
+      font-weight: bold;
+      margin-bottom: 7px;
+    }
+
+    .estado-verde {
+      background: #16a34a;
+    }
+
+    .estado-amarillo {
+      background: #eab308;
+      color: #422006;
+    }
+
+    .estado-rojo {
+      background: #dc2626;
+    }
+
+    .leyenda-mapa {
+      position: absolute;
+      right: 16px;
+      bottom: 18px;
+      z-index: 1000;
+      background: white;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.20);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .punto-leyenda {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .mensaje-error {
+      display: none;
+      margin: 10px 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: bold;
+    }
+
+    @media (max-width: 700px) {
+      nav {
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .cards-estados {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      #mapa {
+        height: calc(100vh - 390px);
+        min-height: 400px;
+      }
+
+      .leyenda-mapa {
+        right: 8px;
+        bottom: 8px;
+      }
+    }
   </style>
 </head>
+
 <body>
 
 <header class="header-sec">
-  <img src="assets/logo-rebesa.jpg" alt="Rebesa" class="logo-rebesa">
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Rebesa"
+    class="logo-rebesa"
+  >
+
   <div>
     <h1>SEC - Mapa Inteligente</h1>
     <p>Sistema de Ejecución Comercial</p>
@@ -32,47 +190,152 @@
   <a href="dashboard-vendedores.html">Vendedores</a>
 </nav>
 
-<div class="cards">
-  <div class="card">
-    <h3>🟢 Visitados</h3>
-    <p id="totalVisitados">0</p>
+<div class="cards-estados">
+
+  <div
+    id="cardTodos"
+    class="card-estado seleccionada"
+    onclick="cambiarFiltro('TODOS')"
+  >
+    <h3>👥 En el mapa</h3>
+    <p id="totalEnMapa">0</p>
   </div>
 
-  <div class="card">
-    <h3>🟠 Pendientes</h3>
-    <p id="totalPendientes">0</p>
+  <div
+    id="cardVerdes"
+    class="card-estado"
+    onclick="cambiarFiltro('VERDE')"
+  >
+    <h3>🟢 Activos</h3>
+    <p id="totalVerdes">0</p>
   </div>
 
-  <div class="card">
-    <h3>⚪ No Programados</h3>
-    <p id="totalNoProgramados">0</p>
+  <div
+    id="cardAmarillos"
+    class="card-estado"
+    onclick="cambiarFiltro('AMARILLO')"
+  >
+    <h3>🟡 GPS 5–15 min</h3>
+    <p id="totalAmarillos">0</p>
   </div>
 
-  <div class="card">
-    <h3>🔴 GPS Activos</h3>
-    <p id="totalGps">0</p>
+  <div
+    id="cardRojos"
+    class="card-estado"
+    onclick="cambiarFiltro('ROJO')"
+  >
+    <h3>🔴 GPS 15–60 min</h3>
+    <p id="totalRojos">0</p>
   </div>
+
+  <div
+    id="cardDesconectados"
+    class="card-estado"
+    onclick="cambiarFiltro('DESCONECTADO')"
+  >
+    <h3>⚫ Desconectados</h3>
+    <p id="totalDesconectados">0</p>
+  </div>
+
 </div>
 
-<div id="mapa"></div>
+<div class="barra-info">
+  <span>🟢 Menos de 5 minutos</span>
+  <span>🟡 Entre 5 y 15 minutos</span>
+  <span>🔴 Entre 15 y 60 minutos</span>
+  <span>⚫ Cierre de sesión o más de 1 hora</span>
+</div>
+
+<div
+  id="mensajeError"
+  class="mensaje-error"
+></div>
+
+<div style="position:relative;">
+  <div id="mapa"></div>
+
+  <div class="leyenda-mapa">
+    <div>
+      <span
+        class="punto-leyenda"
+        style="background:green;"
+      ></span>
+      Cliente visitado
+    </div>
+
+    <div>
+      <span
+        class="punto-leyenda"
+        style="background:orange;"
+      ></span>
+      Cliente pendiente
+    </div>
+
+    <div>
+      <span
+        class="punto-leyenda"
+        style="background:#16a34a;"
+      ></span>
+      Vendedor activo
+    </div>
+
+    <div>
+      <span
+        class="punto-leyenda"
+        style="background:#eab308;"
+      ></span>
+      GPS demorado
+    </div>
+
+    <div>
+      <span
+        class="punto-leyenda"
+        style="background:#dc2626;"
+      ></span>
+      Sin GPS reciente
+    </div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const API = "https://sec-backend-gg4j.onrender.com";
+const API =
+  "https://sec-backend-gg4j.onrender.com";
 
-const mapa = L.map("mapa").setView([-34.7073, -58.6757], 13);
+const mapa = L.map(
+  "mapa",
+  {
+    zoomControl: true
+  }
+).setView(
+  [-34.7073, -58.6757],
+  13
+);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19
-}).addTo(mapa);
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19
+  }
+).addTo(mapa);
 
-let capaMapa = L.layerGroup().addTo(mapa);
+let capaClientes =
+  L.layerGroup().addTo(mapa);
+
+let capaVendedores =
+  L.layerGroup().addTo(mapa);
+
+let clientesGlobal = [];
+let vendedoresGlobal = [];
+
+let filtroEstado = "TODOS";
+let vistaInicialAjustada = false;
 
 function coordenadaValida(lat, lng) {
   return (
-    !isNaN(lat) &&
-    !isNaN(lng) &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
     lat !== 0 &&
     lng !== 0 &&
     lat > -40 &&
@@ -82,101 +345,662 @@ function coordenadaValida(lat, lng) {
   );
 }
 
-function colorEstado(estado) {
-  if (estado === "VISITADO") return "green";
-  if (estado === "PENDIENTE") return "orange";
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function colorCliente(estado) {
+  if (estado === "VISITADO") {
+    return "green";
+  }
+
+  if (estado === "PENDIENTE") {
+    return "orange";
+  }
+
   return "gray";
+}
+
+function colorVendedor(estado) {
+  if (estado === "VERDE") {
+    return "#16a34a";
+  }
+
+  if (estado === "AMARILLO") {
+    return "#eab308";
+  }
+
+  if (estado === "ROJO") {
+    return "#dc2626";
+  }
+
+  return "#6b7280";
+}
+
+function claseEstadoPopup(estado) {
+  if (estado === "VERDE") {
+    return "estado-verde";
+  }
+
+  if (estado === "AMARILLO") {
+    return "estado-amarillo";
+  }
+
+  return "estado-rojo";
+}
+
+function textoEstado(estado) {
+  if (estado === "VERDE") {
+    return "ACTIVO";
+  }
+
+  if (estado === "AMARILLO") {
+    return "GPS DEMORADO";
+  }
+
+  if (estado === "ROJO") {
+    return "SIN GPS RECIENTE";
+  }
+
+  return "DESCONECTADO";
+}
+
+function haceCuanto(minutos) {
+  if (
+    minutos === null ||
+    minutos === undefined
+  ) {
+    return "Sin GPS registrado";
+  }
+
+  const cantidad =
+    Number(minutos);
+
+  if (cantidad < 1) {
+    return "Hace menos de 1 minuto";
+  }
+
+  if (cantidad === 1) {
+    return "Hace 1 minuto";
+  }
+
+  if (cantidad < 60) {
+    return `Hace ${cantidad} minutos`;
+  }
+
+  const horas =
+    Math.floor(cantidad / 60);
+
+  const resto =
+    cantidad % 60;
+
+  if (resto === 0) {
+    return `Hace ${horas} h`;
+  }
+
+  return `Hace ${horas} h ${resto} min`;
+}
+
+function formatearHora(valor) {
+  if (!valor) {
+    return "-";
+  }
+
+  return new Date(valor)
+    .toLocaleTimeString(
+      "es-AR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+}
+
+function mostrarError(mensaje) {
+  const elemento =
+    document.getElementById(
+      "mensajeError"
+    );
+
+  elemento.textContent =
+    mensaje;
+
+  elemento.style.display =
+    "block";
+}
+
+function ocultarError() {
+  document.getElementById(
+    "mensajeError"
+  ).style.display =
+    "none";
+}
+
+function cambiarFiltro(estado) {
+  filtroEstado = estado;
+
+  document.querySelectorAll(
+    ".card-estado"
+  ).forEach(card => {
+    card.classList.remove(
+      "seleccionada"
+    );
+  });
+
+  const mapaCards = {
+    TODOS:
+      "cardTodos",
+
+    VERDE:
+      "cardVerdes",
+
+    AMARILLO:
+      "cardAmarillos",
+
+    ROJO:
+      "cardRojos",
+
+    DESCONECTADO:
+      "cardDesconectados"
+  };
+
+  document.getElementById(
+    mapaCards[estado]
+  )?.classList.add(
+    "seleccionada"
+  );
+
+  dibujarVendedores();
+}
+
+function actualizarContadores() {
+  const verdes =
+    vendedoresGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "VERDE"
+    ).length;
+
+  const amarillos =
+    vendedoresGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "AMARILLO"
+    ).length;
+
+  const rojos =
+    vendedoresGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "ROJO"
+    ).length;
+
+  const enMapa =
+    vendedoresGlobal.filter(
+      vendedor =>
+        vendedor.mostrar_en_mapa ===
+          true ||
+        vendedor.mostrar_en_mapa ===
+          "true"
+    ).length;
+
+  const desconectados =
+    vendedoresGlobal.length -
+    enMapa;
+
+  document.getElementById(
+    "totalEnMapa"
+  ).textContent =
+    enMapa;
+
+  document.getElementById(
+    "totalVerdes"
+  ).textContent =
+    verdes;
+
+  document.getElementById(
+    "totalAmarillos"
+  ).textContent =
+    amarillos;
+
+  document.getElementById(
+    "totalRojos"
+  ).textContent =
+    rojos;
+
+  document.getElementById(
+    "totalDesconectados"
+  ).textContent =
+    desconectados;
+}
+
+function dibujarClientes() {
+  capaClientes.clearLayers();
+
+  clientesGlobal.forEach(cliente => {
+    const lat =
+      Number(cliente.latitud);
+
+    const lng =
+      Number(cliente.longitud);
+
+    if (
+      !coordenadaValida(
+        lat,
+        lng
+      )
+    ) {
+      return;
+    }
+
+    const color =
+      colorCliente(
+        cliente.estado
+      );
+
+    L.circleMarker(
+      [lat, lng],
+      {
+        radius: 9,
+        color,
+        fillColor: color,
+        fillOpacity: 0.72,
+        weight: 2
+      }
+    )
+      .addTo(capaClientes)
+      .bindPopup(`
+        <b>
+          ${escaparHtml(
+            cliente.nombre
+          )}
+        </b>
+
+        <br>
+
+        Código:
+        ${escaparHtml(
+          cliente.codigo_cliente
+        )}
+
+        <br>
+
+        Dirección:
+        ${escaparHtml(
+          cliente.direccion
+        )}
+
+        <br>
+
+        Localidad:
+        ${escaparHtml(
+          cliente.localidad
+        )}
+
+        <br>
+
+        Canal:
+        ${escaparHtml(
+          cliente.canal
+        )}
+
+        <br>
+
+        Frecuencia:
+        ${escaparHtml(
+          cliente.frecuencia
+        )}
+
+        <br>
+
+        Estado:
+        <b>
+          ${escaparHtml(
+            cliente.estado
+          )}
+        </b>
+      `);
+  });
+}
+
+function dibujarVendedores() {
+  capaVendedores.clearLayers();
+
+  vendedoresGlobal.forEach(
+    vendedor => {
+      const mostrar =
+        vendedor.mostrar_en_mapa ===
+          true ||
+        vendedor.mostrar_en_mapa ===
+          "true";
+
+      /*
+      Los desconectados no tienen punto en el mapa.
+      El filtro desconectado sirve para ver el número,
+      pero no dibuja ubicaciones antiguas.
+      */
+
+      if (!mostrar) {
+        return;
+      }
+
+      if (
+        filtroEstado !== "TODOS" &&
+        vendedor.estado_mapa !==
+          filtroEstado
+      ) {
+        return;
+      }
+
+      const lat =
+        Number(vendedor.latitud);
+
+      const lng =
+        Number(vendedor.longitud);
+
+      if (
+        !coordenadaValida(
+          lat,
+          lng
+        )
+      ) {
+        return;
+      }
+
+      const color =
+        colorVendedor(
+          vendedor.estado_mapa
+        );
+
+      const minutos =
+        vendedor.minutos_sin_gps ===
+          null
+          ? null
+          : Number(
+              vendedor.minutos_sin_gps
+            );
+
+      L.circleMarker(
+        [lat, lng],
+        {
+          radius: 16,
+          color: "#ffffff",
+          weight: 4,
+          fillColor: color,
+          fillOpacity: 1
+        }
+      )
+        .addTo(capaVendedores)
+        .bindTooltip(
+          escaparHtml(
+            vendedor.vendedor
+          ),
+          {
+            permanent: false,
+            direction: "top"
+          }
+        )
+        .bindPopup(`
+          <div class="popup-vendedor">
+
+            <h3>
+              ${escaparHtml(
+                vendedor.vendedor
+              )}
+            </h3>
+
+            <span
+              class="
+                estado-popup
+                ${claseEstadoPopup(
+                  vendedor.estado_mapa
+                )}
+              "
+            >
+              ${textoEstado(
+                vendedor.estado_mapa
+              )}
+            </span>
+
+            <br>
+
+            <b>Último GPS:</b>
+            ${haceCuanto(minutos)}
+
+            <br>
+
+            <b>Hora GPS:</b>
+            ${formatearHora(
+              vendedor.fecha_ultimo_gps
+            )}
+
+            <br>
+
+            <b>Inicio de jornada:</b>
+            ${formatearHora(
+              vendedor.inicio_sesion
+            )}
+
+            <br>
+
+            <b>Primer GPS:</b>
+            ${formatearHora(
+              vendedor.primer_gps
+            )}
+
+            <br>
+
+            <b>Primer movimiento:</b>
+            ${formatearHora(
+              vendedor.primer_movimiento
+            )}
+
+            <br>
+
+            <b>Primer cliente:</b>
+            ${formatearHora(
+              vendedor.primer_cliente
+            )}
+
+            <br>
+
+            <b>Velocidad:</b>
+            ${
+              Number(
+                vendedor.velocidad || 0
+              ).toFixed(1)
+            }
+
+            <br>
+
+            <b>Precisión:</b>
+            ${
+              vendedor.precision_metros
+                ? `${Math.round(
+                    Number(
+                      vendedor.precision_metros
+                    )
+                  )} m`
+                : "-"
+            }
+
+          </div>
+        `);
+    }
+  );
+}
+
+function ajustarVistaInicial() {
+  if (vistaInicialAjustada) {
+    return;
+  }
+
+  const puntos = [];
+
+  clientesGlobal.forEach(cliente => {
+    if (
+      cliente.estado !== "VISITADO" &&
+      cliente.estado !== "PENDIENTE"
+    ) {
+      return;
+    }
+
+    const lat =
+      Number(cliente.latitud);
+
+    const lng =
+      Number(cliente.longitud);
+
+    if (
+      coordenadaValida(
+        lat,
+        lng
+      )
+    ) {
+      puntos.push(
+        [lat, lng]
+      );
+    }
+  });
+
+  vendedoresGlobal.forEach(
+    vendedor => {
+      const mostrar =
+        vendedor.mostrar_en_mapa ===
+          true ||
+        vendedor.mostrar_en_mapa ===
+          "true";
+
+      if (!mostrar) {
+        return;
+      }
+
+      const lat =
+        Number(vendedor.latitud);
+
+      const lng =
+        Number(vendedor.longitud);
+
+      if (
+        coordenadaValida(
+          lat,
+          lng
+        )
+      ) {
+        puntos.push(
+          [lat, lng]
+        );
+      }
+    }
+  );
+
+  if (puntos.length > 0) {
+    mapa.fitBounds(
+      puntos,
+      {
+        padding:
+          [60, 60],
+
+        maxZoom:
+          17
+      }
+    );
+  } else {
+    mapa.setView(
+      [-34.7073, -58.6757],
+      13
+    );
+  }
+
+  vistaInicialAjustada =
+    true;
 }
 
 async function cargarMapa() {
   try {
-    capaMapa.clearLayers();
+    ocultarError();
 
-    const clientes = await fetch(`${API}/mapa/clientes-estado`).then(r => r.json());
-    const gpsLogs = await fetch(`${API}/gps-logs/ultimos`).then(r => r.json());
+    const [
+      respuestaClientes,
+      respuestaVendedores
+    ] = await Promise.all([
+      fetch(
+        `${API}/mapa/clientes-estado`
+      ),
 
-    const visitados = clientes.filter(c => c.estado === "VISITADO").length;
-    const pendientes = clientes.filter(c => c.estado === "PENDIENTE").length;
-    const noProgramados = clientes.filter(c => c.estado === "NO_PROGRAMADO").length;
+      fetch(
+        `${API}/usuarios/estados-vendedores`
+      )
+    ]);
 
-    document.getElementById("totalVisitados").textContent = visitados;
-    document.getElementById("totalPendientes").textContent = pendientes;
-    document.getElementById("totalNoProgramados").textContent = noProgramados;
-    document.getElementById("totalGps").textContent = gpsLogs.length;
+    const datosClientes =
+      await respuestaClientes.json();
 
-    const puntos = [];
+    const datosVendedores =
+      await respuestaVendedores.json();
 
-    clientes.forEach(c => {
-      const lat = Number(c.latitud);
-      const lng = Number(c.longitud);
-
-      if (!coordenadaValida(lat, lng)) return;
-
-      if (c.estado === "PENDIENTE" || c.estado === "VISITADO") {
-        puntos.push([lat, lng]);
-      }
-
-      const color = colorEstado(c.estado);
-
-      L.circleMarker([lat, lng], {
-        radius: 12,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.9
-      })
-      .addTo(capaMapa)
-      .bindPopup(`
-        <b>${c.nombre || ""}</b><br>
-        Código: ${c.codigo_cliente || ""}<br>
-        Dirección: ${c.direccion || ""}<br>
-        Localidad: ${c.localidad || ""}<br>
-        Canal: ${c.canal || ""}<br>
-        Frecuencia: ${c.frecuencia || ""}<br>
-        Estado: <b>${c.estado || ""}</b>
-      `);
-    });
-
-    gpsLogs.forEach(g => {
-      const lat = Number(g.latitud);
-      const lng = Number(g.longitud);
-
-      if (!coordenadaValida(lat, lng)) return;
-
-      puntos.push([lat, lng]);
-
-      L.circleMarker([lat, lng], {
-        radius: 16,
-        color: "red",
-        fillColor: "red",
-        fillOpacity: 1
-      })
-      .addTo(capaMapa)
-      .bindPopup(`
-        <b>GPS Vendedor</b><br>
-        Vendedor: ${g.vendedor || g.vendedor_id || ""}<br>
-        Fecha: ${g.fecha_hora || ""}<br>
-        Velocidad: ${g.velocidad || 0}
-      `);
-    });
-
-    if (puntos.length > 0) {
-      mapa.fitBounds(puntos, {
-        padding: [60, 60],
-        maxZoom: 17
-      });
-    } else {
-      mapa.setView([-34.7073, -58.6757], 13);
+    if (!respuestaClientes.ok) {
+      throw new Error(
+        datosClientes.error ||
+        datosClientes.detalle ||
+        "No se pudieron cargar los clientes"
+      );
     }
 
+    if (!respuestaVendedores.ok) {
+      throw new Error(
+        datosVendedores.error ||
+        datosVendedores.detalle ||
+        "No se pudieron cargar los vendedores"
+      );
+    }
+
+    clientesGlobal =
+      Array.isArray(datosClientes)
+        ? datosClientes
+        : datosClientes.clientes || [];
+
+    vendedoresGlobal =
+      Array.isArray(datosVendedores)
+        ? datosVendedores
+        : datosVendedores.vendedores || [];
+
+    dibujarClientes();
+    dibujarVendedores();
+    actualizarContadores();
+    ajustarVistaInicial();
+
   } catch (error) {
-    console.error(error);
-    alert("Error al cargar mapa: " + error.message);
+    console.error(
+      "Error cargando mapa:",
+      error
+    );
+
+    mostrarError(
+      `Error al cargar mapa: ${error.message}`
+    );
   }
 }
 
 cargarMapa();
-setInterval(cargarMapa, 30000);
+
+/*
+Se actualizan posiciones y estados
+cada 30 segundos, pero no se cambia
+el zoom que eligió el supervisor.
+*/
+setInterval(
+  cargarMapa,
+  30000
+);
 </script>
+
+<script src="config-sec.js"></script>
 
 </body>
 </html>

@@ -1,21 +1,432 @@
-async function guardarUbicacion() {
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SEC - Ubicar Cliente</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  >
+
+  <style>
+    #mapaGeoref {
+      height: 500px;
+      width: 100%;
+      border-radius: 12px;
+      margin-top: 15px;
+    }
+
+    .campo {
+      margin-bottom: 10px;
+    }
+
+    .campo input {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="header-sec">
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Rebesa"
+    class="logo-rebesa"
+  >
+
+  <div>
+    <h1>SEC - Ubicar Cliente</h1>
+    <p>Buscar dirección, mover pin y guardar ubicación</p>
+  </div>
+</header>
+
+<nav>
+  <a href="clientes.html">← Volver a Clientes</a>
+</nav>
+
+<div class="container">
+
+  <h2 id="nombreCliente">Cargando cliente...</h2>
+
+  <p id="direccionCliente"></p>
+
+  <p
+    id="mensaje"
+    style="font-weight:bold;color:#b91c1c;"
+  ></p>
+
+  <button onclick="buscarDireccion()">
+    🔍 Buscar dirección
+  </button>
+
+  <button onclick="abrirGoogleMaps()">
+    🌎 Abrir en Google Maps
+  </button>
+
+  <br><br>
+
+  <div class="campo">
+    <label for="latitud">Latitud</label>
+    <input id="latitud">
+  </div>
+
+  <div class="campo">
+    <label for="longitud">Longitud</label>
+    <input id="longitud">
+  </div>
+
+  <div class="campo">
+    <label for="radio">Radio geocerca</label>
+    <input id="radio" value="15">
+  </div>
+
+  <button onclick="guardarUbicacion()">
+    Guardar ubicación
+  </button>
+
+  <div id="mapaGeoref"></div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+const params =
+  new URLSearchParams(window.location.search);
+
+const clienteId =
+  params.get("id");
+
+let cliente = null;
+let mapa = null;
+let marker = null;
+
+
+function direccionBusqueda() {
+  if (!cliente) {
+    return "";
+  }
+
+  return [
+    cliente.direccion,
+    cliente.localidad,
+    "Buenos Aires",
+    "Argentina"
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+
+async function cargarCliente() {
   try {
-    const latitud =
-      document.getElementById("latitud").value.trim();
+    if (!clienteId) {
+      document.getElementById("mensaje").textContent =
+        "Falta ID del cliente";
 
-    const longitud =
-      document.getElementById("longitud").value.trim();
-
-    const radio =
-      document.getElementById("radio").value.trim() || 15;
-
-    if (!latitud || !longitud) {
-      alert("Debe indicar la latitud y la longitud.");
       return;
     }
 
-    const lat = Number(latitud);
-    const lng = Number(longitud);
+    const respuesta =
+      await fetch(`${API}/clientes/${clienteId}`);
+
+    cliente =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      document.getElementById("mensaje").textContent =
+        cliente.error ||
+        cliente.detalle ||
+        "No se pudo cargar el cliente";
+
+      return;
+    }
+
+    document.getElementById("nombreCliente").textContent =
+      cliente.nombre || "Cliente";
+
+    document.getElementById("direccionCliente").textContent =
+      direccionBusqueda();
+
+    let lat =
+      Number(cliente.latitud);
+
+    let lng =
+      Number(cliente.longitud);
+
+    const tieneCoordenadas =
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat !== 0 &&
+      lng !== 0;
+
+    if (!tieneCoordenadas) {
+      lat = -34.7073039;
+      lng = -58.6757365;
+    }
+
+    document.getElementById("latitud").value =
+      tieneCoordenadas
+        ? lat
+        : "";
+
+    document.getElementById("longitud").value =
+      tieneCoordenadas
+        ? lng
+        : "";
+
+    document.getElementById("radio").value =
+      cliente.radio_geocerca || 15;
+
+    mapa =
+      L.map("mapaGeoref")
+        .setView(
+          [lat, lng],
+          tieneCoordenadas ? 18 : 13
+        );
+
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }
+    ).addTo(mapa);
+
+    marker =
+      L.marker(
+        [lat, lng],
+        {
+          draggable: true
+        }
+      ).addTo(mapa);
+
+    marker
+      .bindPopup(
+        "Arrastrá el pin o hacé clic en el mapa"
+      )
+      .openPopup();
+
+    marker.on(
+      "dragend",
+      function () {
+        actualizarCampos(
+          marker.getLatLng()
+        );
+      }
+    );
+
+    mapa.on(
+      "click",
+      function (e) {
+        marker.setLatLng(e.latlng);
+        actualizarCampos(e.latlng);
+      }
+    );
+
+    if (!tieneCoordenadas) {
+      await buscarDireccion();
+    }
+
+  } catch (error) {
+    console.error(
+      "Error cargando cliente:",
+      error
+    );
+
+    document.getElementById("mensaje").textContent =
+      "Error al cargar cliente: " +
+      error.message;
+  }
+}
+
+
+function actualizarCampos(posicion) {
+  document.getElementById("latitud").value =
+    Number(posicion.lat).toFixed(7);
+
+  document.getElementById("longitud").value =
+    Number(posicion.lng).toFixed(7);
+}
+
+
+async function buscarDireccion() {
+  try {
+    const query =
+      direccionBusqueda();
+
+    if (!query) {
+      document.getElementById("mensaje").textContent =
+        "El cliente no tiene dirección o localidad";
+
+      return;
+    }
+
+    document.getElementById("mensaje").textContent =
+      "Buscando: " + query;
+
+    const url =
+      "https://nominatim.openstreetmap.org/search" +
+      "?format=json" +
+      "&limit=1" +
+      "&countrycodes=ar" +
+      "&q=" +
+      encodeURIComponent(query);
+
+    const respuesta =
+      await fetch(url);
+
+    const resultados =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      document.getElementById("mensaje").textContent =
+        "No se pudo realizar la búsqueda.";
+
+      return;
+    }
+
+    if (!resultados.length) {
+      document.getElementById("mensaje").textContent =
+        "No se encontró la dirección. Mové el pin manualmente.";
+
+      return;
+    }
+
+    const lat =
+      Number(resultados[0].lat);
+
+    const lng =
+      Number(resultados[0].lon);
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      document.getElementById("mensaje").textContent =
+        "La dirección devolvió coordenadas inválidas.";
+
+      return;
+    }
+
+    marker.setLatLng([lat, lng]);
+
+    mapa.setView(
+      [lat, lng],
+      18
+    );
+
+    actualizarCampos({
+      lat,
+      lng
+    });
+
+    document.getElementById("mensaje").textContent =
+      "Ubicación sugerida encontrada. Verificá el pin antes de guardar.";
+
+  } catch (error) {
+    console.error(
+      "Error buscando dirección:",
+      error
+    );
+
+    document.getElementById("mensaje").textContent =
+      "No se pudo buscar la dirección: " +
+      error.message;
+  }
+}
+
+
+function abrirGoogleMaps() {
+  const latitud =
+    document.getElementById("latitud").value.trim();
+
+  const longitud =
+    document.getElementById("longitud").value.trim();
+
+  let query;
+
+  if (latitud && longitud) {
+    query =
+      `${latitud},${longitud}`;
+  } else {
+    query =
+      direccionBusqueda();
+  }
+
+  if (!query) {
+    alert(
+      "No hay una dirección o coordenadas para abrir."
+    );
+
+    return;
+  }
+
+  window.open(
+    "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(query),
+    "_blank"
+  );
+}
+
+
+async function guardarUbicacion() {
+  try {
+    if (!cliente || !cliente.id) {
+      alert(
+        "El cliente todavía no terminó de cargar."
+      );
+
+      return;
+    }
+
+    const latitud =
+      document
+        .getElementById("latitud")
+        .value
+        .trim();
+
+    const longitud =
+      document
+        .getElementById("longitud")
+        .value
+        .trim();
+
+    const radio =
+      document
+        .getElementById("radio")
+        .value
+        .trim() || "15";
+
+    if (!latitud || !longitud) {
+      alert(
+        "Debe indicar la latitud y la longitud."
+      );
+
+      return;
+    }
+
+    const lat =
+      Number(
+        latitud.replace(",", ".")
+      );
+
+    const lng =
+      Number(
+        longitud.replace(",", ".")
+      );
+
+    const radioNumero =
+      Number(
+        radio.replace(",", ".")
+      );
 
     if (
       !Number.isFinite(lat) ||
@@ -23,20 +434,52 @@ async function guardarUbicacion() {
       lat === 0 ||
       lng === 0
     ) {
-      alert("Las coordenadas ingresadas no son válidas.");
+      alert(
+        "Las coordenadas ingresadas no son válidas."
+      );
+
       return;
     }
 
-   const body = {
-  latitud: Number(document.getElementById("latitud").value),
-  longitud: Number(document.getElementById("longitud").value),
-  radio_geocerca: Number(document.getElementById("radio").value) || 15
-};
+    if (
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      alert(
+        "La latitud o la longitud están fuera del rango válido."
+      );
 
-      }
+      return;
+    }
 
+    const body = {
+      latitud: lat,
+      longitud: lng,
+      radio_geocerca:
+        Number.isFinite(radioNumero) &&
+        radioNumero > 0
+          ? radioNumero
+          : 15
+    };
 
-    const datos = await respuesta.json();
+    const respuesta =
+      await fetch(
+        `${API}/clientes/${cliente.id}/ubicacion`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body:
+            JSON.stringify(body)
+        }
+      );
+
+    const datos =
+      await respuesta.json();
 
     if (!respuesta.ok) {
       alert(
@@ -48,9 +491,12 @@ async function guardarUbicacion() {
       return;
     }
 
-    alert("Ubicación guardada correctamente");
+    alert(
+      "Ubicación guardada correctamente"
+    );
 
-    window.location.href = "clientes.html";
+    window.location.href =
+      "clientes.html";
 
   } catch (error) {
     console.error(
@@ -58,13 +504,16 @@ async function guardarUbicacion() {
       error
     );
 
-    const respuesta = await fetch(
-  `${API}/clientes/${cliente.id}/ubicacion`,
-  {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
+    alert(
+      "No se pudo guardar la ubicación: " +
+      error.message
+    );
   }
-);
+}
+
+
+cargarCliente();
+</script>
+
+</body>
+</html>

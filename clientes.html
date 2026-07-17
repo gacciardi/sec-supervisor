@@ -67,12 +67,6 @@
     <select id="filtroRuta" onchange="renderizarClientes()">
       <option value="">Todas las rutas</option>
     </select>
-
-    <select id="filtroEstado" onchange="renderizarClientes()">
-      <option value="activos">Solo activos</option>
-      <option value="suspendidos">Solo suspendidos</option>
-      <option value="todos">Todos</option>
-    </select>
   </div>
 
   <div style="margin:15px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -102,7 +96,6 @@
         <th>Latitud</th>
         <th>Longitud</th>
         <th>Radio</th>
-        <th>Estado</th>
         <th>Acción</th>
       </tr>
     </thead>
@@ -217,24 +210,17 @@ function renderizarClientes() {
   const canal = document.getElementById("filtroCanal").value;
   const frecuencia = document.getElementById("filtroFrecuencia").value;
   const ruta = document.getElementById("filtroRuta").value;
-  const estado = document.getElementById("filtroEstado").value;
 
   const clientes = clientesGlobal.filter(c => {
     const okCanal = !canal || c.canal_id === canal;
     const okFrecuencia = !frecuencia || c.frecuencia_id === frecuencia;
     const okRuta = !ruta || c.ruta_id === ruta;
-
-    const okEstado =
-      estado === "todos" ||
-      (estado === "activos" && c.activo === true) ||
-      (estado === "suspendidos" && c.activo === false);
-
-    return okCanal && okFrecuencia && okRuta && okEstado;
+    return okCanal && okFrecuencia && okRuta;
   });
 
   document.getElementById("tablaClientes").innerHTML =
     clientes.map(c => `
-      <tr style="${c.activo ? "" : "background:#f3f4f6;color:#6b7280;"}">
+      <tr>
         <td><input id="codigo-${c.id}" value="${esc(c.codigo_cliente)}"></td>
         <td><input id="nombre-${c.id}" value="${esc(c.nombre)}"></td>
         <td><input id="direccion-${c.id}" value="${esc(c.direccion)}"></td>
@@ -250,25 +236,17 @@ function renderizarClientes() {
         <td><input id="radio-${c.id}" value="${esc(c.radio_geocerca || 15)}"></td>
 
         <td>
-          ${c.activo
-            ? `<span style="color:#16a34a;font-weight:bold;">Activo</span>`
-            : `<span style="color:#dc2626;font-weight:bold;">Suspendido</span>`
-          }
-        </td>
-
-        <td>
           <button onclick="abrirGeoref('${c.id}')">📍 Ubicar</button>
           <br><br>
 
           <button onclick="guardarCliente('${c.id}')">Guardar</button>
           <br><br>
 
-          ${c.activo
-            ? `<button style="background:#dc2626;color:white" onclick="suspenderCliente('${c.id}')">⛔ Suspender</button>`
-            : `<button style="background:#16a34a;color:white" onclick="reactivarCliente('${c.id}')">✅ Reactivar</button>`
-          }
-
           <br><br>
+          <button style="background:#dc2626;color:white"
+          onclick="eliminarCliente('${c.id}')">
+           🗑️ Eliminar
+          </button>
 
           <button style="background:#ff9800;color:white" onclick="abrirEjecucion('${c.id}')">
             🚨 Ejecución
@@ -384,59 +362,6 @@ async function guardarCliente(id) {
   cargarClientes();
 }
 
-async function cambiarEstadoCliente(id, activo) {
-  const cliente = clientesGlobal.find(c => c.id === id);
-
-  if (!cliente) {
-    alert("Cliente no encontrado en pantalla");
-    return;
-  }
-
-  const accion = activo ? "reactivar" : "suspender";
-
-  if (!confirm(`¿Seguro que querés ${accion} este cliente?`)) return;
-
-  const body = {
-    codigo_cliente: document.getElementById(`codigo-${id}`).value,
-    nombre: document.getElementById(`nombre-${id}`).value,
-    direccion: document.getElementById(`direccion-${id}`).value,
-    localidad: document.getElementById(`localidad-${id}`).value,
-    latitud: document.getElementById(`latitud-${id}`).value || null,
-    longitud: document.getElementById(`longitud-${id}`).value || null,
-    radio_geocerca: document.getElementById(`radio-${id}`).value || 15,
-    canal_id: document.getElementById(`canal-${id}`).value || null,
-    frecuencia_id: document.getElementById(`frecuencia-${id}`).value || null,
-    ruta_id: document.getElementById(`ruta-${id}`).value || null,
-    vendedor_id: document.getElementById(`vendedor-${id}`).value || null,
-    categoria: cliente.categoria || null,
-    activo
-  };
-
-  const r = await fetch(`${API}/clientes/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-
-  const datos = await r.json();
-
-  if (!r.ok) {
-    alert(datos.error || datos.detalle || `Error al ${accion} cliente`);
-    return;
-  }
-
-  alert(activo ? "Cliente reactivado" : "Cliente suspendido");
-  cargarClientes();
-}
-
-function suspenderCliente(id) {
-  cambiarEstadoCliente(id, false);
-}
-
-function reactivarCliente(id) {
-  cambiarEstadoCliente(id, true);
-}
-
 async function abrirEjecucion(clienteId) {
   const vendedorId = document.getElementById(`vendedor-${clienteId}`).value;
   const rutaId = document.getElementById(`ruta-${clienteId}`).value;
@@ -471,6 +396,24 @@ async function abrirEjecucion(clienteId) {
   }
 
   alert("Cliente agregado a EJECUCIÓN de hoy.");
+}
+
+async function eliminarCliente(id) {
+  if (!confirm("¿Seguro que querés eliminar este cliente?")) return;
+
+  const r = await fetch(`${API}/clientes/${id}`, {
+    method: "DELETE"
+  });
+
+  const datos = await r.json();
+
+  if (!r.ok) {
+    alert(datos.error || datos.detalle || "Error al eliminar cliente");
+    return;
+  }
+
+  alert("Cliente eliminado");
+  cargarClientes();
 }
 
 function abrirGeoref(id) {

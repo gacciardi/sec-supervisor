@@ -588,6 +588,12 @@ SEC envía obligatoriamente una posición cada
 */
 const MAX_MS_SIN_ENVIAR_GPS = 30000;
 
+/*
+Los GPS automáticos guardados sin conexión que tengan
+más de 5 minutos no se envían al recuperar internet.
+*/
+const MAX_EDAD_GPS_OFFLINE = 5 * 60 * 1000;
+
 const MIN_MS_RECARGA_DATOS = 120000;
 
 let ultimoEnvioGPS = 0;
@@ -693,13 +699,36 @@ function guardarColaOffline(cola) {
 }
 
 function agregarAColaOffline(evento) {
-  const cola = leerColaOffline();
+  const fechaEvento =
+    evento.fecha_local ||
+    evento.payload?.fecha_local ||
+    new Date().toISOString();
 
-  cola.push({
+  const eventoGuardado = {
     ...evento,
-    fecha_local: new Date().toISOString()
-  });
+    fecha_local: fechaEvento,
+    payload: {
+      ...(evento.payload || {}),
+      fecha_local:
+        evento.payload?.fecha_local ||
+        fechaEvento
+    }
+  };
 
+  let cola = leerColaOffline();
+
+  /*
+  Para GPS automático se conserva solamente la posición
+  más reciente. Las entradas y salidas manuales nunca
+  se eliminan de la cola.
+  */
+  if (evento.tipo === "gps_automatico") {
+    cola = cola.filter(
+      item => item.tipo !== "gps_automatico"
+    );
+  }
+
+  cola.push(eventoGuardado);
   guardarColaOffline(cola);
 }
 
@@ -775,8 +804,31 @@ async function sincronizarOffline() {
   }
 
   const pendientes = [];
+  const ahora = Date.now();
 
   for (const evento of cola) {
+    /*
+    Un GPS automático antiguo ya no representa la
+    posición actual del vendedor y no debe procesarse.
+    */
+    if (evento.tipo === "gps_automatico") {
+      const fechaGPS =
+        evento.payload?.fecha_local ||
+        evento.fecha_local;
+
+      const antiguedad =
+        fechaGPS
+          ? ahora - new Date(fechaGPS).getTime()
+          : Number.POSITIVE_INFINITY;
+
+      if (
+        !Number.isFinite(antiguedad) ||
+        antiguedad > MAX_EDAD_GPS_OFFLINE
+      ) {
+        continue;
+      }
+    }
+
     try {
       const respuesta = await enviarEvento(evento);
 
@@ -1349,8 +1401,20 @@ async function confirmarClienteCercano(
     );
   }
 }
-async function procesarGPS(lat, lng) {
-  ubicacionActual = { lat, lng };
+async function procesarGPS(
+  lat,
+  lng,
+  precision,
+  velocidad,
+  fechaGPS
+) {
+  ubicacionActual = {
+    lat,
+    lng,
+    precision,
+    velocidad,
+    fechaGPS
+  };
 
   document.getElementById(
     "gpsEstado"
@@ -1419,7 +1483,18 @@ async function procesarGPS(lat, lng) {
     payload: {
       vendedor_id: vendedorId,
       latitud: lat,
-      longitud: lng
+      longitud: lng,
+      precision_metros:
+        Number.isFinite(precision)
+          ? precision
+          : null,
+      velocidad:
+        Number.isFinite(velocidad)
+          ? velocidad
+          : 0,
+      fecha_local:
+        fechaGPS ||
+        new Date().toISOString()
     }
   };
 
@@ -1655,7 +1730,26 @@ function iniciarGPS() {
       const lng =
         posicion.coords.longitude;
 
-      procesarGPS(lat, lng);
+      const precision =
+        Number(posicion.coords.accuracy);
+
+      const velocidad =
+        posicion.coords.speed == null
+          ? 0
+          : Number(posicion.coords.speed);
+
+      const fechaGPS =
+        new Date(
+          posicion.timestamp || Date.now()
+        ).toISOString();
+
+      procesarGPS(
+        lat,
+        lng,
+        precision,
+        velocidad,
+        fechaGPS
+      );
     },
 
     error => {

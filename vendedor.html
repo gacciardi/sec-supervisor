@@ -908,16 +908,17 @@ async function cargarDatos(ajustarMapa = false) {
       pausarSugerenciasInicio();
     }
 
-    const visitadosNombres = new Set(
-      visitas.map(v =>
-        String(v.cliente || "").toLowerCase()
-      )
+    const visitadosIds = new Set(
+      visitas
+        .map(v => v.cliente_id)
+        .filter(Boolean)
+        .map(id => String(id))
     );
 
     const visitadosCantidad =
       clientes.filter(c =>
-        visitadosNombres.has(
-          String(c.nombre || "").toLowerCase()
+        visitadosIds.has(
+          String(c.id)
         )
       ).length;
 
@@ -937,7 +938,7 @@ async function cargarDatos(ajustarMapa = false) {
     ).textContent = clientes.length;
 
     dibujarMapa(
-      visitadosNombres,
+      visitadosIds,
       ajustarMapa
     );
 
@@ -984,7 +985,7 @@ function crearIcono(numero, visitado) {
 }
 
 function dibujarMapa(
-  visitadosNombres,
+  visitadosIds,
   ajustarMapa = false
 ) {
   capa.clearLayers();
@@ -1022,8 +1023,8 @@ function dibujarMapa(
     }
 
     const visitado =
-      visitadosNombres.has(
-        String(c.nombre || "").toLowerCase()
+      visitadosIds.has(
+        String(c.id)
       );
 
     puntos.push([lat, lng]);
@@ -1135,10 +1136,11 @@ function calcularProximoCliente() {
     return;
   }
 
-  const visitados = new Set(
-    visitas.map(v =>
-      String(v.cliente || "").toLowerCase()
-    )
+  const visitadosIds = new Set(
+    visitas
+      .map(v => v.cliente_id)
+      .filter(Boolean)
+      .map(id => String(id))
   );
 
   let mejor = null;
@@ -1150,8 +1152,8 @@ function calcularProximoCliente() {
     }
 
     if (
-      visitados.has(
-        String(c.nombre || "").toLowerCase()
+      visitadosIds.has(
+        String(c.id)
       )
     ) {
       return;
@@ -1962,12 +1964,11 @@ function mostrarListado(
       "#panelListado h3"
     );
 
-  const visitados = new Set(
-    visitas.map(v =>
-      String(
-        v.cliente || ""
-      ).toLowerCase()
-    )
+  const visitadosIds = new Set(
+    visitas
+      .map(v => v.cliente_id)
+      .filter(Boolean)
+      .map(id => String(id))
   );
 
   titulo.textContent =
@@ -1983,10 +1984,8 @@ function mostrarListado(
     lista.innerHTML =
       clientes.map((c, i) => {
         const hecho =
-          visitados.has(
-            String(
-              c.nombre || ""
-            ).toLowerCase()
+          visitadosIds.has(
+            String(c.id)
           );
 
         const lat =

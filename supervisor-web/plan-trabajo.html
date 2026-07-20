@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Plan de trabajo</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .filtros-plan{display:grid;grid-template-columns:minmax(220px,1fr) minmax(170px,220px) auto;gap:12px;align-items:end;margin-bottom:18px}
+    .campo-plan{display:flex;flex-direction:column;gap:6px}.campo-plan label{font-weight:bold;color:#374151}
+    .campo-plan select,.campo-plan input{padding:11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+    .resumen-plan{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin:18px 0}
+    .tarjeta-plan{background:#fff;padding:16px;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.10);text-align:center}
+    .tarjeta-plan strong{display:block;font-size:28px;color:#071b3a;margin-bottom:4px}.tarjeta-plan span{color:#64748b;font-size:13px}
+    .barra-cobertura{height:16px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:8px 0 18px}.barra-cobertura div{height:100%;width:0;background:#16a34a;transition:width .3s}
+    .estado{display:inline-block;padding:5px 9px;border-radius:999px;font-weight:bold;font-size:12px}.estado-visitado{background:#dcfce7;color:#166534}.estado-pendiente{background:#fee2e2;color:#991b1b}.estado-extra{background:#dbeafe;color:#1d4ed8}
+    .sin-coordenadas{color:#b45309;font-weight:bold}.mensaje-plan{padding:12px;border-radius:10px;margin:12px 0;display:none}.mensaje-plan.info{display:block;background:#e0f2fe;color:#075985}.mensaje-plan.error{display:block;background:#fee2e2;color:#991b1b}.tabla-wrap{overflow-x:auto}
+    @media(max-width:900px){.filtros-plan{grid-template-columns:1fr}.resumen-plan{grid-template-columns:repeat(2,minmax(130px,1fr))}}
+  </style>
+</head>
+<body>
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
+  <div><h1><span class="nombre-empresa-sec">REBESA</span> - Plan de trabajo</h1><p>Clientes asignados por vendedor y fecha</p></div>
+</header>
+<nav>
+  <a href="index.html">Dashboard</a><a href="mapa.html">Mapa</a><a href="clientes.html">Clientes</a><a href="plan-trabajo.html">Plan de trabajo</a><a href="usuarios.html">Usuarios</a><a href="visitas.html">Visitas</a><a href="alertas.html">Alertas</a><a href="cobertura.html">Cobertura</a><a href="pendientes.html">Pendientes</a><a href="dashboard-vendedores.html">Vendedores</a>
+</nav>
+<div class="container">
+  <h2>Consultar asignación diaria</h2>
+  <div class="filtros-plan">
+    <div class="campo-plan"><label for="vendedorSelect">Vendedor</label><select id="vendedorSelect"><option value="">Seleccionar vendedor</option></select></div>
+    <div class="campo-plan"><label for="fechaSelect">Fecha</label><input id="fechaSelect" type="date"></div>
+    <button onclick="cargarPlan()">Ver plan de trabajo</button>
+  </div>
+  <div id="mensaje" class="mensaje-plan"></div>
+  <section id="contenidoPlan" style="display:none;">
+    <h2 id="tituloPlan"></h2>
+    <div class="resumen-plan">
+      <div class="tarjeta-plan"><strong id="totalPlan">0</strong><span>Total del día</span></div>
+      <div class="tarjeta-plan"><strong id="visitadosPlan">0</strong><span>Visitados</span></div>
+      <div class="tarjeta-plan"><strong id="pendientesPlan">0</strong><span>Pendientes</span></div>
+      <div class="tarjeta-plan"><strong id="sinCoordenadasPlan">0</strong><span>Sin coordenadas</span></div>
+      <div class="tarjeta-plan"><strong id="coberturaPlan">0 %</strong><span>Cobertura</span></div>
+    </div>
+    <div class="barra-cobertura"><div id="barraCobertura"></div></div>
+    <p id="detalleTiempo"></p>
+    <div class="tabla-wrap"><table><thead><tr><th>Código</th><th>Cliente</th><th>Dirección</th><th>Localidad</th><th>Ruta</th><th>Frecuencia</th><th>Estado</th><th>Llegada</th><th>Salida</th><th>Permanencia</th><th>Coordenadas</th></tr></thead><tbody id="tablaPlan"></tbody></table></div>
+  </section>
+</div>
+<script>
+const API="https://sec-backend-gg4j.onrender.com";
+function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
+function fechaLocalISO(){const h=new Date(),c=h.getTimezoneOffset()*60000;return new Date(h.getTime()-c).toISOString().slice(0,10)}
+function mostrarMensaje(t,tipo="info"){const e=document.getElementById("mensaje");e.textContent=t;e.className=`mensaje-plan ${tipo}`}
+function ocultarMensaje(){const e=document.getElementById("mensaje");e.textContent="";e.className="mensaje-plan"}
+function formatearHora(v){return v?new Date(v).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}):"-"}
+function formatearDuracion(s){const t=Number(s||0);if(t<=0)return "-";const h=Math.floor(t/3600),m=Math.floor((t%3600)/60);return h>0?`${h} h ${m} min`:`${m} min`}
+async function cargarVendedores(){try{const r=await fetch(`${API}/usuarios`),d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudieron cargar vendedores");const u=Array.isArray(d)?d:d.usuarios||[],v=u.filter(x=>String(x.rol||"").toUpperCase()==="VENDEDOR"&&x.activo!==false);document.getElementById("vendedorSelect").innerHTML='<option value="">Seleccionar vendedor</option>'+v.map(x=>`<option value="${x.id}">${esc(x.nombre)} ${esc(x.apellido)}</option>`).join("")}catch(e){mostrarMensaje(e.message,"error")}}
+async function cargarPlan(){const vendedorId=document.getElementById("vendedorSelect").value,fecha=document.getElementById("fechaSelect").value;if(!vendedorId){mostrarMensaje("Seleccioná un vendedor.","error");return}if(!fecha){mostrarMensaje("Seleccioná una fecha.","error");return}document.getElementById("contenidoPlan").style.display="none";mostrarMensaje("Cargando plan de trabajo...","info");try{const r=await fetch(`${API}/clientes/plan-trabajo/${vendedorId}?fecha=${encodeURIComponent(fecha)}`),d=await r.json();if(!r.ok)throw new Error(d.error||d.detalle||"No se pudo cargar el plan");renderizarPlan(d);ocultarMensaje()}catch(e){mostrarMensaje(e.message,"error")}}
+function renderizarPlan(d){const r=d.resumen||{},c=Array.isArray(d.clientes)?d.clientes:[];document.getElementById("tituloPlan").textContent=`${d.vendedor?.vendedor||"Vendedor"} — ${d.fecha||""}`;document.getElementById("totalPlan").textContent=r.total||0;document.getElementById("visitadosPlan").textContent=r.visitados||0;document.getElementById("pendientesPlan").textContent=r.pendientes||0;document.getElementById("sinCoordenadasPlan").textContent=r.sin_coordenadas||0;const cob=Number(r.cobertura_porcentaje||0);document.getElementById("coberturaPlan").textContent=`${cob} %`;document.getElementById("barraCobertura").style.width=`${Math.min(cob,100)}%`;document.getElementById("detalleTiempo").textContent="Tiempo total registrado dentro de clientes: "+formatearDuracion(r.permanencia_total_segundos);document.getElementById("tablaPlan").innerHTML=c.map(x=>{let et,ec;if(x.visitado&&!x.programado){et="VISITADO NO PROGRAMADO";ec="estado-extra"}else if(x.visitado){et="VISITADO";ec="estado-visitado"}else{et="PENDIENTE";ec="estado-pendiente"}return `<tr><td>${esc(x.codigo_cliente)}</td><td>${esc(x.nombre)}</td><td>${esc(x.direccion)}</td><td>${esc(x.localidad)}</td><td>${esc(x.ruta)}</td><td>${esc(x.frecuencia)}</td><td><span class="estado ${ec}">${et}</span></td><td>${formatearHora(x.hora_llegada)}</td><td>${formatearHora(x.hora_salida)}</td><td>${formatearDuracion(x.permanencia_segundos)}</td><td>${x.tiene_coordenadas?"✅":'<span class="sin-coordenadas">⚠ Sin coordenadas</span>'}</td></tr>`}).join("");if(c.length===0)document.getElementById("tablaPlan").innerHTML='<tr><td colspan="11">No hay clientes programados ni visitas registradas para esta fecha.</td></tr>';document.getElementById("contenidoPlan").style.display="block"}
+async function iniciar(){document.getElementById("fechaSelect").value=fechaLocalISO();await cargarVendedores()}
+iniciar();
+</script>
+</body>
+</html>

@@ -1,53 +1,273 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>SEC - Supervisor</title>
+  <meta charset="UTF-8">
 
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-<style>
-body{margin:0;overflow:hidden;font-family:Arial;background:#f3f4f6}
-.contenedor{display:flex;height:100vh}
-#mapa{flex:1}
-.panel{width:440px;background:white;overflow:auto;border-left:1px solid #ddd;box-shadow:-2px 0 10px rgba(0,0,0,.15)}
-.titulo{background:#071b3a;color:white;padding:20px}
-.card{margin:12px;padding:15px;border-radius:12px;border:1px solid #ddd;background:white}
-.card h3{margin:0 0 10px 0}
-.fila-vendedor{padding:12px;border-bottom:1px solid #eee;cursor:pointer}
-.fila-vendedor:hover{background:#f3f4f6}
-.badge{padding:4px 10px;border-radius:8px;color:white;font-weight:bold;display:inline-block}
-.btn{background:#0b55c7;color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;margin-top:8px}
-.mini{font-size:13px;color:#555;margin-top:4px}
-</style>
+  <title>SEC - Supervisor</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  >
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+    }
+
+    .contenedor {
+      display: flex;
+      height: 100vh;
+    }
+
+    #mapa {
+      flex: 1;
+    }
+
+    .panel {
+      width: 440px;
+      background: white;
+      overflow: auto;
+      border-left: 1px solid #ddd;
+      box-shadow: -2px 0 10px rgba(0,0,0,.15);
+    }
+
+    .titulo {
+      background: #071b3a;
+      color: white;
+      padding: 20px;
+    }
+
+    .titulo h2 {
+      margin: 0 0 5px;
+    }
+
+    .titulo p {
+      margin: 0;
+    }
+
+    .resumen-estados {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 12px 12px 0;
+    }
+
+    .estado-card {
+      padding: 11px 7px;
+      border-radius: 11px;
+      text-align: center;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+    }
+
+    .estado-card strong {
+      display: block;
+      font-size: 23px;
+      color: #071b3a;
+    }
+
+    .estado-card span {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .card {
+      margin: 12px;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: white;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+    }
+
+    .fila-vendedor {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      border-left: 5px solid transparent;
+    }
+
+    .fila-vendedor:hover {
+      background: #f3f4f6;
+    }
+
+    .fila-vendedor.seleccionado {
+      background: #eff6ff;
+      border-left-color: #0b55c7;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .estado-badge {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      margin: 4px 0;
+    }
+
+    .estado-verde {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .estado-amarillo {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .estado-rojo {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .estado-desconectado {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn {
+      background: #0b55c7;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .mini {
+      font-size: 13px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .sin-vendedores {
+      color: #6b7280;
+      padding: 14px 5px;
+      text-align: center;
+    }
+
+    .leyenda {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 1000;
+      background: white;
+      border-radius: 11px;
+      padding: 9px 12px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.20);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 850px) {
+      .contenedor {
+        display: block;
+        overflow: auto;
+      }
+
+      #mapa {
+        width: 100%;
+        height: 55vh;
+      }
+
+      .panel {
+        width: 100%;
+        height: auto;
+        border-left: none;
+      }
+
+      body {
+        overflow: auto;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="contenedor">
 
-  <div id="mapa"></div>
+  <div
+    id="mapa"
+    style="position:relative;"
+  ></div>
+
+  <div class="leyenda">
+    🟢 GPS menor a 5 min<br>
+    🟡 GPS entre 5 y 15 min<br>
+    🔴 GPS entre 15 y 60 min<br>
+    ⚫ Cerró sesión o más de 1 hora
+  </div>
 
   <div class="panel">
+
     <div class="titulo">
       <h2>Supervisor SEC</h2>
       <p>Seguimiento en tiempo real</p>
+    </div>
+
+    <div class="resumen-estados">
+
+      <div class="estado-card">
+        <strong id="cantidadVerdes">0</strong>
+        <span>🟢 Activos</span>
+      </div>
+
+      <div class="estado-card">
+        <strong id="cantidadAmarillos">0</strong>
+        <span>🟡 GPS 5–15 min</span>
+      </div>
+
+      <div class="estado-card">
+        <strong id="cantidadRojos">0</strong>
+        <span>🔴 GPS 15–60 min</span>
+      </div>
+
+      <div class="estado-card">
+        <strong id="cantidadDesconectados">0</strong>
+        <span>⚫ Desconectados</span>
+      </div>
+
     </div>
 
     <div id="alertas"></div>
 
     <div class="card">
       <h3>Vendedor seleccionado</h3>
+
       <div id="detalleSeleccionado">
         Seleccioná un vendedor en el mapa o en la lista.
       </div>
     </div>
 
     <div class="card">
-      <h3>Vendedores activos</h3>
+      <h3>Vendedores en actividad</h3>
       <div id="listaVendedores"></div>
     </div>
+
   </div>
 
 </div>
@@ -55,254 +275,1065 @@ body{margin:0;overflow:hidden;font-family:Arial;background:#f3f4f6}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const API="https://sec-backend-gg4j.onrender.com";
+const API =
+  "https://sec-backend-gg4j.onrender.com";
 
-const mapa=L.map("mapa").setView([-34.7073,-58.6757],11);
+const mapa =
+  L.map(
+    "mapa",
+    {
+      zoomControl: true
+    }
+  ).setView(
+    [-34.7073, -58.6757],
+    11
+  );
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-  maxZoom:19
-}).addTo(mapa);
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19
+  }
+).addTo(mapa);
 
-let capaGeneral=L.layerGroup().addTo(mapa);
-let capaDetalle=L.layerGroup().addTo(mapa);
+let capaGeneral =
+  L.layerGroup().addTo(mapa);
 
-let vendedoresGlobal=[];
-let gpsGlobal=[];
+let capaDetalle =
+  L.layerGroup().addTo(mapa);
 
-function coordValida(lat,lng){
-  return !isNaN(lat)&&!isNaN(lng)&&lat!==0&&lng!==0&&lat>-40&&lat<-30&&lng>-65&&lng<-55;
+let vendedoresGlobal = [];
+let estadosGlobal = [];
+
+let vendedorSeleccionadoId = null;
+
+/*
+Evita que el mapa vuelva a alejarse
+cada vez que actualiza los datos.
+*/
+let vistaGeneralAjustada = false;
+
+/*
+Evita que el detalle seleccionado
+modifique el zoom cada 30 segundos.
+*/
+let vistaDetalleAjustada = false;
+
+function coordValida(lat, lng) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat !== 0 &&
+    lng !== 0 &&
+    lat > -40 &&
+    lat < -30 &&
+    lng > -65 &&
+    lng < -55
+  );
 }
 
-function tiempoTranscurrido(fecha){
-  if(!fecha)return"Sin GPS";
-  const ahora=new Date();
-  const gps=new Date(fecha);
-  const diff=Math.floor((ahora-gps)/60000);
-  if(diff<1)return"Hace menos de 1 min";
-  if(diff<60)return`Hace ${diff} min`;
-  const h=Math.floor(diff/60);
-  const m=diff%60;
-  return`${h} h ${m} min`;
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function colorCobertura(cobertura){
-  if(cobertura>=80)return"#22c55e";
-  if(cobertura>=50)return"#f59e0b";
-  return"#ef4444";
+function tiempoTranscurrido(
+  minutos,
+  fecha
+) {
+  if (
+    minutos !== null &&
+    minutos !== undefined
+  ) {
+    const cantidad =
+      Number(minutos);
+
+    if (cantidad < 1) {
+      return "Hace menos de 1 min";
+    }
+
+    if (cantidad < 60) {
+      return `Hace ${cantidad} min`;
+    }
+
+    const horas =
+      Math.floor(cantidad / 60);
+
+    const resto =
+      cantidad % 60;
+
+    return resto > 0
+      ? `Hace ${horas} h ${resto} min`
+      : `Hace ${horas} h`;
+  }
+
+  if (!fecha) {
+    return "Sin GPS";
+  }
+
+  const diferencia =
+    Math.floor(
+      (
+        Date.now() -
+        new Date(fecha).getTime()
+      ) / 60000
+    );
+
+  if (diferencia < 1) {
+    return "Hace menos de 1 min";
+  }
+
+  if (diferencia < 60) {
+    return `Hace ${diferencia} min`;
+  }
+
+  return `Hace ${Math.floor(diferencia / 60)} h`;
 }
 
-function estadoVendedor(v){
-  if(v.llegada_actual)return"🟢 En cliente";
-  if(v.ultimo_gps)return"🔵 En tránsito";
-  return"⚫ Sin GPS";
+function colorCobertura(cobertura) {
+  const numero =
+    Number(cobertura || 0);
+
+  if (numero >= 80) {
+    return "#22c55e";
+  }
+
+  if (numero >= 50) {
+    return "#f59e0b";
+  }
+
+  return "#ef4444";
 }
 
-async function cargarSupervisor(){
-  capaGeneral.clearLayers();
+function colorEstadoMapa(estado) {
+  if (estado === "VERDE") {
+    return "#16a34a";
+  }
 
-  vendedoresGlobal=await fetch(`${API}/dashboard/vendedores`).then(r=>r.json());
-  gpsGlobal=await fetch(`${API}/gps-logs/ultimos`).then(r=>r.json());
-  const alertas=await fetch(`${API}/alertas`).then(r=>r.json());
+  if (estado === "AMARILLO") {
+    return "#eab308";
+  }
 
-  renderAlertas(alertas);
-  renderListaVendedores();
-  renderMapaGeneral();
+  if (estado === "ROJO") {
+    return "#dc2626";
+  }
+
+  return "#6b7280";
 }
 
-function renderAlertas(alertas){
-  if(alertas.length){
-    document.getElementById("alertas").innerHTML=`
-      <div class="card" style="background:#fee2e2;border-color:#ef4444">
+function claseEstado(estado) {
+  if (estado === "VERDE") {
+    return "estado-verde";
+  }
+
+  if (estado === "AMARILLO") {
+    return "estado-amarillo";
+  }
+
+  if (estado === "ROJO") {
+    return "estado-rojo";
+  }
+
+  return "estado-desconectado";
+}
+
+function textoEstado(estado) {
+  if (estado === "VERDE") {
+    return "🟢 Activo";
+  }
+
+  if (estado === "AMARILLO") {
+    return "🟡 GPS demorado";
+  }
+
+  if (estado === "ROJO") {
+    return "🔴 Sin GPS reciente";
+  }
+
+  return "⚫ Desconectado";
+}
+
+function buscarEstado(vendedorId) {
+  return estadosGlobal.find(
+    estado =>
+      estado.vendedor_id ===
+      vendedorId
+  ) || null;
+}
+
+function vendedorConEstado(
+  vendedor
+) {
+  const estado =
+    buscarEstado(
+      vendedor.vendedor_id
+    );
+
+  return {
+    ...vendedor,
+
+    estado_mapa:
+      estado?.estado_mapa ||
+      "DESCONECTADO",
+
+    mostrar_en_mapa:
+      estado?.mostrar_en_mapa === true ||
+      estado?.mostrar_en_mapa === "true",
+
+    latitud:
+      estado?.latitud,
+
+    longitud:
+      estado?.longitud,
+
+    minutos_sin_gps:
+      estado?.minutos_sin_gps,
+
+    fecha_ultimo_gps:
+      estado?.fecha_ultimo_gps,
+
+    inicio_sesion:
+      estado?.inicio_sesion,
+
+    primer_cliente:
+      estado?.primer_cliente
+  };
+}
+
+async function cargarSupervisor() {
+  try {
+    const [
+      respuestaVendedores,
+      respuestaEstados,
+      respuestaAlertas
+    ] = await Promise.all([
+      fetch(
+        `${API}/dashboard/vendedores`
+      ),
+
+      fetch(
+        `${API}/usuarios/estados-vendedores`
+      ),
+
+      fetch(
+        `${API}/alertas`
+      )
+    ]);
+
+    const datosVendedores =
+      await respuestaVendedores.json();
+
+    const datosEstados =
+      await respuestaEstados.json();
+
+    const datosAlertas =
+      await respuestaAlertas.json();
+
+    if (!respuestaVendedores.ok) {
+      throw new Error(
+        datosVendedores.error ||
+        datosVendedores.detalle ||
+        "No se pudieron cargar los vendedores"
+      );
+    }
+
+    if (!respuestaEstados.ok) {
+      throw new Error(
+        datosEstados.error ||
+        datosEstados.detalle ||
+        "No se pudieron cargar los estados"
+      );
+    }
+
+    vendedoresGlobal =
+      Array.isArray(datosVendedores)
+        ? datosVendedores
+        : datosVendedores.vendedores || [];
+
+    estadosGlobal =
+      Array.isArray(datosEstados)
+        ? datosEstados
+        : datosEstados.vendedores || [];
+
+    renderAlertas(
+      Array.isArray(datosAlertas)
+        ? datosAlertas
+        : datosAlertas.alertas || []
+    );
+
+    actualizarContadores();
+    renderListaVendedores();
+    renderMapaGeneral();
+
+    /*
+    Si había un vendedor seleccionado,
+    actualiza sus datos sin cambiar el zoom.
+    */
+    if (vendedorSeleccionadoId) {
+      await seleccionarVendedor(
+        vendedorSeleccionadoId,
+        false
+      );
+    }
+
+  } catch (error) {
+    console.error(
+      "Error cargando supervisor:",
+      error
+    );
+  }
+}
+
+function actualizarContadores() {
+  document.getElementById(
+    "cantidadVerdes"
+  ).textContent =
+    estadosGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "VERDE"
+    ).length;
+
+  document.getElementById(
+    "cantidadAmarillos"
+  ).textContent =
+    estadosGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "AMARILLO"
+    ).length;
+
+  document.getElementById(
+    "cantidadRojos"
+  ).textContent =
+    estadosGlobal.filter(
+      vendedor =>
+        vendedor.estado_mapa ===
+        "ROJO"
+    ).length;
+
+  document.getElementById(
+    "cantidadDesconectados"
+  ).textContent =
+    estadosGlobal.filter(
+      vendedor =>
+        vendedor.mostrar_en_mapa !== true &&
+        vendedor.mostrar_en_mapa !== "true"
+    ).length;
+}
+
+function renderAlertas(alertas) {
+  if (alertas.length > 0) {
+    document.getElementById(
+      "alertas"
+    ).innerHTML = `
+      <div
+        class="card"
+        style="
+          background:#fee2e2;
+          border-color:#ef4444;
+        "
+      >
         <h3>⚠ Alertas</h3>
-        ${alertas.map(a=>`
-          <div style="margin-bottom:10px">
-            🔴 ${a.descripcion || ""}<br>
+
+        ${alertas.map(alerta => `
+          <div style="margin-bottom:10px;">
+            🔴
+            ${escaparHtml(
+              alerta.descripcion
+            )}
+
+            <br>
+
             <span class="mini">
-              🕒 ${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}
+              🕒
+              ${
+                alerta.fecha_hora
+                  ? new Date(
+                      alerta.fecha_hora
+                    ).toLocaleString(
+                      "es-AR"
+                    )
+                  : ""
+              }
             </span>
+
             ${
-              a.latitud && a.longitud
-              ? `<br><span class="mini">📍 ${a.latitud}, ${a.longitud}</span>`
-              : ""
+              alerta.latitud &&
+              alerta.longitud
+                ? `
+                  <br>
+                  <span class="mini">
+                    📍
+                    ${escaparHtml(
+                      alerta.latitud
+                    )},
+                    ${escaparHtml(
+                      alerta.longitud
+                    )}
+                  </span>
+                `
+                : ""
             }
           </div>
         `).join("")}
       </div>
     `;
-  }else{
-    document.getElementById("alertas").innerHTML=`
-      <div class="card" style="background:#dcfce7;border-color:#22c55e">
+
+  } else {
+    document.getElementById(
+      "alertas"
+    ).innerHTML = `
+      <div
+        class="card"
+        style="
+          background:#dcfce7;
+          border-color:#22c55e;
+        "
+      >
         ✅ Sin alertas del día
       </div>
     `;
   }
 }
 
-function renderListaVendedores(){
-  document.getElementById("listaVendedores").innerHTML=
-    vendedoresGlobal.map(v=>`
-      <div class="fila-vendedor" onclick="seleccionarVendedor('${v.vendedor_id}')">
-        <b>${v.vendedor}</b><br>
-        ${estadoVendedor(v)}<br>
-        <span class="mini">GPS: ${tiempoTranscurrido(v.ultimo_gps)}</span><br>
-        <span class="mini">Programados: ${v.programados} | Visitados: ${v.visitados} | Pendientes: ${v.pendientes}</span><br>
-        <span class="badge" style="background:${colorCobertura(v.cobertura)}">${v.cobertura}%</span>
+function renderListaVendedores() {
+  const vendedoresActivos =
+    vendedoresGlobal
+      .map(vendedorConEstado)
+      .filter(
+        vendedor =>
+          vendedor.mostrar_en_mapa
+      );
+
+  const contenedor =
+    document.getElementById(
+      "listaVendedores"
+    );
+
+  if (
+    vendedoresActivos.length === 0
+  ) {
+    contenedor.innerHTML = `
+      <div class="sin-vendedores">
+        No hay vendedores activos en este momento.
       </div>
-    `).join("");
-}
+    `;
 
-function renderMapaGeneral(){
-  const puntos=[];
-
-  gpsGlobal.forEach(g=>{
-    const lat=Number(g.latitud);
-    const lng=Number(g.longitud);
-
-    if(!coordValida(lat,lng))return;
-
-    puntos.push([lat,lng]);
-
-    L.circleMarker([lat,lng],{
-      radius:16,
-      color:"#0b55c7",
-      fillColor:"#0b55c7",
-      fillOpacity:1
-    })
-    .addTo(capaGeneral)
-    .bindPopup(`
-      <b>${g.vendedor||""}</b><br>
-      ${tiempoTranscurrido(g.fecha_hora)}<br>
-      <button class="btn" onclick="seleccionarVendedor('${g.vendedor_id}')">
-        Ver recorrido
-      </button>
-    `);
-  });
-
-  if(puntos.length){
-    mapa.fitBounds(puntos,{padding:[60,60],maxZoom:14});
-  }
-}
-
-async function seleccionarVendedor(id){
-  capaDetalle.clearLayers();
-
-  const v=vendedoresGlobal.find(x=>x.vendedor_id===id);
-
-  if(!v)return;
-
-  const detalle=await fetch(`${API}/dashboard/vendedores/${id}`).then(r=>r.json());
-  const recorrido=await fetch(`${API}/gps-logs/vendedor/${id}/hoy`).then(r=>r.json());
-
-  const puntos=[];
-
-  document.getElementById("detalleSeleccionado").innerHTML=`
-    <b>${v.vendedor}</b><br>
-    Legajo: ${v.legajo||""}<br>
-    Estado: ${estadoVendedor(v)}<br>
-    GPS: ${tiempoTranscurrido(v.ultimo_gps)}<br><br>
-    Programados: ${v.programados}<br>
-    Visitados: ${v.visitados}<br>
-    Pendientes: ${v.pendientes}<br>
-    Cobertura:
-    <span class="badge" style="background:${colorCobertura(v.cobertura)}">
-      ${v.cobertura}%
-    </span>
-    <br><br>
-    <button class="btn" onclick="window.location='vendedor-detalle.html?id=${id}'">
-      Ver detalle completo
-    </button>
-  `;
-
-  const puntosRecorrido=recorrido
-    .map(r=>[Number(r.latitud),Number(r.longitud)])
-    .filter(p=>coordValida(p[0],p[1]));
-
-  if(puntosRecorrido.length>1){
-    L.polyline(puntosRecorrido,{
-      color:"#0b55c7",
-      weight:5,
-      opacity:.85
-    })
-    .addTo(capaDetalle)
-    .bindPopup("Recorrido del día");
-
-    puntos.push(...puntosRecorrido);
-  }
-
-  if(detalle.ultimo_gps){
-    const lat=Number(detalle.ultimo_gps.latitud);
-    const lng=Number(detalle.ultimo_gps.longitud);
-
-    if(coordValida(lat,lng)){
-      puntos.push([lat,lng]);
-
-      L.circleMarker([lat,lng],{
-        radius:18,
-        color:"#0b55c7",
-        fillColor:"#0b55c7",
-        fillOpacity:1
-      })
-      .addTo(capaDetalle)
-      .bindPopup(`<b>${v.vendedor}</b><br>Última posición`);
-    }
-  }
-
-  detalle.pendientes.forEach(p=>{
-    const lat=Number(p.latitud);
-    const lng=Number(p.longitud);
-
-    if(!coordValida(lat,lng))return;
-
-    puntos.push([lat,lng]);
-
-    L.circleMarker([lat,lng],{
-      radius:10,
-      color:"orange",
-      fillColor:"orange",
-      fillOpacity:.9
-    })
-    .addTo(capaDetalle)
-    .bindPopup(`
-      <b>${p.nombre}</b><br>
-      Código: ${p.codigo_cliente||""}<br>
-      Estado: <b>PENDIENTE</b>
-    `);
-  });
-
-  detalle.visitas.forEach(vis=>{
-  const lat = Number(vis.latitud_llegada);
-  const lng = Number(vis.longitud_llegada);
-
-  console.log("VISITA", vis.cliente, lat, lng);
-
-  if (!coordValida(lat, lng)) {
-    console.log("COORDENADA INVALIDA");
     return;
   }
 
-  puntos.push([lat, lng]);
+  contenedor.innerHTML =
+    vendedoresActivos
+      .map(vendedor => `
+        <div
+          id="fila-${vendedor.vendedor_id}"
+          class="
+            fila-vendedor
+            ${
+              vendedorSeleccionadoId ===
+              vendedor.vendedor_id
+                ? "seleccionado"
+                : ""
+            }
+          "
+          onclick="
+            seleccionarVendedor(
+              '${vendedor.vendedor_id}',
+              true
+            )
+          "
+        >
+          <b>
+            ${escaparHtml(
+              vendedor.vendedor
+            )}
+          </b>
 
-  L.circleMarker([lat, lng], {
-    radius: 10,
-    color: "green",
-    fillColor: "green",
-    fillOpacity: .9
-  })
-  .addTo(capaDetalle)
-  .bindPopup(`
-    <b>${vis.cliente}</b><br>
-    Estado: <b>VISITADO</b>
-  `);
-});
+          <br>
 
-  if(puntos.length){
-    mapa.fitBounds(puntos,{padding:[60,60],maxZoom:16});
+          <span
+            class="
+              estado-badge
+              ${claseEstado(
+                vendedor.estado_mapa
+              )}
+            "
+          >
+            ${textoEstado(
+              vendedor.estado_mapa
+            )}
+          </span>
+
+          <br>
+
+          <span class="mini">
+            GPS:
+            ${tiempoTranscurrido(
+              vendedor.minutos_sin_gps,
+              vendedor.fecha_ultimo_gps
+            )}
+          </span>
+
+          <br>
+
+          <span class="mini">
+            Programados:
+            ${vendedor.programados || 0}
+            |
+            Visitados:
+            ${vendedor.visitados || 0}
+            |
+            Pendientes:
+            ${vendedor.pendientes || 0}
+          </span>
+
+          <br>
+
+          <span
+            class="badge"
+            style="
+              background:
+              ${colorCobertura(
+                vendedor.cobertura
+              )};
+            "
+          >
+            ${Number(
+              vendedor.cobertura || 0
+            ).toFixed(0)}%
+          </span>
+        </div>
+      `)
+      .join("");
+}
+
+function renderMapaGeneral() {
+  capaGeneral.clearLayers();
+
+  const puntos = [];
+
+  vendedoresGlobal
+    .map(vendedorConEstado)
+    .filter(
+      vendedor =>
+        vendedor.mostrar_en_mapa
+    )
+    .forEach(vendedor => {
+      const lat =
+        Number(vendedor.latitud);
+
+      const lng =
+        Number(vendedor.longitud);
+
+      if (
+        !coordValida(
+          lat,
+          lng
+        )
+      ) {
+        return;
+      }
+
+      puntos.push(
+        [lat, lng]
+      );
+
+      const color =
+        colorEstadoMapa(
+          vendedor.estado_mapa
+        );
+
+      L.circleMarker(
+        [lat, lng],
+        {
+          radius: 16,
+          color: "#ffffff",
+          weight: 4,
+          fillColor: color,
+          fillOpacity: 1
+        }
+      )
+        .addTo(capaGeneral)
+        .bindTooltip(
+          escaparHtml(
+            vendedor.vendedor
+          ),
+          {
+            direction: "top"
+          }
+        )
+        .bindPopup(`
+          <b>
+            ${escaparHtml(
+              vendedor.vendedor
+            )}
+          </b>
+
+          <br>
+
+          ${textoEstado(
+            vendedor.estado_mapa
+          )}
+
+          <br>
+
+          GPS:
+          ${tiempoTranscurrido(
+            vendedor.minutos_sin_gps,
+            vendedor.fecha_ultimo_gps
+          )}
+
+          <br>
+
+          <button
+            class="btn"
+            onclick="
+              seleccionarVendedor(
+                '${vendedor.vendedor_id}',
+                true
+              )
+            "
+          >
+            Ver recorrido
+          </button>
+        `);
+    });
+
+  /*
+  Solo acomoda el mapa la primera vez.
+  Después respeta el zoom del supervisor.
+  */
+
+  if (
+    !vistaGeneralAjustada &&
+    puntos.length > 0
+  ) {
+    mapa.fitBounds(
+      puntos,
+      {
+        padding: [60, 60],
+        maxZoom: 14
+      }
+    );
+
+    vistaGeneralAjustada = true;
+  }
+}
+
+async function seleccionarVendedor(
+  id,
+  ajustarVista = true
+) {
+  vendedorSeleccionadoId = id;
+
+  if (ajustarVista) {
+    vistaDetalleAjustada = false;
+  }
+
+  document.querySelectorAll(
+    ".fila-vendedor"
+  ).forEach(fila => {
+    fila.classList.remove(
+      "seleccionado"
+    );
+  });
+
+  document.getElementById(
+    `fila-${id}`
+  )?.classList.add(
+    "seleccionado"
+  );
+
+  const vendedorBase =
+    vendedoresGlobal.find(
+      vendedor =>
+        vendedor.vendedor_id === id
+    );
+
+  if (!vendedorBase) {
+    return;
+  }
+
+  const vendedor =
+    vendedorConEstado(
+      vendedorBase
+    );
+
+  try {
+    const [
+      respuestaDetalle,
+      respuestaRecorrido
+    ] = await Promise.all([
+      fetch(
+        `${API}/dashboard/vendedores/${id}`
+      ),
+
+      fetch(
+        `${API}/gps-logs/vendedor/${id}/hoy`
+      )
+    ]);
+
+    const detalle =
+      await respuestaDetalle.json();
+
+    const recorrido =
+      await respuestaRecorrido.json();
+
+    if (!respuestaDetalle.ok) {
+      throw new Error(
+        detalle.error ||
+        detalle.detalle ||
+        "No se pudo cargar el detalle"
+      );
+    }
+
+    if (!respuestaRecorrido.ok) {
+      throw new Error(
+        recorrido.error ||
+        recorrido.detalle ||
+        "No se pudo cargar el recorrido"
+      );
+    }
+
+    document.getElementById(
+      "detalleSeleccionado"
+    ).innerHTML = `
+      <b>
+        ${escaparHtml(
+          vendedor.vendedor
+        )}
+      </b>
+
+      <br>
+
+      Legajo:
+      ${escaparHtml(
+        vendedor.legajo
+      )}
+
+      <br>
+
+      Estado:
+      <span
+        class="
+          estado-badge
+          ${claseEstado(
+            vendedor.estado_mapa
+          )}
+        "
+      >
+        ${textoEstado(
+          vendedor.estado_mapa
+        )}
+      </span>
+
+      <br>
+
+      GPS:
+      ${tiempoTranscurrido(
+        vendedor.minutos_sin_gps,
+        vendedor.fecha_ultimo_gps
+      )}
+
+      <br><br>
+
+      Programados:
+      ${vendedor.programados || 0}
+
+      <br>
+
+      Visitados:
+      ${vendedor.visitados || 0}
+
+      <br>
+
+      Pendientes:
+      ${vendedor.pendientes || 0}
+
+      <br>
+
+      Cobertura:
+
+      <span
+        class="badge"
+        style="
+          background:
+          ${colorCobertura(
+            vendedor.cobertura
+          )};
+        "
+      >
+        ${Number(
+          vendedor.cobertura || 0
+        ).toFixed(0)}%
+      </span>
+
+      <br><br>
+
+      <button
+        class="btn"
+        onclick="
+          window.location =
+          'vendedor-detalle.html?id=${id}'
+        "
+      >
+        Ver detalle completo
+      </button>
+    `;
+
+    dibujarDetalle(
+      vendedor,
+      detalle,
+      Array.isArray(recorrido)
+        ? recorrido
+        : []
+    );
+
+  } catch (error) {
+    console.error(
+      "Error seleccionando vendedor:",
+      error
+    );
+  }
+}
+
+function dibujarDetalle(
+  vendedor,
+  detalle,
+  recorrido
+) {
+  capaDetalle.clearLayers();
+
+  const puntos = [];
+
+  const puntosRecorrido =
+    recorrido
+      .map(punto => [
+        Number(punto.latitud),
+        Number(punto.longitud)
+      ])
+      .filter(punto =>
+        coordValida(
+          punto[0],
+          punto[1]
+        )
+      );
+
+  if (
+    puntosRecorrido.length > 1
+  ) {
+    L.polyline(
+      puntosRecorrido,
+      {
+        color: "#0b55c7",
+        weight: 5,
+        opacity: .85
+      }
+    )
+      .addTo(capaDetalle)
+      .bindPopup(
+        "Recorrido del día"
+      );
+
+    puntos.push(
+      ...puntosRecorrido
+    );
+  }
+
+  if (vendedor.mostrar_en_mapa) {
+    const lat =
+      Number(vendedor.latitud);
+
+    const lng =
+      Number(vendedor.longitud);
+
+    if (
+      coordValida(
+        lat,
+        lng
+      )
+    ) {
+      puntos.push(
+        [lat, lng]
+      );
+
+      const color =
+        colorEstadoMapa(
+          vendedor.estado_mapa
+        );
+
+      L.circleMarker(
+        [lat, lng],
+        {
+          radius: 18,
+          color: "#ffffff",
+          weight: 4,
+          fillColor: color,
+          fillOpacity: 1
+        }
+      )
+        .addTo(capaDetalle)
+        .bindPopup(`
+          <b>
+            ${escaparHtml(
+              vendedor.vendedor
+            )}
+          </b>
+
+          <br>
+
+          ${textoEstado(
+            vendedor.estado_mapa
+          )}
+
+          <br>
+
+          Última posición
+        `);
+    }
+  }
+
+  (detalle.pendientes || [])
+    .forEach(cliente => {
+      const lat =
+        Number(cliente.latitud);
+
+      const lng =
+        Number(cliente.longitud);
+
+      if (
+        !coordValida(
+          lat,
+          lng
+        )
+      ) {
+        return;
+      }
+
+      puntos.push(
+        [lat, lng]
+      );
+
+      L.circleMarker(
+        [lat, lng],
+        {
+          radius: 10,
+          color: "orange",
+          fillColor: "orange",
+          fillOpacity: .9
+        }
+      )
+        .addTo(capaDetalle)
+        .bindPopup(`
+          <b>
+            ${escaparHtml(
+              cliente.nombre
+            )}
+          </b>
+
+          <br>
+
+          Código:
+          ${escaparHtml(
+            cliente.codigo_cliente
+          )}
+
+          <br>
+
+          Estado:
+          <b>PENDIENTE</b>
+        `);
+    });
+
+  (detalle.visitas || [])
+    .forEach(visita => {
+      const lat =
+        Number(
+          visita.latitud_llegada
+        );
+
+      const lng =
+        Number(
+          visita.longitud_llegada
+        );
+
+      if (
+        !coordValida(
+          lat,
+          lng
+        )
+      ) {
+        return;
+      }
+
+      puntos.push(
+        [lat, lng]
+      );
+
+      L.circleMarker(
+        [lat, lng],
+        {
+          radius: 10,
+          color: "green",
+          fillColor: "green",
+          fillOpacity: .9
+        }
+      )
+        .addTo(capaDetalle)
+        .bindPopup(`
+          <b>
+            ${escaparHtml(
+              visita.cliente
+            )}
+          </b>
+
+          <br>
+
+          Estado:
+          <b>VISITADO</b>
+        `);
+    });
+
+  /*
+  Al seleccionar un vendedor acomoda
+  el mapa una sola vez.
+
+  Las actualizaciones automáticas no
+  modifican el zoom elegido después.
+  */
+
+  if (
+    !vistaDetalleAjustada &&
+    puntos.length > 0
+  ) {
+    mapa.fitBounds(
+      puntos,
+      {
+        padding: [60, 60],
+        maxZoom: 16
+      }
+    );
+
+    vistaDetalleAjustada = true;
   }
 }
 
 cargarSupervisor();
 
-setInterval(cargarSupervisor,30000);
+/*
+Actualiza datos cada 30 segundos,
+sin recuperar puntos históricos y
+sin cambiar el zoom del supervisor.
+*/
+setInterval(
+  cargarSupervisor,
+  30000
+);
 </script>
 
 </body>

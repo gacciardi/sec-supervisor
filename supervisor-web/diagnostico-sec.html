@@ -1,0 +1,482 @@
+Biblioteca
+/
+diagnostico-sec.txt
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Diagnóstico</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #071b3a;
+      color: white;
+      padding: 20px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      opacity: .85;
+    }
+
+    .contenedor {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px 30px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+      margin-bottom: 18px;
+    }
+
+    .buscador {
+      display: grid;
+      grid-template-columns: 1fr 190px auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 13px 18px;
+      background: #0b55c7;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-volver {
+      margin-top: 12px;
+      background: #6b7280;
+    }
+
+    .oculto { display: none; }
+
+    .error {
+      margin-top: 14px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      padding: 12px;
+      border-radius: 10px;
+    }
+
+    .resumen {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .tarjeta {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .tarjeta strong {
+      display: block;
+      font-size: 25px;
+      color: #071b3a;
+    }
+
+    .registro {
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 18px;
+      background: white;
+    }
+
+    .titulo-registro {
+      background: #e0e7ff;
+      padding: 14px;
+      font-weight: bold;
+    }
+
+    .cuerpo-registro {
+      padding: 16px;
+    }
+
+    .grilla {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .dato {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 11px;
+    }
+
+    .dato span {
+      display: block;
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .ok {
+      color: #166534;
+      font-weight: bold;
+    }
+
+    .mal {
+      color: #991b1b;
+      font-weight: bold;
+    }
+
+    .observaciones {
+      margin-top: 14px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .visita {
+      margin-top: 8px;
+      background: #ecfdf5;
+      border: 1px solid #86efac;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    @media (max-width: 800px) {
+      .buscador,
+      .resumen,
+      .grilla {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <h1>Diagnóstico SEC</h1>
+    <p>Control de cliente, ruta, vendedor, frecuencia y visitas.</p>
+  </div>
+
+  <div class="contenedor">
+    <div class="panel">
+      <div class="buscador">
+        <div>
+          <label for="codigo">Código de cliente</label>
+          <input id="codigo" placeholder="Ejemplo: 13847">
+        </div>
+
+        <div>
+          <label for="fecha">Fecha</label>
+          <input id="fecha" type="date">
+        </div>
+
+        <button onclick="buscar()">Buscar</button>
+      </div>
+
+      <button class="btn-volver" onclick="history.back()">
+        Volver
+      </button>
+
+      <div id="error" class="error oculto"></div>
+    </div>
+
+    <div id="resultado" class="oculto">
+      <div class="panel">
+        <div class="resumen">
+          <div class="tarjeta">
+            <strong id="cantidad">0</strong>
+            Registros
+          </div>
+
+          <div class="tarjeta">
+            <strong id="duplicado">NO</strong>
+            Duplicado
+          </div>
+
+          <div class="tarjeta">
+            <strong id="conflictos">0</strong>
+            Conflictos
+          </div>
+
+          <div class="tarjeta">
+            <strong id="sobrantes">0</strong>
+            Sobrantes
+          </div>
+
+          <div class="tarjeta">
+            <strong id="visitas">0</strong>
+            Visitas
+          </div>
+        </div>
+      </div>
+
+      <div id="lista"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = "https://sec-backend-gg4j.onrender.com";
+
+    document.getElementById("fecha").value =
+      new Date().toISOString().slice(0, 10);
+
+    document.getElementById("codigo").addEventListener(
+      "keydown",
+      e => {
+        if (e.key === "Enter") {
+          buscar();
+        }
+      }
+    );
+
+    function valor(v) {
+      return v === null || v === undefined || v === ""
+        ? "-"
+        : String(v);
+    }
+
+    function siNo(v) {
+      return v
+        ? '<span class="ok">SÍ</span>'
+        : '<span class="mal">NO</span>';
+    }
+
+    function hora(v) {
+      if (!v) return "-";
+      return new Date(v).toLocaleString();
+    }
+
+    async function buscar() {
+      const codigo =
+        document.getElementById("codigo").value.trim();
+
+      const fecha =
+        document.getElementById("fecha").value;
+
+      const error =
+        document.getElementById("error");
+
+      error.classList.add("oculto");
+      document.getElementById("resultado").classList.add("oculto");
+
+      if (!codigo) {
+        error.textContent = "Ingresá un código de cliente.";
+        error.classList.remove("oculto");
+        return;
+      }
+
+      try {
+        const respuesta = await fetch(
+          `${API}/diagnostico/cliente/${encodeURIComponent(codigo)}?fecha=${fecha}`
+        );
+
+        const datos = await respuesta.json();
+
+        if (!respuesta.ok) {
+          throw new Error(
+            datos.error ||
+            datos.detalle ||
+            "No se pudo realizar el diagnóstico"
+          );
+        }
+
+        mostrar(datos);
+
+      } catch (e) {
+        error.textContent = e.message;
+        error.classList.remove("oculto");
+      }
+    }
+
+    function mostrar(datos) {
+      const r = datos.resumen || {};
+      const clientes = datos.clientes || [];
+
+      document.getElementById("cantidad").textContent =
+        r.cantidad_registros || 0;
+
+      document.getElementById("duplicado").textContent =
+        r.duplicado ? "SÍ" : "NO";
+
+      document.getElementById("conflictos").textContent =
+        r.conflictos || 0;
+
+      document.getElementById("sobrantes").textContent =
+        r.vendedores_sobrantes || 0;
+
+      document.getElementById("visitas").textContent =
+        r.visitas || 0;
+
+      document.getElementById("lista").innerHTML =
+        clientes.map((c, i) => {
+          const observaciones =
+            Array.isArray(c.observaciones)
+              ? c.observaciones
+              : [];
+
+          const visitas =
+            Array.isArray(c.visitas)
+              ? c.visitas
+              : [];
+
+          return `
+            <div class="registro">
+              <div class="titulo-registro">
+                Registro ${i + 1} —
+                ${valor(c.codigo_cliente)} —
+                ${valor(c.nombre)}
+              </div>
+
+              <div class="cuerpo-registro">
+                <div class="grilla">
+                  <div class="dato">
+                    <span>ID interno</span>
+                    ${valor(c.id)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Ruta</span>
+                    ${valor(c.ruta)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Ruta activa</span>
+                    ${siNo(c.ruta_activa)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Vendedor de la ruta</span>
+                    ${valor(c.vendedor_ruta)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Vendedor directo guardado</span>
+                    ${valor(c.vendedor_directo)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Vendedor efectivo</span>
+                    ${valor(c.vendedor_efectivo)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Origen de la asignación</span>
+                    ${valor(c.origen_vendedor)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Frecuencia</span>
+                    ${valor(c.frecuencia)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Corresponde en la fecha</span>
+                    ${siNo(c.corresponde_fecha)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Aparece en el plan</span>
+                    ${siNo(c.aparece_en_plan)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Cliente activo</span>
+                    ${siNo(c.activo)}
+                  </div>
+
+                  <div class="dato">
+                    <span>Conflicto de vendedores</span>
+                    ${siNo(c.conflicto_vendedores)}
+                  </div>
+                </div>
+
+                <div class="observaciones">
+                  <b>Observaciones</b>
+
+                  ${
+                    observaciones.length
+                      ? `
+                        <ul>
+                          ${
+                            observaciones
+                              .map(o => `<li>${o}</li>`)
+                              .join("")
+                          }
+                        </ul>
+                      `
+                      : "<p>No se detectaron observaciones.</p>"
+                  }
+                </div>
+
+                <h3>Visitas de la fecha</h3>
+
+                ${
+                  visitas.length
+                    ? visitas.map(v => `
+                        <div class="visita">
+                          <b>${valor(v.vendedor)}</b><br>
+                          Llegada: ${hora(v.hora_llegada)}<br>
+                          Salida: ${hora(v.hora_salida)}<br>
+                          Permanencia:
+                          ${Math.round(
+                            Number(v.permanencia_segundos || 0) / 60
+                          )} minutos
+                        </div>
+                      `).join("")
+                    : "<p>No hay visitas registradas.</p>"
+                }
+              </div>
+            </div>
+          `;
+        }).join("");
+
+      document.getElementById("resultado").classList.remove("oculto");
+    }
+  </script>
+</body>
+</html>

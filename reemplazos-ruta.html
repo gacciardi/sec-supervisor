@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Reemplazos de Ruta</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f3f4f6; color: #1f2937; }
+    .topbar { background: #071b3a; color: white; padding: 20px; }
+    .topbar h1 { margin: 0; font-size: 24px; }
+    .topbar p { margin: 6px 0 0; opacity: .85; }
+    .contenedor { max-width: 1100px; margin: 24px auto; padding: 0 16px 30px; }
+    .panel { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,.08); margin-bottom: 18px; }
+    .grilla { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 14px; }
+    label { display: block; font-weight: bold; margin-bottom: 6px; }
+    select, input { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; background: white; }
+    .titular { background: #eef2ff; border: 1px solid #c7d2fe; padding: 12px; border-radius: 10px; font-weight: bold; min-height: 44px; }
+    button { border: none; border-radius: 10px; padding: 12px 18px; background: #0b55c7; color: white; font-size: 15px; font-weight: bold; cursor: pointer; }
+    button.secundario { background: #6b7280; }
+    button.peligro { background: #b91c1c; }
+    .acciones { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .mensaje { margin-top: 14px; padding: 12px; border-radius: 10px; display: none; }
+    .mensaje.ok { display: block; background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+    .mensaje.error { display: block; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+    th { background: #f9fafb; }
+    .estado { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: bold; }
+    .vigente { background: #dcfce7; color: #166534; }
+    .no-vigente { background: #e5e7eb; color: #374151; }
+    @media (max-width: 800px) {
+      .grilla { grid-template-columns: 1fr; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr { border: 1px solid #d1d5db; border-radius: 10px; margin-bottom: 12px; padding: 10px; }
+      td { border: none; padding: 6px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Reemplazos de Ruta</h1>
+    <p>Asignación temporal de vendedores sin modificar el titular permanente.</p>
+  </div>
+
+  <div class="contenedor">
+    <div class="panel">
+      <h2>Nuevo reemplazo</h2>
+
+      <div class="grilla">
+        <div>
+          <label for="ruta">Ruta</label>
+          <select id="ruta" onchange="mostrarTitular()">
+            <option value="">Seleccionar ruta</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Vendedor titular</label>
+          <div id="titular" class="titular">Seleccione una ruta</div>
+        </div>
+
+        <div>
+          <label for="reemplazante">Vendedor reemplazante</label>
+          <select id="reemplazante">
+            <option value="">Seleccionar vendedor</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="motivo">Motivo</label>
+          <select id="motivo">
+            <option value="Vacaciones">Vacaciones</option>
+            <option value="Enfermedad">Enfermedad</option>
+            <option value="Licencia">Licencia</option>
+            <option value="Ausencia">Ausencia</option>
+            <option value="Capacitación">Capacitación</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="desde">Desde</label>
+          <input id="desde" type="date">
+        </div>
+
+        <div>
+          <label for="hasta">Hasta</label>
+          <input id="hasta" type="date">
+        </div>
+      </div>
+
+      <div class="acciones">
+        <button onclick="crearReemplazo()">Activar reemplazo</button>
+        <button class="secundario" onclick="history.back()">Volver</button>
+      </div>
+
+      <div id="mensaje" class="mensaje"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Reemplazos registrados</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Ruta</th>
+            <th>Titular</th>
+            <th>Reemplazante</th>
+            <th>Desde</th>
+            <th>Hasta</th>
+            <th>Motivo</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = "https://sec-backend-gg4j.onrender.com";
+    let rutas = [];
+
+    function fechaLocal(fecha) {
+      if (!fecha) return "-";
+      const partes = String(fecha).slice(0, 10).split("-");
+      return partes.length === 3
+        ? `${partes[2]}/${partes[1]}/${partes[0]}`
+        : fecha;
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const mensaje = document.getElementById("mensaje");
+      mensaje.textContent = texto;
+      mensaje.className = `mensaje ${tipo}`;
+    }
+
+    async function cargarDatos() {
+      try {
+        const [respRutas, respVendedores] = await Promise.all([
+          fetch(`${API}/reemplazos-ruta/rutas`),
+          fetch(`${API}/reemplazos-ruta/vendedores`)
+        ]);
+
+        if (!respRutas.ok || !respVendedores.ok) {
+          throw new Error("No se pudieron cargar rutas o vendedores");
+        }
+
+        rutas = await respRutas.json();
+        const vendedores = await respVendedores.json();
+
+        const selectRuta = document.getElementById("ruta");
+
+        rutas.forEach(r => {
+          const option = document.createElement("option");
+          option.value = r.id;
+          option.textContent = `Ruta ${r.nombre}`;
+          selectRuta.appendChild(option);
+        });
+
+        const selectVendedor = document.getElementById("reemplazante");
+
+        vendedores.forEach(v => {
+          const option = document.createElement("option");
+          option.value = v.id;
+          option.textContent =
+            v.nombre_completo ||
+            `${v.nombre || ""} ${v.apellido || ""}`;
+          selectVendedor.appendChild(option);
+        });
+
+        await cargarReemplazos();
+
+      } catch (error) {
+        mostrarMensaje(error.message, "error");
+      }
+    }
+
+    function mostrarTitular() {
+      const rutaId = document.getElementById("ruta").value;
+      const ruta = rutas.find(r => r.id === rutaId);
+
+      document.getElementById("titular").textContent =
+        ruta
+          ? (ruta.vendedor_titular || "Sin vendedor titular")
+          : "Seleccione una ruta";
+    }
+
+    async function crearReemplazo() {
+      const ruta_id = document.getElementById("ruta").value;
+      const vendedor_reemplazo_id = document.getElementById("reemplazante").value;
+      const fecha_desde = document.getElementById("desde").value;
+      const fecha_hasta = document.getElementById("hasta").value;
+      const motivo = document.getElementById("motivo").value;
+
+      if (!ruta_id || !vendedor_reemplazo_id || !fecha_desde || !fecha_hasta) {
+        mostrarMensaje("Complete ruta, vendedor y fechas.", "error");
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${API}/reemplazos-ruta`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ruta_id,
+            vendedor_reemplazo_id,
+            fecha_desde,
+            fecha_hasta,
+            motivo
+          })
+        });
+
+        const datos = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(
+            datos.error ||
+            datos.detalle ||
+            "No se pudo crear el reemplazo"
+          );
+        }
+
+        mostrarMensaje("Reemplazo creado correctamente.", "ok");
+        await cargarReemplazos();
+
+      } catch (error) {
+        mostrarMensaje(error.message, "error");
+      }
+    }
+
+    async function cargarReemplazos() {
+      try {
+        const resp = await fetch(`${API}/reemplazos-ruta`);
+        const datos = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(
+            datos.error ||
+            "No se pudieron cargar los reemplazos"
+          );
+        }
+
+        const tabla = document.getElementById("tabla");
+        tabla.innerHTML = "";
+
+        if (!datos.length) {
+          tabla.innerHTML = `
+            <tr>
+              <td colspan="8">No hay reemplazos registrados.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        datos.forEach(r => {
+          const tr = document.createElement("tr");
+
+          const estado = r.vigente_hoy
+            ? `<span class="estado vigente">Vigente hoy</span>`
+            : `<span class="estado no-vigente">No vigente</span>`;
+
+          tr.innerHTML = `
+            <td>${r.ruta || "-"}</td>
+            <td>${r.vendedor_titular || "-"}</td>
+            <td>${r.vendedor_reemplazo || "-"}</td>
+            <td>${fechaLocal(r.fecha_desde)}</td>
+            <td>${fechaLocal(r.fecha_hasta)}</td>
+            <td>${r.motivo || "-"}</td>
+            <td>${estado}</td>
+            <td>
+              ${
+                r.activo
+                  ? `<button class="peligro" onclick="finalizar('${r.id}')">Finalizar</button>`
+                  : "Finalizado"
+              }
+            </td>
+          `;
+
+          tabla.appendChild(tr);
+        });
+
+      } catch (error) {
+        mostrarMensaje(error.message, "error");
+      }
+    }
+
+    async function finalizar(id) {
+      if (!confirm("¿Desea finalizar este reemplazo?")) return;
+
+      try {
+        const resp = await fetch(
+          `${API}/reemplazos-ruta/${id}/finalizar`,
+          { method: "PATCH" }
+        );
+
+        const datos = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(
+            datos.error ||
+            "No se pudo finalizar el reemplazo"
+          );
+        }
+
+        mostrarMensaje("Reemplazo finalizado.", "ok");
+        await cargarReemplazos();
+
+      } catch (error) {
+        mostrarMensaje(error.message, "error");
+      }
+    }
+
+    cargarDatos();
+  </script>
+</body>
+</html>

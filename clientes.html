@@ -2,17 +2,185 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>SEC - Clientes</title>
+
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* =====================================================
+       AJUSTE ESPECIFICO PANTALLA CLIENTES
+       ===================================================== */
+
+    .container {
+      max-width: none;
+      width: calc(100% - 24px);
+      margin: 0 auto;
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+
+    .tabla-clientes-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .tabla-clientes {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    .tabla-clientes th,
+    .tabla-clientes td {
+      padding: 5px 3px;
+      vertical-align: middle;
+      overflow: hidden;
+    }
+
+    .tabla-clientes th {
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .tabla-clientes input,
+    .tabla-clientes select {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 5px 3px;
+      font-size: 11px;
+    }
+
+    /* Código */
+    .tabla-clientes th:nth-child(1),
+    .tabla-clientes td:nth-child(1) {
+      width: 6%;
+    }
+
+    /* Nombre */
+    .tabla-clientes th:nth-child(2),
+    .tabla-clientes td:nth-child(2) {
+      width: 12%;
+    }
+
+    /* Dirección */
+    .tabla-clientes th:nth-child(3),
+    .tabla-clientes td:nth-child(3) {
+      width: 12%;
+    }
+
+    /* Localidad */
+    .tabla-clientes th:nth-child(4),
+    .tabla-clientes td:nth-child(4) {
+      width: 9%;
+    }
+
+    /* Canal */
+    .tabla-clientes th:nth-child(5),
+    .tabla-clientes td:nth-child(5) {
+      width: 8%;
+    }
+
+    /* Frecuencia */
+    .tabla-clientes th:nth-child(6),
+    .tabla-clientes td:nth-child(6) {
+      width: 8%;
+    }
+
+    /* Ruta */
+    .tabla-clientes th:nth-child(7),
+    .tabla-clientes td:nth-child(7) {
+      width: 5%;
+    }
+
+    /* Vendedor */
+    .tabla-clientes th:nth-child(8),
+    .tabla-clientes td:nth-child(8) {
+      width: 10%;
+    }
+
+    /* Latitud */
+    .tabla-clientes th:nth-child(9),
+    .tabla-clientes td:nth-child(9) {
+      width: 8%;
+    }
+
+    /* Longitud */
+    .tabla-clientes th:nth-child(10),
+    .tabla-clientes td:nth-child(10) {
+      width: 8%;
+    }
+
+    /* Radio */
+    .tabla-clientes th:nth-child(11),
+    .tabla-clientes td:nth-child(11) {
+      width: 5%;
+    }
+
+    /* Acción */
+    .tabla-clientes th:nth-child(12),
+    .tabla-clientes td:nth-child(12) {
+      width: 9%;
+    }
+
+    .acciones-cliente {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .acciones-cliente button {
+      width: 100%;
+      margin: 0;
+      padding: 5px 3px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .barra-herramientas {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 15px 0;
+    }
+
+    .boton-exportar {
+      background: #166534;
+      color: white;
+    }
+
+    @media (max-width: 1000px) {
+      .tabla-clientes {
+        min-width: 1100px;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
 <header class="header-sec">
-  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
+
+  <img
+    src="assets/logo-rebesa.jpg"
+    alt="Empresa"
+    class="logo-rebesa"
+  >
+
   <div>
-    <h1><span class="nombre-empresa-sec">REBESA</span> - Clientes</h1>
+    <h1>
+      <span class="nombre-empresa-sec">REBESA</span>
+      - Clientes
+    </h1>
+
     <p>Sistema de Ejecución Comercial</p>
   </div>
+
 </header>
 
 <nav>
@@ -21,6 +189,14 @@
   <a href="clientes.html">Clientes</a>
   <a href="usuarios.html">Usuarios</a>
   <a href="importar-clientes.html">📥 Importar Excel</a>
+
+  <a
+    href="#"
+    onclick="exportarPadron(); return false;"
+  >
+    📤 Exportar padrón actualizado
+  </a>
+
   <a href="visitas.html">Visitas</a>
   <a href="alertas.html">Alertas</a>
   <a href="cobertura.html">Cobertura</a>
@@ -33,20 +209,55 @@
   <h2>Nuevo cliente</h2>
 
   <div class="filters">
-    <input id="nuevoCodigo" placeholder="Código cliente">
-    <input id="nuevoNombre" placeholder="Nombre">
-    <input id="nuevoDireccion" placeholder="Dirección">
-    <input id="nuevoLocalidad" placeholder="Localidad">
-    <input id="nuevoLatitud" placeholder="Latitud">
-    <input id="nuevoLongitud" placeholder="Longitud">
-    <input id="nuevoRadio" placeholder="Radio geocerca" value="15">
+
+    <input
+      id="nuevoCodigo"
+      placeholder="Código cliente"
+    >
+
+    <input
+      id="nuevoNombre"
+      placeholder="Nombre"
+    >
+
+    <input
+      id="nuevoDireccion"
+      placeholder="Dirección"
+    >
+
+    <input
+      id="nuevoLocalidad"
+      placeholder="Localidad"
+    >
+
+    <input
+      id="nuevoLatitud"
+      placeholder="Latitud"
+    >
+
+    <input
+      id="nuevoLongitud"
+      placeholder="Longitud"
+    >
+
+    <input
+      id="nuevoRadio"
+      placeholder="Radio geocerca"
+      value="15"
+    >
 
     <select id="nuevoCanal"></select>
+
     <select id="nuevoFrecuencia"></select>
+
     <select id="nuevoRuta"></select>
+
     <select id="nuevoVendedor"></select>
 
-    <button onclick="crearCliente()">Crear cliente</button>
+    <button onclick="crearCliente()">
+      Crear cliente
+    </button>
+
   </div>
 
   <hr>
@@ -54,58 +265,124 @@
   <h2>Clientes cargados</h2>
 
   <div class="filters">
-    <input type="text" id="buscarCliente" placeholder="Buscar cliente, código, dirección o localidad...">
 
-    <select id="filtroCanal" onchange="renderizarClientes()">
-      <option value="">Todos los canales</option>
+    <input
+      type="text"
+      id="buscarCliente"
+      placeholder="Buscar cliente, código, dirección o localidad..."
+    >
+
+    <select
+      id="filtroCanal"
+      onchange="renderizarClientes()"
+    >
+      <option value="">
+        Todos los canales
+      </option>
     </select>
 
-    <select id="filtroFrecuencia" onchange="renderizarClientes()">
-      <option value="">Todas las frecuencias</option>
+    <select
+      id="filtroFrecuencia"
+      onchange="renderizarClientes()"
+    >
+      <option value="">
+        Todas las frecuencias
+      </option>
     </select>
 
-    <select id="filtroRuta" onchange="renderizarClientes()">
-      <option value="">Todas las rutas</option>
+    <select
+      id="filtroRuta"
+      onchange="renderizarClientes()"
+    >
+      <option value="">
+        Todas las rutas
+      </option>
     </select>
+
   </div>
 
-  <div style="margin:15px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-    <button onclick="paginaAnterior()">⬅ Anterior</button>
-    <span id="infoPagina">Cargando...</span>
-    <button onclick="paginaSiguiente()">Siguiente ➡</button>
+  <div class="barra-herramientas">
 
-    <select id="limitePagina" onchange="cambiarLimite()">
-      <option value="25">25 por página</option>
-      <option value="50" selected>50 por página</option>
-      <option value="100">100 por página</option>
-      <option value="200">200 por página</option>
+    <button onclick="paginaAnterior()">
+      ⬅ Anterior
+    </button>
+
+    <span id="infoPagina">
+      Cargando...
+    </span>
+
+    <button onclick="paginaSiguiente()">
+      Siguiente ➡
+    </button>
+
+    <select
+      id="limitePagina"
+      onchange="cambiarLimite()"
+    >
+      <option value="25">
+        25 por página
+      </option>
+
+      <option
+        value="50"
+        selected
+      >
+        50 por página
+      </option>
+
+      <option value="100">
+        100 por página
+      </option>
+
+      <option value="200">
+        200 por página
+      </option>
     </select>
+
+    <button
+      class="boton-exportar"
+      onclick="exportarPadron()"
+    >
+      📤 Exportar padrón actualizado
+    </button>
+
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Código</th>
-        <th>Nombre</th>
-        <th>Dirección</th>
-        <th>Localidad</th>
-        <th>Canal</th>
-        <th>Frecuencia</th>
-        <th>Ruta</th>
-        <th>Vendedor</th>
-        <th>Latitud</th>
-        <th>Longitud</th>
-        <th>Radio</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody id="tablaClientes"></tbody>
-  </table>
+  <div class="tabla-clientes-wrap">
+
+    <table class="tabla-clientes">
+
+      <thead>
+
+        <tr>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Dirección</th>
+          <th>Localidad</th>
+          <th>Canal</th>
+          <th>Frecuencia</th>
+          <th>Ruta</th>
+          <th>Vendedor</th>
+          <th>Latitud</th>
+          <th>Longitud</th>
+          <th>Radio</th>
+          <th>Acción</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="tablaClientes"></tbody>
+
+    </table>
+
+  </div>
 
 </div>
 
 <script>
-const API = "https://sec-backend-gg4j.onrender.com";
+
+const API =
+  "https://sec-backend-gg4j.onrender.com";
 
 let canales = [];
 let frecuencias = [];
@@ -118,7 +395,9 @@ let limit = 50;
 let offset = 0;
 let timerBusqueda = null;
 
+
 function esc(valor) {
+
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
@@ -126,301 +405,818 @@ function esc(valor) {
     .replaceAll(">", "&gt;");
 }
 
+
 async function cargarDatos() {
-  canales = await fetch(`${API}/canales`).then(r => r.json());
-  frecuencias = await fetch(`${API}/frecuencias`).then(r => r.json());
-  rutas = await fetch(`${API}/rutas`).then(r => r.json());
 
-  const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
-  vendedores = usuarios.filter(u => u.rol === "VENDEDOR" && u.activo);
+  canales =
+    await fetch(
+      `${API}/canales`
+    ).then(r => r.json());
 
-  document.getElementById("filtroCanal").innerHTML =
+  frecuencias =
+    await fetch(
+      `${API}/frecuencias`
+    ).then(r => r.json());
+
+  rutas =
+    await fetch(
+      `${API}/rutas`
+    ).then(r => r.json());
+
+  const usuarios =
+    await fetch(
+      `${API}/usuarios`
+    ).then(r => r.json());
+
+  vendedores =
+    usuarios.filter(
+      u =>
+        u.rol === "VENDEDOR" &&
+        u.activo
+    );
+
+  document.getElementById(
+    "filtroCanal"
+  ).innerHTML =
     `<option value="">Todos los canales</option>` +
-    canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
+    canales.map(
+      c =>
+        `<option value="${c.id}">${esc(c.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("filtroFrecuencia").innerHTML =
+  document.getElementById(
+    "filtroFrecuencia"
+  ).innerHTML =
     `<option value="">Todas las frecuencias</option>` +
-    frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
+    frecuencias.map(
+      f =>
+        `<option value="${f.id}">${esc(f.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("filtroRuta").innerHTML =
+  document.getElementById(
+    "filtroRuta"
+  ).innerHTML =
     `<option value="">Todas las rutas</option>` +
-    rutas.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
+    rutas.map(
+      r =>
+        `<option value="${r.id}">${esc(r.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("nuevoCanal").innerHTML =
+  document.getElementById(
+    "nuevoCanal"
+  ).innerHTML =
     `<option value="">Canal</option>` +
-    canales.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join("");
+    canales.map(
+      c =>
+        `<option value="${c.id}">${esc(c.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("nuevoFrecuencia").innerHTML =
+  document.getElementById(
+    "nuevoFrecuencia"
+  ).innerHTML =
     `<option value="">Frecuencia</option>` +
-    frecuencias.map(f => `<option value="${f.id}">${esc(f.nombre)}</option>`).join("");
+    frecuencias.map(
+      f =>
+        `<option value="${f.id}">${esc(f.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("nuevoRuta").innerHTML =
+  document.getElementById(
+    "nuevoRuta"
+  ).innerHTML =
     `<option value="">Ruta</option>` +
-    rutas.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
+    rutas.map(
+      r =>
+        `<option value="${r.id}">${esc(r.nombre)}</option>`
+    ).join("");
 
-  document.getElementById("nuevoVendedor").innerHTML =
+  document.getElementById(
+    "nuevoVendedor"
+  ).innerHTML =
     `<option value="">Vendedor</option>` +
-    vendedores.map(v => `<option value="${v.id}">${esc(v.nombre)} ${esc(v.apellido)}</option>`).join("");
+    vendedores.map(
+      v =>
+        `<option value="${v.id}">${esc(v.nombre)} ${esc(v.apellido)}</option>`
+    ).join("");
 
-  document.getElementById("buscarCliente").addEventListener("input", () => {
-    clearTimeout(timerBusqueda);
-    timerBusqueda = setTimeout(() => {
-      offset = 0;
-      cargarClientes();
-    }, 400);
-  });
+  document.getElementById(
+    "buscarCliente"
+  ).addEventListener(
+    "input",
+    () => {
+
+      clearTimeout(
+        timerBusqueda
+      );
+
+      timerBusqueda =
+        setTimeout(
+          () => {
+            offset = 0;
+            cargarClientes();
+          },
+          400
+        );
+    }
+  );
 
   await cargarClientes();
 }
 
+
 function opcionesCanales(id) {
-  return `<option value="">Sin canal</option>` +
-    canales.map(c => `<option value="${c.id}" ${c.id === id ? "selected" : ""}>${esc(c.nombre)}</option>`).join("");
+
+  return (
+    `<option value="">Sin canal</option>` +
+
+    canales.map(
+      c =>
+        `<option value="${c.id}" ${c.id === id ? "selected" : ""}>${esc(c.nombre)}</option>`
+    ).join("")
+  );
 }
+
 
 function opcionesFrecuencias(id) {
-  return `<option value="">Sin frecuencia</option>` +
-    frecuencias.map(f => `<option value="${f.id}" ${f.id === id ? "selected" : ""}>${esc(f.nombre)}</option>`).join("");
+
+  return (
+    `<option value="">Sin frecuencia</option>` +
+
+    frecuencias.map(
+      f =>
+        `<option value="${f.id}" ${f.id === id ? "selected" : ""}>${esc(f.nombre)}</option>`
+    ).join("")
+  );
 }
+
 
 function opcionesRutas(id) {
-  return `<option value="">Sin ruta</option>` +
-    rutas.map(r => `<option value="${r.id}" ${r.id === id ? "selected" : ""}>${esc(r.nombre)}</option>`).join("");
+
+  return (
+    `<option value="">Sin ruta</option>` +
+
+    rutas.map(
+      r =>
+        `<option value="${r.id}" ${r.id === id ? "selected" : ""}>${esc(r.nombre)}</option>`
+    ).join("")
+  );
 }
+
 
 function opcionesVendedores(id) {
-  return `<option value="">Sin vendedor</option>` +
-    vendedores.map(v => `<option value="${v.id}" ${v.id === id ? "selected" : ""}>${esc(v.nombre)} ${esc(v.apellido)}</option>`).join("");
+
+  return (
+    `<option value="">Sin vendedor</option>` +
+
+    vendedores.map(
+      v =>
+        `<option value="${v.id}" ${v.id === id ? "selected" : ""}>${esc(v.nombre)} ${esc(v.apellido)}</option>`
+    ).join("")
+  );
 }
 
+
 async function cargarClientes() {
-  const buscar = document.getElementById("buscarCliente").value.trim();
-  const url = `${API}/clientes?limit=${limit}&offset=${offset}&buscar=${encodeURIComponent(buscar)}`;
 
-  const datos = await fetch(url).then(r => r.json());
+  const buscar =
+    document.getElementById(
+      "buscarCliente"
+    ).value.trim();
 
-  clientesGlobal = datos.clientes || [];
-  totalClientes = datos.total || 0;
+  const url =
+    `${API}/clientes?limit=${limit}&offset=${offset}&buscar=${encodeURIComponent(buscar)}`;
+
+  const datos =
+    await fetch(url)
+      .then(r => r.json());
+
+  clientesGlobal =
+    datos.clientes || [];
+
+  totalClientes =
+    datos.total || 0;
 
   renderizarClientes();
+
   actualizarInfoPagina();
 }
 
+
 function renderizarClientes() {
-  const canal = document.getElementById("filtroCanal").value;
-  const frecuencia = document.getElementById("filtroFrecuencia").value;
-  const ruta = document.getElementById("filtroRuta").value;
 
-  const clientes = clientesGlobal.filter(c => {
-    const okCanal = !canal || c.canal_id === canal;
-    const okFrecuencia = !frecuencia || c.frecuencia_id === frecuencia;
-    const okRuta = !ruta || c.ruta_id === ruta;
-    return okCanal && okFrecuencia && okRuta;
-  });
+  const canal =
+    document.getElementById(
+      "filtroCanal"
+    ).value;
 
-  document.getElementById("tablaClientes").innerHTML =
-    clientes.map(c => `
+  const frecuencia =
+    document.getElementById(
+      "filtroFrecuencia"
+    ).value;
+
+  const ruta =
+    document.getElementById(
+      "filtroRuta"
+    ).value;
+
+  const clientes =
+    clientesGlobal.filter(
+      c => {
+
+        const okCanal =
+          !canal ||
+          c.canal_id === canal;
+
+        const okFrecuencia =
+          !frecuencia ||
+          c.frecuencia_id === frecuencia;
+
+        const okRuta =
+          !ruta ||
+          c.ruta_id === ruta;
+
+        return (
+          okCanal &&
+          okFrecuencia &&
+          okRuta
+        );
+      }
+    );
+
+  document.getElementById(
+    "tablaClientes"
+  ).innerHTML =
+
+    clientes.map(
+      c => `
+
       <tr>
-        <td><input id="codigo-${c.id}" value="${esc(c.codigo_cliente)}"></td>
-        <td><input id="nombre-${c.id}" value="${esc(c.nombre)}"></td>
-        <td><input id="direccion-${c.id}" value="${esc(c.direccion)}"></td>
-        <td><input id="localidad-${c.id}" value="${esc(c.localidad)}"></td>
-
-        <td><select id="canal-${c.id}">${opcionesCanales(c.canal_id)}</select></td>
-        <td><select id="frecuencia-${c.id}">${opcionesFrecuencias(c.frecuencia_id)}</select></td>
-        <td><select id="ruta-${c.id}">${opcionesRutas(c.ruta_id)}</select></td>
-        <td><select id="vendedor-${c.id}">${opcionesVendedores(c.vendedor_id)}</select></td>
-
-        <td><input id="latitud-${c.id}" value="${esc(c.latitud)}"></td>
-        <td><input id="longitud-${c.id}" value="${esc(c.longitud)}"></td>
-        <td><input id="radio-${c.id}" value="${esc(c.radio_geocerca || 15)}"></td>
 
         <td>
-          <button onclick="abrirGeoref('${c.id}')">📍 Ubicar</button>
-          <br><br>
-
-          <button onclick="guardarCliente('${c.id}')">Guardar</button>
-          <br><br>
-
-          <br><br>
-          <button style="background:#dc2626;color:white"
-          onclick="eliminarCliente('${c.id}')">
-           🗑️ Eliminar
-          </button>
-
-          <button style="background:#ff9800;color:white" onclick="abrirEjecucion('${c.id}')">
-            🚨 Ejecución
-          </button>
+          <input
+            id="codigo-${c.id}"
+            value="${esc(c.codigo_cliente)}"
+          >
         </td>
+
+        <td>
+          <input
+            id="nombre-${c.id}"
+            value="${esc(c.nombre)}"
+          >
+        </td>
+
+        <td>
+          <input
+            id="direccion-${c.id}"
+            value="${esc(c.direccion)}"
+          >
+        </td>
+
+        <td>
+          <input
+            id="localidad-${c.id}"
+            value="${esc(c.localidad)}"
+          >
+        </td>
+
+        <td>
+          <select id="canal-${c.id}">
+            ${opcionesCanales(c.canal_id)}
+          </select>
+        </td>
+
+        <td>
+          <select id="frecuencia-${c.id}">
+            ${opcionesFrecuencias(c.frecuencia_id)}
+          </select>
+        </td>
+
+        <td>
+          <select id="ruta-${c.id}">
+            ${opcionesRutas(c.ruta_id)}
+          </select>
+        </td>
+
+        <td>
+          <select id="vendedor-${c.id}">
+            ${opcionesVendedores(c.vendedor_id)}
+          </select>
+        </td>
+
+        <td>
+          <input
+            id="latitud-${c.id}"
+            value="${esc(c.latitud)}"
+          >
+        </td>
+
+        <td>
+          <input
+            id="longitud-${c.id}"
+            value="${esc(c.longitud)}"
+          >
+        </td>
+
+        <td>
+          <input
+            id="radio-${c.id}"
+            value="${esc(c.radio_geocerca || 15)}"
+          >
+        </td>
+
+        <td>
+
+          <div class="acciones-cliente">
+
+            <button
+              onclick="abrirGeoref('${c.id}')"
+            >
+              📍 Ubicar
+            </button>
+
+            <button
+              onclick="guardarCliente('${c.id}')"
+            >
+              Guardar
+            </button>
+
+            <button
+              style="background:#dc2626;color:white"
+              onclick="eliminarCliente('${c.id}')"
+            >
+              🗑️ Eliminar
+            </button>
+
+            <button
+              style="background:#ff9800;color:white"
+              onclick="abrirEjecucion('${c.id}')"
+            >
+              🚨 Ejecución
+            </button>
+
+          </div>
+
+        </td>
+
       </tr>
-    `).join("");
+
+      `
+    ).join("");
 }
 
-function actualizarInfoPagina() {
-  const desde = totalClientes === 0 ? 0 : offset + 1;
-  const hasta = Math.min(offset + limit, totalClientes);
 
-  document.getElementById("infoPagina").textContent =
+function actualizarInfoPagina() {
+
+  const desde =
+    totalClientes === 0
+      ? 0
+      : offset + 1;
+
+  const hasta =
+    Math.min(
+      offset + limit,
+      totalClientes
+    );
+
+  document.getElementById(
+    "infoPagina"
+  ).textContent =
     `Mostrando ${desde} a ${hasta} de ${totalClientes} clientes`;
 }
 
+
 function paginaAnterior() {
-  if (offset === 0) return;
-  offset = Math.max(0, offset - limit);
+
+  if (offset === 0) {
+    return;
+  }
+
+  offset =
+    Math.max(
+      0,
+      offset - limit
+    );
+
   cargarClientes();
 }
+
 
 function paginaSiguiente() {
-  if (offset + limit >= totalClientes) return;
+
+  if (
+    offset + limit >=
+    totalClientes
+  ) {
+    return;
+  }
+
   offset += limit;
+
   cargarClientes();
 }
+
 
 function cambiarLimite() {
-  limit = Number(document.getElementById("limitePagina").value);
+
+  limit =
+    Number(
+      document.getElementById(
+        "limitePagina"
+      ).value
+    );
+
   offset = 0;
+
   cargarClientes();
 }
 
+
 async function crearCliente() {
+
   const body = {
-    codigo_cliente: document.getElementById("nuevoCodigo").value,
-    nombre: document.getElementById("nuevoNombre").value,
-    direccion: document.getElementById("nuevoDireccion").value,
-    localidad: document.getElementById("nuevoLocalidad").value,
-    latitud: document.getElementById("nuevoLatitud").value || null,
-    longitud: document.getElementById("nuevoLongitud").value || null,
-    radio_geocerca: document.getElementById("nuevoRadio").value || 15,
-    canal_id: document.getElementById("nuevoCanal").value || null,
-    frecuencia_id: document.getElementById("nuevoFrecuencia").value || null,
-    ruta_id: document.getElementById("nuevoRuta").value || null,
-    vendedor_id: document.getElementById("nuevoVendedor").value || null,
+
+    codigo_cliente:
+      document.getElementById(
+        "nuevoCodigo"
+      ).value,
+
+    nombre:
+      document.getElementById(
+        "nuevoNombre"
+      ).value,
+
+    direccion:
+      document.getElementById(
+        "nuevoDireccion"
+      ).value,
+
+    localidad:
+      document.getElementById(
+        "nuevoLocalidad"
+      ).value,
+
+    latitud:
+      document.getElementById(
+        "nuevoLatitud"
+      ).value || null,
+
+    longitud:
+      document.getElementById(
+        "nuevoLongitud"
+      ).value || null,
+
+    radio_geocerca:
+      document.getElementById(
+        "nuevoRadio"
+      ).value || 15,
+
+    canal_id:
+      document.getElementById(
+        "nuevoCanal"
+      ).value || null,
+
+    frecuencia_id:
+      document.getElementById(
+        "nuevoFrecuencia"
+      ).value || null,
+
+    ruta_id:
+      document.getElementById(
+        "nuevoRuta"
+      ).value || null,
+
+    vendedor_id:
+      document.getElementById(
+        "nuevoVendedor"
+      ).value || null,
+
     activo: true
   };
 
-  const r = await fetch(`${API}/clientes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  const r =
+    await fetch(
+      `${API}/clientes`,
+      {
+        method: "POST",
 
-  const datos = await r.json();
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(body)
+      }
+    );
+
+  const datos =
+    await r.json();
 
   if (!r.ok) {
-    alert(datos.error || datos.detalle || "Error al crear cliente");
+
+    alert(
+      datos.error ||
+      datos.detalle ||
+      "Error al crear cliente"
+    );
+
     return;
   }
 
-  alert("Cliente creado correctamente");
+  alert(
+    "Cliente creado correctamente"
+  );
 
-  document.getElementById("nuevoCodigo").value = "";
-  document.getElementById("nuevoNombre").value = "";
-  document.getElementById("nuevoDireccion").value = "";
-  document.getElementById("nuevoLocalidad").value = "";
-  document.getElementById("nuevoLatitud").value = "";
-  document.getElementById("nuevoLongitud").value = "";
-  document.getElementById("nuevoRadio").value = "15";
-  document.getElementById("nuevoRuta").value = "";
+  document.getElementById(
+    "nuevoCodigo"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoNombre"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoDireccion"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoLocalidad"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoLatitud"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoLongitud"
+  ).value = "";
+
+  document.getElementById(
+    "nuevoRadio"
+  ).value = "15";
+
+  document.getElementById(
+    "nuevoRuta"
+  ).value = "";
 
   offset = 0;
+
   cargarClientes();
 }
+
 
 async function guardarCliente(id) {
-  const cliente = clientesGlobal.find(c => c.id === id);
+
+  const cliente =
+    clientesGlobal.find(
+      c => c.id === id
+    );
 
   const body = {
-    codigo_cliente: document.getElementById(`codigo-${id}`).value,
-    nombre: document.getElementById(`nombre-${id}`).value,
-    direccion: document.getElementById(`direccion-${id}`).value,
-    localidad: document.getElementById(`localidad-${id}`).value,
-    latitud: document.getElementById(`latitud-${id}`).value || null,
-    longitud: document.getElementById(`longitud-${id}`).value || null,
-    radio_geocerca: document.getElementById(`radio-${id}`).value || 15,
-    canal_id: document.getElementById(`canal-${id}`).value || null,
-    frecuencia_id: document.getElementById(`frecuencia-${id}`).value || null,
-    ruta_id: document.getElementById(`ruta-${id}`).value || null,
-    vendedor_id: document.getElementById(`vendedor-${id}`).value || null,
-    categoria: cliente ? cliente.categoria : null,
-    activo: cliente ? cliente.activo : true
+
+    codigo_cliente:
+      document.getElementById(
+        `codigo-${id}`
+      ).value,
+
+    nombre:
+      document.getElementById(
+        `nombre-${id}`
+      ).value,
+
+    direccion:
+      document.getElementById(
+        `direccion-${id}`
+      ).value,
+
+    localidad:
+      document.getElementById(
+        `localidad-${id}`
+      ).value,
+
+    latitud:
+      document.getElementById(
+        `latitud-${id}`
+      ).value || null,
+
+    longitud:
+      document.getElementById(
+        `longitud-${id}`
+      ).value || null,
+
+    radio_geocerca:
+      document.getElementById(
+        `radio-${id}`
+      ).value || 15,
+
+    canal_id:
+      document.getElementById(
+        `canal-${id}`
+      ).value || null,
+
+    frecuencia_id:
+      document.getElementById(
+        `frecuencia-${id}`
+      ).value || null,
+
+    ruta_id:
+      document.getElementById(
+        `ruta-${id}`
+      ).value || null,
+
+    vendedor_id:
+      document.getElementById(
+        `vendedor-${id}`
+      ).value || null,
+
+    categoria:
+      cliente
+        ? cliente.categoria
+        : null,
+
+    activo:
+      cliente
+        ? cliente.activo
+        : true
   };
 
-  const r = await fetch(`${API}/clientes/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  const r =
+    await fetch(
+      `${API}/clientes/${id}`,
+      {
+        method: "PUT",
 
-  const datos = await r.json();
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(body)
+      }
+    );
+
+  const datos =
+    await r.json();
 
   if (!r.ok) {
-    alert(datos.error || datos.detalle || "Error al guardar cliente");
+
+    alert(
+      datos.error ||
+      datos.detalle ||
+      "Error al guardar cliente"
+    );
+
     return;
   }
 
-  alert("Cliente actualizado");
+  alert(
+    "Cliente actualizado"
+  );
+
   cargarClientes();
 }
 
-async function abrirEjecucion(clienteId) {
-  const vendedorId = document.getElementById(`vendedor-${clienteId}`).value;
-  const rutaId = document.getElementById(`ruta-${clienteId}`).value;
+
+async function abrirEjecucion(
+  clienteId
+) {
+
+  const vendedorId =
+    document.getElementById(
+      `vendedor-${clienteId}`
+    ).value;
+
+  const rutaId =
+    document.getElementById(
+      `ruta-${clienteId}`
+    ).value;
 
   if (!vendedorId) {
-    alert("Primero debe asignar un vendedor al cliente.");
+
+    alert(
+      "Primero debe asignar un vendedor al cliente."
+    );
+
     return;
   }
 
-  const motivo = prompt("Motivo de la visita:", "EJECUCION");
+  const motivo =
+    prompt(
+      "Motivo de la visita:",
+      "EJECUCION"
+    );
 
-  if (motivo === null) return;
+  if (motivo === null) {
+    return;
+  }
 
-  const r = await fetch(`${API}/clientes-extra`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      cliente_id: clienteId,
-      vendedor_id: vendedorId,
-      ruta_id: rutaId || null,
-      motivo: motivo || "EJECUCION"
-    })
-  });
+  const r =
+    await fetch(
+      `${API}/clientes-extra`,
+      {
+        method: "POST",
 
-  const datos = await r.json();
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            cliente_id:
+              clienteId,
+
+            vendedor_id:
+              vendedorId,
+
+            ruta_id:
+              rutaId || null,
+
+            motivo:
+              motivo ||
+              "EJECUCION"
+          })
+      }
+    );
+
+  const datos =
+    await r.json();
 
   if (!r.ok) {
-    alert(datos.detalle || datos.error || "Error al agregar ejecución");
+
+    alert(
+      datos.detalle ||
+      datos.error ||
+      "Error al agregar ejecución"
+    );
+
     return;
   }
 
-  alert("Cliente agregado a EJECUCIÓN de hoy.");
+  alert(
+    "Cliente agregado a EJECUCIÓN de hoy."
+  );
 }
 
+
 async function eliminarCliente(id) {
-  if (!confirm("¿Seguro que querés eliminar este cliente?")) return;
 
-  const r = await fetch(`${API}/clientes/${id}`, {
-    method: "DELETE"
-  });
-
-  const datos = await r.json();
-
-  if (!r.ok) {
-    alert(datos.error || datos.detalle || "Error al eliminar cliente");
+  if (
+    !confirm(
+      "¿Seguro que querés eliminar este cliente?"
+    )
+  ) {
     return;
   }
 
-  alert("Cliente eliminado");
+  const r =
+    await fetch(
+      `${API}/clientes/${id}`,
+      {
+        method: "DELETE"
+      }
+    );
+
+  const datos =
+    await r.json();
+
+  if (!r.ok) {
+
+    alert(
+      datos.error ||
+      datos.detalle ||
+      "Error al eliminar cliente"
+    );
+
+    return;
+  }
+
+  alert(
+    "Cliente eliminado"
+  );
+
   cargarClientes();
 }
 
+
 function abrirGeoref(id) {
-  window.location.href = "georef-cliente.html?id=" + id;
+
+  window.location.href =
+    "georef-cliente.html?id=" +
+    id;
 }
 
+
+function exportarPadron() {
+
+  window.location.href =
+    `${API}/clientes/exportar/csv`;
+}
+
+
 cargarDatos();
+
 </script>
 
 <script src="config-sec.js"></script>

@@ -1346,7 +1346,52 @@ cargarDatos();
 
 </script>
 
- <button
+<div id="modalEjecucion" class="modal-ejecucion">
+
+  <div class="modal-ejecucion-contenido">
+
+    <h2>Agregar cliente de Ejecución</h2>
+
+    <p>
+      Cliente:
+      <strong id="nombreClienteEjecucion"></strong>
+    </p>
+
+    <div class="modal-ejecucion-campo">
+      <label for="rutaEjecucion">
+        Ruta de ejecución
+      </label>
+
+      <select id="rutaEjecucion">
+        <option value="">Seleccionar ruta</option>
+      </select>
+    </div>
+
+    <div class="modal-ejecucion-campo">
+      <label for="vendedorEjecucion">
+        Vendedor de ejecución
+      </label>
+
+      <select id="vendedorEjecucion">
+        <option value="">Seleccionar vendedor</option>
+      </select>
+    </div>
+
+    <div class="modal-ejecucion-campo">
+      <label for="motivoEjecucion">
+        Motivo
+      </label>
+
+      <input
+        id="motivoEjecucion"
+        type="text"
+        value="EJECUCION"
+      >
+    </div>
+
+    <div class="modal-ejecucion-botones">
+
+      <button
         type="button"
         onclick="cerrarEjecucion()"
       >

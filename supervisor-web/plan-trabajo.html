@@ -11,7 +11,10 @@
   <style>
     .filtros-plan {
       display: grid;
-      grid-template-columns: minmax(220px, 1fr) minmax(170px, 220px) auto;
+      grid-template-columns:
+        minmax(220px, 1fr)
+        minmax(170px, 220px)
+        auto;
       gap: 12px;
       align-items: end;
       margin-bottom: 18px;
@@ -38,37 +41,35 @@
 
     .datos-ruta {
       display: grid;
-      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      grid-template-columns:
+        repeat(4, minmax(180px, 1fr));
       gap: 12px;
       margin: 18px 0;
     }
 
     .dato-ruta {
-      background: #eef2ff;
-      border: 1px solid #c7d2fe;
+      background: #fff;
       padding: 14px;
       border-radius: 12px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.10);
     }
 
     .dato-ruta span {
       display: block;
-      font-size: 12px;
       color: #64748b;
-      margin-bottom: 4px;
+      font-size: 12px;
+      margin-bottom: 5px;
     }
 
     .dato-ruta strong {
       color: #071b3a;
-    }
-
-    .reemplazo {
-      background: #fff7ed;
-      border-color: #fdba74;
+      font-size: 16px;
     }
 
     .resumen-plan {
       display: grid;
-      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      grid-template-columns:
+        repeat(5, minmax(130px, 1fr));
       gap: 12px;
       margin: 18px 0;
     }
@@ -131,6 +132,19 @@
       color: #1d4ed8;
     }
 
+    .estado-ejecucion {
+     background: #fef3c7;
+    color: #92400e;
+   }
+
+    .situacion-titular {
+      color: #166534;
+    }
+
+    .situacion-reemplazo {
+      color: #b45309;
+    }
+
     .sin-coordenadas {
       color: #b45309;
       font-weight: bold;
@@ -159,17 +173,24 @@
       overflow-x: auto;
     }
 
-    @media(max-width:900px) {
+    @media(max-width: 900px) {
       .filtros-plan {
         grid-template-columns: 1fr;
       }
 
       .datos-ruta {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
       }
 
       .resumen-plan {
-        grid-template-columns: repeat(2, minmax(130px, 1fr));
+        grid-template-columns:
+          repeat(2, minmax(130px, 1fr));
+      }
+    }
+
+    @media(max-width: 600px) {
+      .datos-ruta {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -178,6 +199,7 @@
 <body>
 
 <header class="header-sec">
+
   <img
     src="assets/logo-rebesa.jpg"
     alt="Empresa"
@@ -186,12 +208,17 @@
 
   <div>
     <h1>
-      <span class="nombre-empresa-sec">REBESA</span>
+      <span class="nombre-empresa-sec">
+        REBESA
+      </span>
       - Plan de trabajo
     </h1>
 
-    <p>Clientes programados por ruta y fecha</p>
+    <p>
+      Clientes programados por ruta y fecha
+    </p>
   </div>
+
 </header>
 
 <nav>
@@ -199,7 +226,6 @@
   <a href="mapa.html">Mapa</a>
   <a href="clientes.html">Clientes</a>
   <a href="plan-trabajo.html">Plan de trabajo</a>
-  <a href="reemplazos-ruta.html">Reemplazos</a>
   <a href="usuarios.html">Usuarios</a>
   <a href="visitas.html">Visitas</a>
   <a href="alertas.html">Alertas</a>
@@ -215,16 +241,26 @@
   <div class="filtros-plan">
 
     <div class="campo-plan">
-      <label for="rutaSelect">Ruta</label>
+      <label for="rutaSelect">
+        Ruta
+      </label>
 
       <select id="rutaSelect">
-        <option value="">Seleccionar ruta</option>
+        <option value="">
+          Seleccionar ruta
+        </option>
       </select>
     </div>
 
     <div class="campo-plan">
-      <label for="fechaSelect">Fecha</label>
-      <input id="fechaSelect" type="date">
+      <label for="fechaSelect">
+        Fecha
+      </label>
+
+      <input
+        id="fechaSelect"
+        type="date"
+      >
     </div>
 
     <button onclick="cargarPlan()">
@@ -249,28 +285,22 @@
 
       <div class="dato-ruta">
         <span>Ruta</span>
-        <strong id="rutaPlan">-</strong>
+        <strong id="datoRuta">-</strong>
       </div>
 
       <div class="dato-ruta">
         <span>Vendedor titular</span>
-        <strong id="titularPlan">-</strong>
+        <strong id="datoTitular">-</strong>
       </div>
 
-      <div
-        class="dato-ruta"
-        id="cajaEfectivo"
-      >
+      <div class="dato-ruta">
         <span>Vendedor efectivo</span>
-        <strong id="efectivoPlan">-</strong>
+        <strong id="datoEfectivo">-</strong>
       </div>
 
-      <div
-        class="dato-ruta"
-        id="cajaSituacion"
-      >
+      <div class="dato-ruta">
         <span>Situación</span>
-        <strong id="situacionPlan">Titular</strong>
+        <strong id="datoSituacion">-</strong>
       </div>
 
     </div>
@@ -279,7 +309,7 @@
 
       <div class="tarjeta-plan">
         <strong id="totalPlan">0</strong>
-        <span>Programados</span>
+        <span>Total del día</span>
       </div>
 
       <div class="tarjeta-plan">
@@ -323,7 +353,6 @@
             <th>Ruta</th>
             <th>Frecuencia</th>
             <th>Estado</th>
-            <th>Vendedor visita</th>
             <th>Llegada</th>
             <th>Salida</th>
             <th>Permanencia</th>
@@ -342,9 +371,12 @@
 </div>
 
 <script>
-const API = "https://sec-backend-gg4j.onrender.com";
+
+const API =
+  "https://sec-backend-gg4j.onrender.com";
 
 function esc(valor) {
+
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
@@ -353,123 +385,152 @@ function esc(valor) {
 }
 
 function fechaLocalISO() {
-  const hoy = new Date();
-  const correccion = hoy.getTimezoneOffset() * 60000;
 
-  return new Date(hoy.getTime() - correccion)
+  const ahora = new Date();
+
+  const correccion =
+    ahora.getTimezoneOffset() * 60000;
+
+  return new Date(
+    ahora.getTime() - correccion
+  )
     .toISOString()
     .slice(0, 10);
 }
 
-function mostrarMensaje(texto, tipo = "info") {
-  const elemento = document.getElementById("mensaje");
+function mostrarMensaje(
+  texto,
+  tipo = "info"
+) {
+
+  const elemento =
+    document.getElementById("mensaje");
 
   elemento.textContent = texto;
-  elemento.className = "mensaje-plan " + tipo;
+
+  elemento.className =
+    "mensaje-plan " + tipo;
 }
 
 function ocultarMensaje() {
-  const elemento = document.getElementById("mensaje");
+
+  const elemento =
+    document.getElementById("mensaje");
 
   elemento.textContent = "";
-  elemento.className = "mensaje-plan";
+
+  elemento.className =
+    "mensaje-plan";
 }
 
 function formatearHora(valor) {
+
   if (!valor) {
     return "-";
   }
 
-  return new Date(valor).toLocaleTimeString(
-    "es-AR",
-    {
-      hour: "2-digit",
-      minute: "2-digit"
-    }
-  );
+  return new Date(valor)
+    .toLocaleTimeString(
+      "es-AR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
 }
 
 function formatearDuracion(segundos) {
-  const total = Number(segundos || 0);
+
+  const total =
+    Number(segundos || 0);
 
   if (total <= 0) {
     return "-";
   }
 
-  const horas = Math.floor(total / 3600);
-  const minutos = Math.floor((total % 3600) / 60);
+  const horas =
+    Math.floor(total / 3600);
+
+  const minutos =
+    Math.floor(
+      (total % 3600) / 60
+    );
 
   if (horas > 0) {
-    return horas + " h " + minutos + " min";
+    return (
+      horas +
+      " h " +
+      minutos +
+      " min"
+    );
   }
 
   return minutos + " min";
 }
 
 async function cargarRutas() {
-  try {
-    const respuesta = await fetch(
-      API + "/reemplazos-ruta/rutas"
-    );
 
-    const datos = await respuesta.json();
+  try {
+
+    const respuesta =
+      await fetch(
+        API +
+        "/reemplazos-ruta/rutas"
+      );
+
+    const datos =
+      await respuesta.json();
 
     if (!respuesta.ok) {
+
       throw new Error(
         datos.error ||
         "No se pudieron cargar las rutas"
       );
     }
 
-    const rutas = Array.isArray(datos)
-      ? datos
-      : [];
-
-    rutas.sort(function(a, b) {
-      const numeroA = Number(a.nombre);
-      const numeroB = Number(b.nombre);
-
-      if (
-        Number.isFinite(numeroA) &&
-        Number.isFinite(numeroB)
-      ) {
-        return numeroA - numeroB;
-      }
-
-      return String(a.nombre).localeCompare(
-        String(b.nombre)
-      );
-    });
+    const rutas =
+      Array.isArray(datos)
+        ? datos
+        : [];
 
     const select =
-      document.getElementById("rutaSelect");
+      document.getElementById(
+        "rutaSelect"
+      );
 
     select.innerHTML =
-      '<option value="">Seleccionar ruta</option>';
+      '<option value="">' +
+      'Seleccionar ruta' +
+      '</option>' +
 
-    rutas.forEach(function(ruta) {
-      const option =
-        document.createElement("option");
+      rutas.map(function(ruta) {
 
-      option.value = ruta.id;
-
-      if (ruta.vendedor_titular) {
-        option.textContent =
+        let texto =
           "Ruta " +
-          ruta.nombre +
-          " - " +
-          ruta.vendedor_titular;
-      } else {
-        option.textContent =
-          "Ruta " +
-          ruta.nombre +
-          " - Sin titular";
-      }
+          esc(ruta.nombre);
 
-      select.appendChild(option);
-    });
+        if (ruta.vendedor_titular) {
+
+          texto +=
+            " - " +
+            esc(
+              ruta.vendedor_titular
+            );
+        }
+
+        return (
+          '<option value="' +
+          esc(ruta.id) +
+          '">' +
+          texto +
+          '</option>'
+        );
+
+      }).join("");
 
   } catch (error) {
+
     mostrarMensaje(
       error.message,
       "error"
@@ -478,25 +539,34 @@ async function cargarRutas() {
 }
 
 async function cargarPlan() {
+
   const rutaId =
-    document.getElementById("rutaSelect").value;
+    document.getElementById(
+      "rutaSelect"
+    ).value;
 
   const fecha =
-    document.getElementById("fechaSelect").value;
+    document.getElementById(
+      "fechaSelect"
+    ).value;
 
   if (!rutaId) {
+
     mostrarMensaje(
       "Seleccioná una ruta.",
       "error"
     );
+
     return;
   }
 
   if (!fecha) {
+
     mostrarMensaje(
       "Seleccioná una fecha.",
       "error"
     );
+
     return;
   }
 
@@ -510,20 +580,21 @@ async function cargarPlan() {
   );
 
   try {
-    const url =
-      API +
-      "/clientes/plan-trabajo/ruta/" +
-      encodeURIComponent(rutaId) +
-      "?fecha=" +
-      encodeURIComponent(fecha);
 
     const respuesta =
-      await fetch(url);
+      await fetch(
+        API +
+        "/clientes/plan-trabajo/ruta/" +
+        encodeURIComponent(rutaId) +
+        "?fecha=" +
+        encodeURIComponent(fecha)
+      );
 
     const datos =
       await respuesta.json();
 
     if (!respuesta.ok) {
+
       throw new Error(
         datos.error ||
         datos.detalle ||
@@ -532,9 +603,11 @@ async function cargarPlan() {
     }
 
     renderizarPlan(datos);
+
     ocultarMensaje();
 
   } catch (error) {
+
     mostrarMensaje(
       error.message,
       "error"
@@ -543,70 +616,76 @@ async function cargarPlan() {
 }
 
 function renderizarPlan(datos) {
+
   const resumen =
     datos.resumen || {};
+
+  const ruta =
+    datos.ruta || {};
 
   const clientes =
     Array.isArray(datos.clientes)
       ? datos.clientes
       : [];
 
-  const ruta =
-    datos.ruta || {};
-
   document.getElementById(
     "tituloPlan"
   ).textContent =
     "Ruta " +
-    (ruta.ruta || "-") +
+    (ruta.ruta || "") +
     " - " +
     (datos.fecha || "");
 
   document.getElementById(
-    "rutaPlan"
+    "datoRuta"
   ).textContent =
     ruta.ruta || "-";
 
   document.getElementById(
-    "titularPlan"
+    "datoTitular"
   ).textContent =
     ruta.vendedor_titular ||
     "Sin titular";
 
   document.getElementById(
-    "efectivoPlan"
+    "datoEfectivo"
   ).textContent =
     ruta.vendedor_efectivo ||
     "Sin vendedor";
 
-  const hayReemplazo =
-    ruta.origen_vendedor === "REEMPLAZO";
-
-  document.getElementById(
-    "cajaEfectivo"
-  ).className =
-    hayReemplazo
-      ? "dato-ruta reemplazo"
-      : "dato-ruta";
-
-  document.getElementById(
-    "cajaSituacion"
-  ).className =
-    hayReemplazo
-      ? "dato-ruta reemplazo"
-      : "dato-ruta";
-
-  if (hayReemplazo) {
+  const situacion =
     document.getElementById(
-      "situacionPlan"
-    ).textContent =
-      "REEMPLAZO - " +
-      (ruta.motivo || "Sin motivo");
+      "datoSituacion"
+    );
+
+  if (
+    ruta.origen_vendedor ===
+    "REEMPLAZO"
+  ) {
+
+    let texto =
+      "REEMPLAZO";
+
+    if (ruta.motivo) {
+
+      texto +=
+        " - " +
+        ruta.motivo;
+    }
+
+    situacion.textContent =
+      texto;
+
+    situacion.className =
+      "situacion-reemplazo";
+
   } else {
-    document.getElementById(
-      "situacionPlan"
-    ).textContent =
-      "Titular";
+
+    situacion.textContent =
+      "TITULAR";
+
+    situacion.className =
+      "situacion-titular";
   }
 
   document.getElementById(
@@ -631,7 +710,8 @@ function renderizarPlan(datos) {
 
   const cobertura =
     Number(
-      resumen.cobertura_porcentaje || 0
+      resumen.cobertura_porcentaje ||
+      0
     );
 
   document.getElementById(
@@ -642,142 +722,168 @@ function renderizarPlan(datos) {
   document.getElementById(
     "barraCobertura"
   ).style.width =
-    Math.min(cobertura, 100) + "%";
+    Math.min(
+      cobertura,
+      100
+    ) + "%";
 
   document.getElementById(
     "detalleTiempo"
   ).textContent =
     "Tiempo total registrado dentro de clientes: " +
     formatearDuracion(
-      resumen.permanencia_total_segundos
+      resumen
+        .permanencia_total_segundos
     );
 
   const tabla =
-    document.getElementById("tablaPlan");
-
-  if (clientes.length === 0) {
-    tabla.innerHTML =
-      '<tr>' +
-      '<td colspan="12">' +
-      'No hay clientes programados ni visitas registradas para esta ruta y fecha.' +
-      '</td>' +
-      '</tr>';
-
     document.getElementById(
-      "contenidoPlan"
-    ).style.display = "block";
-
-    return;
-  }
+      "tablaPlan"
+    );
 
   tabla.innerHTML =
     clientes.map(function(cliente) {
-      let textoEstado =
-        "PENDIENTE";
 
-      let claseEstado =
-        "estado-pendiente";
+       let textoEstado;
+      let claseEstado;
 
       if (
+        cliente.es_ejecucion &&
+        cliente.visitado
+      ) {
+
+        textoEstado =
+          "EJECUCIÓN - VISITADO";
+
+        claseEstado =
+          "estado-visitado";
+
+      } else if (
+        cliente.es_ejecucion
+      ) {
+
+        textoEstado =
+          "EJECUCIÓN";
+
+        claseEstado =
+          "estado-ejecucion";
+
+      } else if (
         cliente.visitado &&
         !cliente.programado
       ) {
+
         textoEstado =
           "VISITADO NO PROGRAMADO";
 
         claseEstado =
           "estado-extra";
+
       } else if (
         cliente.visitado
       ) {
+
         textoEstado =
           "VISITADO";
 
         claseEstado =
           "estado-visitado";
+
+      } else {
+
+        textoEstado =
+          "PENDIENTE";
+
+        claseEstado =
+          "estado-pendiente";
       }
 
       const coordenadas =
         cliente.tiene_coordenadas
-          ? "✅"
+          ? "SI"
           : '<span class="sin-coordenadas">' +
-            '⚠ Sin coordenadas' +
+            'Sin coordenadas' +
             '</span>';
 
       return (
         "<tr>" +
 
-          "<td>" +
-            esc(cliente.codigo_cliente) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.codigo_cliente) +
+        "</td>" +
 
-          "<td>" +
-            esc(cliente.nombre) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.nombre) +
+        "</td>" +
 
-          "<td>" +
-            esc(cliente.direccion) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.direccion) +
+        "</td>" +
 
-          "<td>" +
-            esc(cliente.localidad) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.localidad) +
+        "</td>" +
 
-          "<td>" +
-            esc(cliente.ruta) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.ruta) +
+        "</td>" +
 
-          "<td>" +
-            esc(cliente.frecuencia) +
-          "</td>" +
+        "<td>" +
+        esc(cliente.frecuencia) +
+        "</td>" +
 
-          "<td>" +
-            '<span class="estado ' +
-            claseEstado +
-            '">' +
-            textoEstado +
-            "</span>" +
-          "</td>" +
+        '<td><span class="estado ' +
+        claseEstado +
+        '">' +
+        textoEstado +
+        "</span></td>" +
 
-          "<td>" +
-            esc(
-              cliente.vendedores_visita ||
-              "-"
-            ) +
-          "</td>" +
+        "<td>" +
+        formatearHora(
+          cliente.hora_llegada
+        ) +
+        "</td>" +
 
-          "<td>" +
-            formatearHora(
-              cliente.hora_llegada
-            ) +
-          "</td>" +
+        "<td>" +
+        formatearHora(
+          cliente.hora_salida
+        ) +
+        "</td>" +
 
-          "<td>" +
-            formatearHora(
-              cliente.hora_salida
-            ) +
-          "</td>" +
+        "<td>" +
+        formatearDuracion(
+          cliente
+            .permanencia_segundos
+        ) +
+        "</td>" +
 
-          "<td>" +
-            formatearDuracion(
-              cliente.permanencia_segundos
-            ) +
-          "</td>" +
-
-          "<td>" +
-            coordenadas +
-          "</td>" +
+        "<td>" +
+        coordenadas +
+        "</td>" +
 
         "</tr>"
       );
+
     }).join("");
+
+  if (clientes.length === 0) {
+
+    tabla.innerHTML =
+      '<tr>' +
+      '<td colspan="11">' +
+      'No hay clientes programados ni visitas registradas para esta fecha.' +
+      '</td>' +
+      '</tr>';
+  }
 
   document.getElementById(
     "contenidoPlan"
-  ).style.display = "block";
+  ).style.display =
+    "block";
 }
 
 async function iniciar() {
+
   document.getElementById(
     "fechaSelect"
   ).value =
@@ -787,6 +893,7 @@ async function iniciar() {
 }
 
 iniciar();
+
 </script>
 
 </body>

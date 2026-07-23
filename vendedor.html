@@ -1784,6 +1784,88 @@ function iniciarGPS() {
   );
 }
 
+function recuperarGPSAlVolver() {
+
+  if (!navigator.geolocation) {
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+
+    posicion => {
+
+      const lat =
+        posicion.coords.latitude;
+
+      const lng =
+        posicion.coords.longitude;
+
+      const precision =
+        Number(
+          posicion.coords.accuracy
+        );
+
+      const velocidad =
+        posicion.coords.speed == null
+          ? 0
+          : Number(
+              posicion.coords.speed
+            );
+
+      const fechaGPS =
+        new Date(
+          posicion.timestamp ||
+          Date.now()
+        ).toISOString();
+
+      procesarGPS(
+        lat,
+        lng,
+        precision,
+        velocidad,
+        fechaGPS
+      );
+    },
+
+    error => {
+
+      console.warn(
+        "No se pudo recuperar GPS al volver a SEC:",
+        error
+      );
+    },
+
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 15000
+    }
+  );
+}
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if (!document.hidden) {
+
+      recuperarGPSAlVolver();
+
+      setTimeout(
+        recuperarGPSAlVolver,
+        3000
+      );
+    }
+  }
+);
+
+window.addEventListener(
+  "pageshow",
+  () => {
+    recuperarGPSAlVolver();
+  }
+);
+
 async function registrarEntradaManual() {
   if (!ubicacionActual) {
     alert(

@@ -159,6 +159,59 @@
         min-width: 1100px;
       }
     }
+
+    .modal-ejecucion {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-ejecucion-contenido {
+  background: white;
+  width: min(500px, 92%);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.30);
+}
+
+.modal-ejecucion-contenido h2 {
+  margin-top: 0;
+  color: #071b3a;
+}
+
+.modal-ejecucion-campo {
+  margin-bottom: 14px;
+}
+
+.modal-ejecucion-campo label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.modal-ejecucion-campo select,
+.modal-ejecucion-campo input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.modal-ejecucion-botones {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.modal-ejecucion-botones button {
+  padding: 10px 16px;
+}
   </style>
 </head>
 
@@ -1078,87 +1131,161 @@ async function guardarCliente(id) {
 }
 
 
-async function abrirEjecucion(
-  clienteId
-) {
+let clienteEjecucionId = null;
 
-  const vendedorId =
-    document.getElementById(
-      `vendedor-${clienteId}`
-    ).value;
+
+function abrirEjecucion(clienteId) {
+
+  clienteEjecucionId =
+    clienteId;
+
+  const cliente =
+    clientesGlobal.find(
+      c => c.id === clienteId
+    );
+
+  document.getElementById(
+    "nombreClienteEjecucion"
+  ).textContent =
+    cliente
+      ? cliente.nombre
+      : "Cliente";
+
+  document.getElementById(
+    "rutaEjecucion"
+  ).innerHTML =
+    '<option value="">Seleccionar ruta</option>' +
+    rutas.map(r =>
+      `<option value="${r.id}">${esc(r.nombre)}</option>`
+    ).join("");
+
+  document.getElementById(
+    "vendedorEjecucion"
+  ).innerHTML =
+    '<option value="">Seleccionar vendedor</option>' +
+    vendedores.map(v =>
+      `<option value="${v.id}">${esc(v.nombre)} ${esc(v.apellido)}</option>`
+    ).join("");
+
+  document.getElementById(
+    "motivoEjecucion"
+  ).value =
+    "EJECUCION";
+
+  document.getElementById(
+    "modalEjecucion"
+  ).style.display =
+    "flex";
+}
+
+
+function cerrarEjecucion() {
+
+  document.getElementById(
+    "modalEjecucion"
+  ).style.display =
+    "none";
+
+  clienteEjecucionId =
+    null;
+}
+
+
+async function confirmarEjecucion() {
+
+  if (!clienteEjecucionId) {
+    return;
+  }
 
   const rutaId =
     document.getElementById(
-      `ruta-${clienteId}`
+      "rutaEjecucion"
     ).value;
+
+  const vendedorId =
+    document.getElementById(
+      "vendedorEjecucion"
+    ).value;
+
+  const motivo =
+    document.getElementById(
+      "motivoEjecucion"
+    ).value.trim() ||
+    "EJECUCION";
+
+  if (!rutaId) {
+
+    alert(
+      "Seleccioná la ruta de ejecución."
+    );
+
+    return;
+  }
 
   if (!vendedorId) {
 
     alert(
-      "Primero debe asignar un vendedor al cliente."
+      "Seleccioná el vendedor de ejecución."
     );
 
     return;
   }
 
-  const motivo =
-    prompt(
-      "Motivo de la visita:",
-      "EJECUCION"
-    );
+  try {
 
-  if (motivo === null) {
-    return;
-  }
+    const respuesta =
+      await fetch(
+        `${API}/clientes-extra`,
+        {
+          method: "POST",
 
-  const r =
-    await fetch(
-      `${API}/clientes-extra`,
-      {
-        method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          body:
+            JSON.stringify({
+              cliente_id:
+                clienteEjecucionId,
 
-        body:
-          JSON.stringify({
-            cliente_id:
-              clienteId,
+              vendedor_id:
+                vendedorId,
 
-            vendedor_id:
-              vendedorId,
+              ruta_id:
+                rutaId,
 
-            ruta_id:
-              rutaId || null,
+              motivo:
+                motivo
+            })
+        }
+      );
 
-            motivo:
-              motivo ||
-              "EJECUCION"
-          })
-      }
-    );
+    const datos =
+      await respuesta.json();
 
-  const datos =
-    await r.json();
+    if (!respuesta.ok) {
 
-  if (!r.ok) {
+      throw new Error(
+        datos.detalle ||
+        datos.error ||
+        "Error al agregar ejecución"
+      );
+    }
 
     alert(
-      datos.detalle ||
-      datos.error ||
-      "Error al agregar ejecución"
+      "Cliente agregado correctamente a EJECUCIÓN de hoy."
     );
 
-    return;
+    cerrarEjecucion();
+
+  } catch (error) {
+
+    alert(
+      error.message
+    );
   }
-
-  alert(
-    "Cliente agregado a EJECUCIÓN de hoy."
-  );
 }
-
 
 async function eliminarCliente(id) {
 
@@ -1218,6 +1345,27 @@ function exportarPadron() {
 cargarDatos();
 
 </script>
+
+ <button
+        type="button"
+        onclick="cerrarEjecucion()"
+      >
+        Cancelar
+      </button>
+
+      <button
+        type="button"
+        style="background:#ff9800;color:white"
+        onclick="confirmarEjecucion()"
+      >
+        Agregar a Ejecución
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
 
 <script src="config-sec.js"></script>
 

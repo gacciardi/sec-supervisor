@@ -132,6 +132,11 @@
       color: #1d4ed8;
     }
 
+    .estado-ejecucion {
+     background: #fef3c7;
+    color: #92400e;
+   }
+
     .situacion-titular {
       color: #166534;
     }
@@ -739,10 +744,31 @@ function renderizarPlan(datos) {
   tabla.innerHTML =
     clientes.map(function(cliente) {
 
-      let textoEstado;
+       let textoEstado;
       let claseEstado;
 
       if (
+        cliente.es_ejecucion &&
+        cliente.visitado
+      ) {
+
+        textoEstado =
+          "EJECUCIÓN - VISITADO";
+
+        claseEstado =
+          "estado-visitado";
+
+      } else if (
+        cliente.es_ejecucion
+      ) {
+
+        textoEstado =
+          "EJECUCIÓN";
+
+        claseEstado =
+          "estado-ejecucion";
+
+      } else if (
         cliente.visitado &&
         !cliente.programado
       ) {

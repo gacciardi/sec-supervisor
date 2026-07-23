@@ -576,6 +576,22 @@ let ultimaPosicionEnviada = null;
 let primeraCargaMapa = true;
 let enviandoGPS = false;
 
+/*
+=================================
+CONTROL ROBUSTO DE GPS
+=================================
+*/
+let gpsWatchId = null;
+let ultimoGPSRecibidoMs = 0;
+let ultimoGPSProcesadoMs = 0;
+let ultimoReinicioGPSMs = 0;
+let recuperandoGPS = false;
+
+const GPS_MAX_ANTIGUEDAD_MS = 120000;
+const GPS_SIN_DATOS_ALERTA_MS = 60000;
+const GPS_REINICIO_MIN_MS = 15000;
+const GPS_CONTROL_SALUD_MS = 30000;
+
 const COLA_OFFLINE = "sec_cola_offline_vendedor";
 
 const MIN_METROS_ENVIO = 10;
@@ -1403,12 +1419,147 @@ async function confirmarClienteCercano(
     );
   }
 }
+function actualizarIndicadorGPS(estado, detalle = "") {
+  const el = document.getElementById("gpsEstado");
+
+  if (!el) {
+    return;
+  }
+
+  if (estado === "ACTIVO") {
+    el.textContent = detalle
+      ? `GPS activo · ${detalle}`
+      : "GPS activo";
+    el.style.background = "#dcfce7";
+    el.style.color = "#166534";
+    return;
+  }
+
+  if (estado === "RECUPERANDO") {
+    el.textContent = "GPS recuperando";
+    el.style.background = "#fef3c7";
+    el.style.color = "#92400e";
+    return;
+  }
+
+  if (estado === "SIN_DATOS") {
+    el.textContent = detalle
+      ? `GPS sin datos · ${detalle}`
+      : "GPS sin datos";
+    el.style.background = "#fee2e2";
+    el.style.color = "#991b1b";
+    return;
+  }
+
+  if (estado === "ERROR") {
+    el.textContent = "Error GPS";
+    el.style.background = "#fee2e2";
+    el.style.color = "#991b1b";
+  }
+}
+
+function normalizarPosicionGPS(posicion) {
+  if (!posicion || !posicion.coords) {
+    return null;
+  }
+
+  const lat = Number(posicion.coords.latitude);
+  const lng = Number(posicion.coords.longitude);
+  const precision = Number(posicion.coords.accuracy);
+  const velocidad =
+    posicion.coords.speed == null
+      ? 0
+      : Number(posicion.coords.speed);
+
+  const timestamp = Number(
+    posicion.timestamp || Date.now()
+  );
+
+  if (!coordValida(lat, lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    precision:
+      Number.isFinite(precision)
+        ? precision
+        : null,
+    velocidad:
+      Number.isFinite(velocidad)
+        ? velocidad
+        : 0,
+    timestamp,
+    fechaGPS: new Date(timestamp).toISOString()
+  };
+}
+
+async function manejarPosicionGPS(
+  posicion,
+  forzarEnvio = false
+) {
+  const gps = normalizarPosicionGPS(posicion);
+
+  if (!gps) {
+    return;
+  }
+
+  const ahora = Date.now();
+  const antiguedad = Math.max(
+    0,
+    ahora - gps.timestamp
+  );
+
+  /*
+  Una posición demasiado antigua puede ser una
+  ubicación cacheada por Android/Chrome. Se usa
+  para actualizar la pantalla, pero no se manda
+  al backend como si fuera una posición actual.
+  */
+  if (
+    antiguedad > GPS_MAX_ANTIGUEDAD_MS &&
+    !forzarEnvio
+  ) {
+    actualizarIndicadorGPS(
+      "RECUPERANDO"
+    );
+    return;
+  }
+
+  ultimoGPSRecibidoMs = ahora;
+
+  actualizarIndicadorGPS(
+    "ACTIVO",
+    `${Math.round(gps.precision || 0)} m`
+  );
+
+  await procesarGPS(
+    gps.lat,
+    gps.lng,
+    gps.precision,
+    gps.velocidad,
+    gps.fechaGPS,
+    forzarEnvio
+  );
+}
+
+function manejarErrorGPS(error) {
+  console.error(
+    "Error de geolocalización:",
+    error
+  );
+
+  actualizarIndicadorGPS("ERROR");
+}
+
 async function procesarGPS(
   lat,
   lng,
   precision,
   velocidad,
-  fechaGPS
+  fechaGPS,
+  forzarEnvio = false
 ) {
   ubicacionActual = {
     lat,
@@ -1418,62 +1569,47 @@ async function procesarGPS(
     fechaGPS
   };
 
-  document.getElementById(
-    "gpsEstado"
-  ).textContent = "GPS activo";
-
-  document.getElementById(
-    "gpsEstado"
-  ).style.background = "#dcfce7";
-
-  document.getElementById(
-    "gpsEstado"
-  ).style.color = "#166534";
-
-  if (enviandoGPS) {
+  if (enviandoGPS && !forzarEnvio) {
     return;
   }
 
   const ahora = Date.now();
 
   if (
+    !forzarEnvio &&
     ahora - ultimoEnvioGPS <
-    MIN_MS_ENTRE_ENVIO_GPS
+      MIN_MS_ENTRE_ENVIO_GPS
   ) {
     calcularProximoCliente();
     return;
   }
 
-  if (ultimaPosicionEnviada) {
-  const metros = distanciaMetros(
-    ultimaPosicionEnviada.lat,
-    ultimaPosicionEnviada.lng,
-    lat,
-    lng
-  );
-
-  const tiempoSinEnviar =
-    ahora - ultimoEnvioGPS;
-
-  /*
-  Si se movió menos de 10 metros, normalmente
-  no enviamos otro GPS.
-
-  Pero después de 30 segundos lo enviamos
-  igualmente para que el backend vuelva a
-  controlar geocercas, entradas y salidas.
-  */
   if (
-    metros < MIN_METROS_ENVIO &&
-    tiempoSinEnviar < MAX_MS_SIN_ENVIAR_GPS
+    !forzarEnvio &&
+    ultimaPosicionEnviada
   ) {
-    calcularProximoCliente();
-    return;
+    const metros = distanciaMetros(
+      ultimaPosicionEnviada.lat,
+      ultimaPosicionEnviada.lng,
+      lat,
+      lng
+    );
+
+    const tiempoSinEnviar =
+      ahora - ultimoEnvioGPS;
+
+    if (
+      metros < MIN_METROS_ENVIO &&
+      tiempoSinEnviar < MAX_MS_SIN_ENVIAR_GPS
+    ) {
+      calcularProximoCliente();
+      return;
+    }
   }
-}
 
   enviandoGPS = true;
   ultimoEnvioGPS = ahora;
+  ultimoGPSProcesadoMs = ahora;
 
   ultimaPosicionEnviada = {
     lat,
@@ -1519,12 +1655,6 @@ async function procesarGPS(
       );
     }
 
-    /*
-    =================================
-    VARIOS CLIENTES CERCANOS
-    =================================
-    */
-
     if (
       datos.estado ===
       "MULTIPLES_CLIENTES"
@@ -1542,15 +1672,8 @@ async function procesarGPS(
       ultimaActualizacion =
         Date.now();
 
-      enviandoGPS = false;
       return;
     }
-
-    /*
-    =================================
-    DENTRO DE UN CLIENTE
-    =================================
-    */
 
     if (datos.estado === "DENTRO") {
       seleccionandoClienteCercano =
@@ -1611,12 +1734,6 @@ async function procesarGPS(
         Date.now();
     }
 
-    /*
-    =================================
-    SALIDA AUTOMÁTICA
-    =================================
-    */
-
     if (datos.estado === "FUERA") {
       document.getElementById(
         "panelVisita"
@@ -1633,12 +1750,6 @@ async function procesarGPS(
         sugerenciaPausada = false;
         clientesOmitidos.clear();
       }
-
-      /*
-      Si al salir del cliente todavía hay otros
-      comercios cercanos, los muestra para elegir.
-      Se excluye el cliente que acaba de cerrar.
-      */
 
       const clienteCerradoId =
         datos.visita
@@ -1695,7 +1806,7 @@ async function procesarGPS(
 
   if (
     Date.now() - ultimaActualizacion >
-    MIN_MS_RECARGA_DATOS
+      MIN_MS_RECARGA_DATOS
   ) {
     ultimaActualizacion =
       Date.now();
@@ -1704,7 +1815,22 @@ async function procesarGPS(
   }
 }
 
-function iniciarGPS() {
+function detenerGPS() {
+  if (
+    gpsWatchId !== null &&
+    navigator.geolocation
+  ) {
+    navigator.geolocation.clearWatch(
+      gpsWatchId
+    );
+  }
+
+  gpsWatchId = null;
+}
+
+function iniciarGPS(
+  reiniciar = false
+) {
   if (!navigator.geolocation) {
     document.getElementById(
       "gpsEstado"
@@ -1724,117 +1850,68 @@ function iniciarGPS() {
     return;
   }
 
-  navigator.geolocation.watchPosition(
-    posicion => {
-      const lat =
-        posicion.coords.latitude;
-
-      const lng =
-        posicion.coords.longitude;
-
-      const precision =
-        Number(posicion.coords.accuracy);
-
-      const velocidad =
-        posicion.coords.speed == null
-          ? 0
-          : Number(posicion.coords.speed);
-
-      const fechaGPS =
-        new Date(
-          posicion.timestamp || Date.now()
-        ).toISOString();
-
-      procesarGPS(
-        lat,
-        lng,
-        precision,
-        velocidad,
-        fechaGPS
-      );
-    },
-
-    error => {
-      document.getElementById(
-        "gpsEstado"
-      ).textContent =
-        "Error GPS";
-
-      document.getElementById(
-        "gpsEstado"
-      ).style.background =
-        "#fee2e2";
-
-      document.getElementById(
-        "gpsEstado"
-      ).style.color =
-        "#991b1b";
-
-      console.error(
-        "Error de geolocalización:",
-        error
-      );
-    },
-
-    {
-      enableHighAccuracy: true,
-      maximumAge: 10000,
-      timeout: 20000
-    }
-  );
-}
-
-function recuperarGPSAlVolver() {
-
-  if (!navigator.geolocation) {
+  if (
+    gpsWatchId !== null &&
+    !reiniciar
+  ) {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
+  if (reiniciar) {
+    detenerGPS();
+  }
 
-    posicion => {
+  ultimoReinicioGPSMs = Date.now();
 
-      const lat =
-        posicion.coords.latitude;
+  actualizarIndicadorGPS(
+    "RECUPERANDO"
+  );
 
-      const lng =
-        posicion.coords.longitude;
-
-      const precision =
-        Number(
-          posicion.coords.accuracy
+  gpsWatchId =
+    navigator.geolocation.watchPosition(
+      posicion => {
+        manejarPosicionGPS(
+          posicion,
+          false
         );
+      },
+      manejarErrorGPS,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 20000
+      }
+    );
+}
 
-      const velocidad =
-        posicion.coords.speed == null
-          ? 0
-          : Number(
-              posicion.coords.speed
-            );
+function solicitarGPSInmediato() {
+  if (
+    !navigator.geolocation ||
+    recuperandoGPS
+  ) {
+    return;
+  }
 
-      const fechaGPS =
-        new Date(
-          posicion.timestamp ||
-          Date.now()
-        ).toISOString();
+  recuperandoGPS = true;
+  actualizarIndicadorGPS(
+    "RECUPERANDO"
+  );
 
-      procesarGPS(
-        lat,
-        lng,
-        precision,
-        velocidad,
-        fechaGPS
-      );
+  navigator.geolocation.getCurrentPosition(
+    async posicion => {
+      try {
+        await manejarPosicionGPS(
+          posicion,
+          true
+        );
+      } finally {
+        recuperandoGPS = false;
+      }
     },
-
     error => {
-
-      console.warn(
-        "No se pudo recuperar GPS al volver a SEC:",
-        error
-      );
+      recuperandoGPS = false;
+      manejarErrorGPS(error);
     },
-
     {
       enableHighAccuracy: true,
       maximumAge: 0,
@@ -1843,26 +1920,100 @@ function recuperarGPSAlVolver() {
   );
 }
 
+function reactivarGPS(
+  motivo = "reactivacion"
+) {
+  if (document.hidden) {
+    return;
+  }
+
+  console.log(
+    "SEC reactivando GPS:",
+    motivo
+  );
+
+  const ahora = Date.now();
+
+  if (
+    ahora - ultimoReinicioGPSMs >=
+      GPS_REINICIO_MIN_MS
+  ) {
+    iniciarGPS(true);
+  }
+
+  solicitarGPSInmediato();
+
+  setTimeout(
+    solicitarGPSInmediato,
+    3000
+  );
+}
+
+function controlarSaludGPS() {
+  if (document.hidden) {
+    return;
+  }
+
+  const ahora = Date.now();
+
+  if (!ultimoGPSRecibidoMs) {
+    actualizarIndicadorGPS(
+      "RECUPERANDO"
+    );
+    solicitarGPSInmediato();
+    return;
+  }
+
+  const sinDatosMs =
+    ahora - ultimoGPSRecibidoMs;
+
+  if (
+    sinDatosMs >=
+      GPS_SIN_DATOS_ALERTA_MS
+  ) {
+    const minutos = Math.max(
+      1,
+      Math.round(sinDatosMs / 60000)
+    );
+
+    actualizarIndicadorGPS(
+      "SIN_DATOS",
+      `${minutos} min`
+    );
+
+    reactivarGPS("sin datos");
+  }
+}
+
 document.addEventListener(
   "visibilitychange",
   () => {
-
     if (!document.hidden) {
-
-      recuperarGPSAlVolver();
-
-      setTimeout(
-        recuperarGPSAlVolver,
-        3000
+      reactivarGPS(
+        "visibilitychange"
       );
     }
   }
 );
 
 window.addEventListener(
+  "focus",
+  () => {
+    reactivarGPS("focus");
+  }
+);
+
+window.addEventListener(
   "pageshow",
   () => {
-    recuperarGPSAlVolver();
+    reactivarGPS("pageshow");
+  }
+);
+
+window.addEventListener(
+  "online",
+  () => {
+    reactivarGPS("online");
   }
 );
 
@@ -2536,11 +2687,17 @@ INICIAR APLICACIÓN
 actualizarEstadoConexion();
 iniciarMapa();
 cargarDatos(true);
-iniciarGPS();
+iniciarGPS(true);
+solicitarGPSInmediato();
 
 setInterval(
   sincronizarOffline,
   30000
+);
+
+setInterval(
+  controlarSaludGPS,
+  GPS_CONTROL_SALUD_MS
 );
 
 setInterval(
@@ -2550,4 +2707,4 @@ setInterval(
 </script>
 
 </body>
-</html>
+</html

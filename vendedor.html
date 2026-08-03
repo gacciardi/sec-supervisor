@@ -300,21 +300,27 @@
       font-weight: bold;
     }
 
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 72px;
-      background: white;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      box-shadow: 0 -3px 14px rgba(0,0,0,.18);
-      z-index: 1000;
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
-    }
+    .bottom-nav{
+    position: fixed;
+    left: 0;
+    right: 0;
+
+    bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+
+    height: 72px;
+
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+    box-shadow: 0 -3px 14px rgba(0,0,0,.18);
+    z-index: 1000;
+
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
 
     .bottom-nav button {
       border: none;

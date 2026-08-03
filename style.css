@@ -197,3 +197,68 @@ td, th{
     font-size:28px;
     font-weight:bold;
 }
+/* =====================================
+   AJUSTES PARA CELULARES
+   ===================================== */
+
+.header-sec > div{
+    min-width:0;
+    flex:1;
+}
+
+.logo-rebesa{
+    max-width:55%;
+    width:auto;
+    height:70px;
+    object-fit:contain;
+}
+
+@media (max-width:600px){
+
+    .header-sec{
+        width:100%;
+        padding:12px;
+        gap:12px;
+        overflow:hidden;
+    }
+
+    .logo-rebesa{
+        width:55%;
+        max-width:55%;
+        height:auto;
+        max-height:65px;
+        padding:4px;
+        flex-shrink:0;
+    }
+
+    .header-sec > div{
+        width:45%;
+        min-width:0;
+    }
+
+    .header-sec h1{
+        font-size:20px;
+        line-height:1.15;
+        white-space:normal;
+        overflow-wrap:break-word;
+    }
+
+    .header-sec p{
+        margin-top:5px;
+        font-size:14px;
+        line-height:1.2;
+        white-space:normal;
+    }
+
+    .container{
+        width:100%;
+        padding:20px;
+        overflow-x:hidden;
+    }
+
+    .container input,
+    .container button{
+        width:100% !important;
+        max-width:100%;
+    }
+}

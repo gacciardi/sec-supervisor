@@ -314,6 +314,9 @@
     display: flex;
     justify-content: space-around;
     align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: visible;
 
     box-shadow: 0 -3px 14px rgba(0,0,0,.18);
     z-index: 1000;
@@ -325,13 +328,15 @@
     .bottom-nav button {
       border: none;
       background: none;
-      font-size: 12px;
+      font-size: 11px;
       color: #071b3a;
       font-weight: bold;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 4px;
+      min-width: 48px;
+      flex: 0 0 auto;
     }
 
     .bottom-nav .principal {
@@ -375,6 +380,105 @@
       color: white;
       font-weight: bold;
       margin-top: 8px;
+    }
+
+    .btn-camara {
+      width: 100%;
+      padding: 13px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      margin-top: 10px;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .estado-fotos {
+      margin-top: 8px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: #f3e8ff;
+      color: #5b21b6;
+      font-size: 13px;
+      font-weight: bold;
+      display: none;
+    }
+
+    .selector-foto-cliente {
+      border: 3px solid #7c3aed;
+      background: #faf5ff;
+      z-index: 1700;
+    }
+
+    .selector-foto-cliente h3 {
+      color: #5b21b6;
+    }
+
+    .cliente-foto-item {
+      background: white;
+      border: 1px solid #c4b5fd;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .cliente-foto-item strong {
+      color: #071b3a;
+      font-size: 16px;
+    }
+
+    .btn-elegir-foto {
+      width: 100%;
+      padding: 11px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .panel-asociar-foto {
+      border: 3px solid #7c3aed;
+      background: #faf5ff;
+      z-index: 1800;
+    }
+
+    .panel-asociar-foto h3 {
+      color: #5b21b6;
+    }
+
+    .foto-cliente-sugerido {
+      background: white;
+      border: 1px solid #c4b5fd;
+      border-radius: 12px;
+      padding: 13px;
+      margin: 12px 0;
+      color: #1f2937;
+      line-height: 1.4;
+    }
+
+    .btn-confirmar-foto {
+      width: 100%;
+      padding: 12px;
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .btn-foto-libre {
+      width: 100%;
+      padding: 11px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -447,6 +551,16 @@
   <p id="horaLlegada"></p>
 
   <button
+    id="btnFotoVisita"
+    class="btn-camara"
+    onclick="tomarFotoVisitaActual()"
+  >
+    📷 TOMAR FOTO
+  </button>
+
+  <div id="estadoFotosVisita" class="estado-fotos"></div>
+
+  <button
     class="btn-navegar"
     onclick="registrarEntradaManual()"
   >
@@ -475,6 +589,55 @@
     onclick="cerrarClientesCercanos()"
   >
     Ninguno de estos
+  </button>
+</div>
+
+<div id="panelAsociarFoto" class="panel panel-asociar-foto">
+  <h3>📷 Asociar fotografía</h3>
+
+  <div id="resumenClienteFoto" class="foto-cliente-sugerido">
+    Buscando el cliente más cercano...
+  </div>
+
+  <button
+    id="btnConfirmarClienteFoto"
+    class="btn-confirmar-foto"
+    onclick="confirmarClienteSugeridoFoto()"
+    style="display:none"
+  >
+    ✅ Sí, corresponde a este cliente
+  </button>
+
+  <button
+    class="btn-elegir-foto"
+    onclick="elegirOtroClienteFoto()"
+  >
+    Elegir otro cliente
+  </button>
+
+  <button
+    class="btn-foto-libre"
+    onclick="guardarFotoLibre()"
+  >
+    Guardar como foto libre
+  </button>
+</div>
+
+<div id="panelSeleccionFoto" class="panel selector-foto-cliente">
+  <h3>📷 Elegí el cliente para la foto</h3>
+
+  <p>
+    Usá esta opción cuando el cliente no se haya detectado
+    correctamente por georreferenciación.
+  </p>
+
+  <div id="listaClientesFoto"></div>
+
+  <button
+    class="btn-panel"
+    onclick="cerrarSelectorFoto()"
+  >
+    Cancelar
   </button>
 </div>
 
@@ -526,6 +689,11 @@
     <span>Salí</span>
   </button>
 
+  <button onclick="tomarFotoManual()">
+    📷
+    <span>Foto</span>
+  </button>
+
   <button onclick="window.location.href='localizador-pro.html'">
   📍
   <span>Localizador</span>
@@ -554,7 +722,13 @@ let recorrido = [];
 
 let ubicacionActual = null;
 let visitaActualId = null;
+let clienteActualId = null;
 let proximoCliente = null;
+
+let fotosTemporales = [];
+let clienteFotoPendienteId = null;
+let fotoPendienteAsociacion = null;
+let clienteSugeridoFoto = null;
 
 let clientesOmitidos = new Set();
 let sugerenciaPausada = false;
@@ -1383,6 +1557,12 @@ async function confirmarClienteCercano(
         ? datos.visita.id
         : null);
 
+    clienteActualId =
+      clienteId ||
+      (datos.visita
+        ? datos.visita.cliente_id
+        : null);
+
     if (primeraVisitaPendienteDeSalida) {
       primeraVisitaDetectada = true;
       guardarEstadoPrimeraVisita();
@@ -1412,6 +1592,8 @@ async function confirmarClienteCercano(
       "Llegada: " +
       new Date().toLocaleTimeString();
 
+    actualizarEstadoFotos();
+
     await cargarDatos(false);
 
   } catch (error) {
@@ -1425,6 +1607,520 @@ async function confirmarClienteCercano(
     );
   }
 }
+
+/*
+=================================
+CÁMARA NATIVA ANDROID
+=================================
+*/
+
+function puenteCamaraDisponible() {
+  return (
+    typeof window.SECAndroid !== "undefined" &&
+    typeof window.SECAndroid.tomarFoto === "function"
+  );
+}
+
+function normalizarIdFoto(valor) {
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === "" ||
+    valor === "null" ||
+    valor === "undefined"
+  ) {
+    return null;
+  }
+
+  return String(valor);
+}
+
+function abrirCamaraSEC(clienteId = null, visitaId = null) {
+  if (!puenteCamaraDisponible()) {
+    alert(
+      "La cámara de evidencias está disponible " +
+      "solamente desde la aplicación Android SEC 1.1.0 o superior."
+    );
+
+    return;
+  }
+
+  const clienteSeguro =
+    normalizarIdFoto(clienteId);
+
+  const visitaSegura =
+    normalizarIdFoto(visitaId);
+
+  clienteFotoPendienteId =
+    clienteSeguro;
+
+  try {
+    window.SECAndroid.tomarFoto(
+      clienteSeguro || "",
+      visitaSegura || ""
+    );
+  } catch (error) {
+    console.error(
+      "Error abriendo cámara Android:",
+      error
+    );
+
+    alert(
+      "No se pudo abrir la cámara del teléfono."
+    );
+  }
+}
+
+function tomarFotoVisitaActual() {
+  abrirCamaraSEC(
+    clienteActualId,
+    visitaActualId
+  );
+}
+
+/*
+El botón Foto está siempre habilitado.
+
+Si hay una visita abierta, la fotografía queda asociada
+automáticamente. Si no la hay, primero se toma la foto
+y luego SEC consulta si corresponde al cliente más cercano.
+*/
+function tomarFotoManual() {
+  abrirCamaraSEC(
+    visitaActualId ? clienteActualId : null,
+    visitaActualId
+  );
+}
+
+function buscarClienteMasCercanoFoto() {
+  if (
+    !ubicacionActual ||
+    !Array.isArray(clientes) ||
+    clientes.length === 0
+  ) {
+    return null;
+  }
+
+  let mejor = null;
+  let menorDistancia =
+    Number.POSITIVE_INFINITY;
+
+  clientes.forEach(cliente => {
+    const lat =
+      Number(cliente.latitud);
+
+    const lng =
+      Number(cliente.longitud);
+
+    if (!coordValida(lat, lng)) {
+      return;
+    }
+
+    const distancia =
+      distanciaMetros(
+        ubicacionActual.lat,
+        ubicacionActual.lng,
+        lat,
+        lng
+      );
+
+    if (distancia < menorDistancia) {
+      menorDistancia =
+        distancia;
+
+      mejor = {
+        ...cliente,
+        distancia_foto:
+          Math.round(distancia)
+      };
+    }
+  });
+
+  return mejor;
+}
+
+function mostrarAsociacionFoto() {
+  const panel =
+    document.getElementById(
+      "panelAsociarFoto"
+    );
+
+  const resumen =
+    document.getElementById(
+      "resumenClienteFoto"
+    );
+
+  const botonConfirmar =
+    document.getElementById(
+      "btnConfirmarClienteFoto"
+    );
+
+  clienteSugeridoFoto =
+    buscarClienteMasCercanoFoto();
+
+  document.getElementById(
+    "panelSeleccionFoto"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  if (clienteSugeridoFoto) {
+    resumen.innerHTML = `
+      ¿Esta foto corresponde a:
+      <br><br>
+
+      <strong>
+        ${clienteSugeridoFoto.nombre || "Cliente"}
+      </strong>
+      <br>
+
+      ${clienteSugeridoFoto.direccion || ""}
+      <br>
+
+      ${clienteSugeridoFoto.localidad || ""}
+      <br><br>
+
+      <strong>
+        Distancia aproximada:
+        ${clienteSugeridoFoto.distancia_foto} metros
+      </strong>
+    `;
+
+    botonConfirmar.style.display =
+      "block";
+  } else {
+    resumen.innerHTML = `
+      SEC no pudo determinar un cliente cercano.
+      <br><br>
+      Podés elegir un cliente manualmente o guardar
+      la imagen como foto libre.
+    `;
+
+    botonConfirmar.style.display =
+      "none";
+  }
+
+  panel.style.display =
+    "block";
+}
+
+function cerrarAsociacionFoto() {
+  document.getElementById(
+    "panelAsociarFoto"
+  ).style.display = "none";
+}
+
+function confirmarClienteSugeridoFoto() {
+  if (
+    !fotoPendienteAsociacion ||
+    !clienteSugeridoFoto
+  ) {
+    return;
+  }
+
+  guardarFotoTemporal(
+    fotoPendienteAsociacion,
+    clienteSugeridoFoto.id,
+    null
+  );
+
+  cerrarAsociacionFoto();
+}
+
+function elegirOtroClienteFoto() {
+  cerrarAsociacionFoto();
+  mostrarSelectorFoto();
+}
+
+function guardarFotoLibre() {
+  if (!fotoPendienteAsociacion) {
+    return;
+  }
+
+  guardarFotoTemporal(
+    fotoPendienteAsociacion,
+    null,
+    null
+  );
+
+  cerrarAsociacionFoto();
+}
+
+function mostrarSelectorFoto() {
+  const panel =
+    document.getElementById(
+      "panelSeleccionFoto"
+    );
+
+  const lista =
+    document.getElementById(
+      "listaClientesFoto"
+    );
+
+  if (
+    !Array.isArray(clientes) ||
+    clientes.length === 0
+  ) {
+    alert(
+      "No hay clientes cargados para seleccionar."
+    );
+
+    return;
+  }
+
+  const clientesOrdenados =
+    [...clientes].sort((a, b) =>
+      String(a.nombre || "")
+        .localeCompare(
+          String(b.nombre || ""),
+          "es"
+        )
+    );
+
+  lista.innerHTML =
+    clientesOrdenados
+      .map(cliente => {
+        let distanciaTexto = "";
+
+        const lat =
+          Number(cliente.latitud);
+
+        const lng =
+          Number(cliente.longitud);
+
+        if (
+          ubicacionActual &&
+          coordValida(lat, lng)
+        ) {
+          const distancia =
+            Math.round(
+              distanciaMetros(
+                ubicacionActual.lat,
+                ubicacionActual.lng,
+                lat,
+                lng
+              )
+            );
+
+          distanciaTexto = `
+            <br>
+            <span class="distancia-cercano">
+              A ${distancia} metros
+            </span>
+          `;
+        }
+
+        return `
+          <div class="cliente-foto-item">
+            <strong>
+              ${cliente.nombre || "Cliente"}
+            </strong>
+            <br>
+
+            ${cliente.direccion || ""}
+            <br>
+
+            ${cliente.localidad || ""}
+
+            ${distanciaTexto}
+
+            <button
+              class="btn-elegir-foto"
+              onclick="seleccionarClienteParaFoto('${cliente.id}')"
+            >
+              Asociar foto a este cliente
+            </button>
+          </div>
+        `;
+      })
+      .join("");
+
+  panel.style.display =
+    "block";
+}
+
+function cerrarSelectorFoto() {
+  document.getElementById(
+    "panelSeleccionFoto"
+  ).style.display = "none";
+}
+
+function seleccionarClienteParaFoto(clienteId) {
+  if (!fotoPendienteAsociacion) {
+    cerrarSelectorFoto();
+    return;
+  }
+
+  guardarFotoTemporal(
+    fotoPendienteAsociacion,
+    clienteId,
+    null
+  );
+
+  cerrarSelectorFoto();
+}
+
+function guardarFotoTemporal(
+  datos,
+  clienteId = null,
+  visitaId = null
+) {
+  const foto = {
+    ...datos,
+    cliente_id:
+      normalizarIdFoto(clienteId) ||
+      normalizarIdFoto(datos.cliente_id) ||
+      null,
+    visita_id:
+      normalizarIdFoto(visitaId) ||
+      normalizarIdFoto(datos.visita_id) ||
+      null,
+    latitud:
+      ubicacionActual
+        ? ubicacionActual.lat
+        : null,
+    longitud:
+      ubicacionActual
+        ? ubicacionActual.lng
+        : null,
+    vendedor_id:
+      vendedorId
+  };
+
+  fotosTemporales.push(
+    foto
+  );
+
+  fotoPendienteAsociacion =
+    null;
+
+  clienteSugeridoFoto =
+    null;
+
+  actualizarEstadoFotos();
+
+  const asociacion =
+    foto.visita_id
+      ? "visita actual"
+      : foto.cliente_id
+        ? "cliente seleccionado"
+        : "foto libre";
+
+  alert(
+    "Foto guardada correctamente.\n\n" +
+    `Tamaño: ${Math.round((foto.peso_bytes || 0) / 1024)} KB\n` +
+    `Asociación: ${asociacion}\n\n` +
+    "En la siguiente etapa se enviará al servidor."
+  );
+}
+
+function actualizarEstadoFotos() {
+  const elemento =
+    document.getElementById(
+      "estadoFotosVisita"
+    );
+
+  if (!elemento) {
+    return;
+  }
+
+  const relacionadas =
+    fotosTemporales.filter(foto => {
+      if (visitaActualId && foto.visita_id) {
+        return (
+          String(foto.visita_id) ===
+          String(visitaActualId)
+        );
+      }
+
+      if (clienteActualId && foto.cliente_id) {
+        return (
+          String(foto.cliente_id) ===
+          String(clienteActualId)
+        );
+      }
+
+      return false;
+    });
+
+  if (relacionadas.length === 0) {
+    elemento.style.display =
+      "none";
+
+    elemento.textContent =
+      "";
+
+    return;
+  }
+
+  elemento.textContent =
+    `📷 ${relacionadas.length} foto` +
+    (relacionadas.length === 1 ? "" : "s") +
+    " guardada" +
+    (relacionadas.length === 1 ? "" : "s") +
+    " temporalmente";
+
+  elemento.style.display =
+    "block";
+}
+
+window.recibirFotoAndroid = function(datos) {
+  console.log(
+    "Resultado cámara Android:",
+    datos
+  );
+
+  if (!datos || !datos.estado) {
+    return;
+  }
+
+  if (datos.estado === "CONFIRMADA") {
+    /*
+    Con una visita activa, se asocia automáticamente.
+    Sin visita, se consulta el cliente más cercano
+    después de haber tomado y confirmado la fotografía.
+    */
+    if (
+      visitaActualId ||
+      datos.visita_id
+    ) {
+      guardarFotoTemporal(
+        datos,
+        clienteActualId ||
+          datos.cliente_id,
+        visitaActualId ||
+          datos.visita_id
+      );
+
+      return;
+    }
+
+    fotoPendienteAsociacion =
+      datos;
+
+    mostrarAsociacionFoto();
+
+    return;
+  }
+
+  if (datos.estado === "ERROR") {
+    alert(
+      datos.mensaje ||
+      "No se pudo tomar la fotografía."
+    );
+  }
+};
+
 function actualizarIndicadorGPS(estado, detalle = "") {
   const el = document.getElementById("gpsEstado");
 
@@ -1734,6 +2430,16 @@ async function procesarGPS(
             : visitaActualId
         );
 
+      clienteActualId =
+        datos.cliente_id ||
+        (
+          datos.visita
+            ? datos.visita.cliente_id
+            : clienteActualId
+        );
+
+      actualizarEstadoFotos();
+
       await cargarDatos(false);
 
       ultimaActualizacion =
@@ -1746,6 +2452,8 @@ async function procesarGPS(
       ).style.display = "none";
 
       visitaActualId = null;
+      clienteActualId = null;
+      actualizarEstadoFotos();
 
       if (
         primeraVisitaPendienteDeSalida &&
@@ -2079,6 +2787,14 @@ async function registrarEntradaManual() {
           : visitaActualId
       );
 
+    clienteActualId =
+      datos.cliente_id ||
+      (
+        datos.visita
+          ? datos.visita.cliente_id
+          : clienteActualId
+      );
+
     if (
       primeraVisitaPendienteDeSalida
     ) {
@@ -2116,7 +2832,15 @@ async function registrarEntradaManual() {
       "Llegada: " +
       new Date().toLocaleTimeString();
 
+    actualizarEstadoFotos();
+
     await cargarDatos(false);
+
+    /*
+    La cámara queda disponible inmediatamente después
+    de confirmar la entrada. No se abre sola para evitar
+    sorprender al vendedor; puede tocar TOMAR FOTO.
+    */
 
   } catch (error) {
     console.error(
@@ -2579,6 +3303,8 @@ async function finalizarVisitaManual() {
   ).style.display = "none";
 
   visitaActualId = null;
+  clienteActualId = null;
+  actualizarEstadoFotos();
 
   seleccionandoClienteCercano =
     false;

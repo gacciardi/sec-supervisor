@@ -2016,13 +2016,99 @@ function guardarFotoTemporal(
         ? "cliente seleccionado"
         : "foto libre";
 
+  /*
+  Android conserva la foto local y crea una cola persistente.
+  El archivo solo se elimina después de que el backend confirme
+  Cloudinary + PostgreSQL.
+  */
+  if (
+    typeof window.SECAndroid !== "undefined" &&
+    typeof window.SECAndroid.sincronizarFoto === "function"
+  ) {
+    try {
+      window.SECAndroid.sincronizarFoto(
+        foto.ruta_interna,
+        JSON.stringify({
+          ...foto,
+          precision_gps:
+            ubicacionActual
+              ? ubicacionActual.precision
+              : null,
+          tipo_foto:
+            foto.visita_id
+              ? "VISITA"
+              : foto.cliente_id
+                ? "CLIENTE"
+                : "LIBRE"
+        })
+      );
+    } catch (error) {
+      console.error(
+        "No se pudo iniciar la sincronización:",
+        error
+      );
+    }
+  }
+
   alert(
-    "Foto guardada correctamente.\n\n" +
+    "✅ Fotografía guardada\n\n" +
     `Tamaño: ${Math.round((foto.peso_bytes || 0) / 1024)} KB\n` +
-    `Asociación: ${asociacion}\n\n` +
-    "Foto guardada correctamente."
+    `Asociación: ${asociacion}\n` +
+    "Estado: Pendiente de sincronización"
   );
 }
+
+window.recibirSincronizacionFotoAndroid =
+function(datos) {
+
+  if (!datos || !datos.estado) {
+    return;
+  }
+
+  const ruta =
+    datos.ruta_interna;
+
+  const foto =
+    fotosTemporales.find(
+      item =>
+        item.ruta_interna === ruta
+    );
+
+  if (foto) {
+    foto.estado_subida =
+      datos.estado;
+
+    foto.datos_servidor =
+      datos.servidor || null;
+  }
+
+  if (datos.estado === "SINCRONIZADA") {
+    actualizarEstadoFotos();
+
+    alert(
+      "☁️ Fotografía sincronizada\n\n" +
+      "La imagen fue enviada correctamente al servidor."
+    );
+
+    return;
+  }
+
+  if (datos.estado === "PENDIENTE") {
+    actualizarEstadoFotos();
+
+    console.log(
+      "Foto pendiente:",
+      datos.mensaje
+    );
+  }
+
+  if (datos.estado === "ERROR") {
+    alert(
+      "No se pudo preparar la fotografía.\n\n" +
+      (datos.mensaje || "")
+    );
+  }
+};
 
 function actualizarEstadoFotos() {
   const elemento =
@@ -2063,12 +2149,24 @@ function actualizarEstadoFotos() {
     return;
   }
 
+  const sincronizadas =
+    relacionadas.filter(
+      foto =>
+        foto.estado_subida ===
+        "SINCRONIZADA"
+    ).length;
+
+  const pendientes =
+    relacionadas.length -
+    sincronizadas;
+
   elemento.textContent =
     `📷 ${relacionadas.length} foto` +
     (relacionadas.length === 1 ? "" : "s") +
-    " guardada" +
-    (relacionadas.length === 1 ? "" : "s") +
-    " temporalmente";
+    ` · ${sincronizadas} sincronizada` +
+    (sincronizadas === 1 ? "" : "s") +
+    ` · ${pendientes} pendiente` +
+    (pendientes === 1 ? "" : "s");
 
   elemento.style.display =
     "block";

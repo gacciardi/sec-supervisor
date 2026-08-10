@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Diagnóstico de Rutas</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:#f3f4f6; color:#1f2937; }
+    .topbar { background:#071b3a; color:white; padding:22px; }
+    .topbar h1 { margin:0; font-size:26px; }
+    .contenedor { max-width:1500px; margin:0 auto; padding:18px; }
+    .volver { display:inline-block; padding:10px 14px; background:#071b3a; color:white; text-decoration:none; border-radius:9px; margin-bottom:14px; font-weight:bold; }
+    .controles,.resumen-global { background:white; border-radius:14px; padding:14px; margin-bottom:16px; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+    .controles { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    label { display:block; font-size:12px; font-weight:bold; margin-bottom:4px; }
+    input,select,button { padding:10px; border-radius:8px; border:1px solid #d1d5db; }
+    button { cursor:pointer; font-weight:bold; }
+    .btn { background:#0b55c7; color:white; border:none; }
+    .btn-verde { background:#16a34a; color:white; border:none; }
+    .resumen-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+    .kpi { padding:12px; border-radius:12px; background:#f9fafb; border:1px solid #e5e7eb; }
+    .kpi strong { display:block; font-size:24px; color:#071b3a; }
+    .tabla-wrap { overflow-x:auto; background:white; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.08); margin-bottom:18px; }
+    table { width:100%; border-collapse:collapse; min-width:1000px; }
+    th,td { padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; }
+    th { background:#071b3a; color:white; position:sticky; top:0; }
+    .ok { color:#166534; font-weight:bold; }
+    .warn { color:#92400e; font-weight:bold; }
+    .crit { color:#991b1b; font-weight:bold; }
+    .seccion-titulo { margin:22px 0 10px; color:#071b3a; }
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:9999; padding:18px; }
+    .modal-contenido { background:white; width:min(1200px,96vw); max-height:90vh; overflow:auto; border-radius:16px; padding:18px; }
+    .modal-cabecera { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .modal-cabecera h2 { margin:0; }
+    .cerrar { border:none; background:#e5e7eb; font-size:18px; }
+    .acciones-inline { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    @media (max-width:700px) {
+      .controles { display:block; }
+      .controles>div,.controles button { width:100%; margin-bottom:8px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🩺 Diagnóstico de Rutas</h1>
+  <div>Estado · Diagnóstico · Corrección</div>
+</div>
+
+<div class="contenedor">
+  <a class="volver" href="index.html">← Volver al menú</a>
+
+  <div class="controles">
+    <div>
+      <label>Fecha</label>
+      <input type="date" id="fecha">
+    </div>
+    <button class="btn" onclick="cargarTodo()">Actualizar diagnóstico</button>
+  </div>
+
+  <div class="resumen-global">
+    <h3>Calidad general del padrón</h3>
+    <div class="resumen-grid">
+      <div class="kpi"><strong id="kpiSinRuta">0</strong>Clientes sin ruta</div>
+      <div class="kpi"><strong id="kpiSinRutaVendedor">0</strong>Sin ruta ni vendedor</div>
+      <div class="kpi"><strong id="kpiSinFrecuencia">0</strong>Sin frecuencia</div>
+      <div class="kpi"><strong id="kpiSinCoordenadas">0</strong>Sin coordenadas</div>
+      <div class="kpi"><strong id="kpiRutaInactiva">0</strong>En ruta inactiva</div>
+    </div>
+  </div>
+
+  <h2 class="seccion-titulo">1. Estado de Rutas</h2>
+  <div class="tabla-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ruta</th>
+          <th>Vendedor actual</th>
+          <th>Origen</th>
+          <th>Clientes</th>
+          <th>Hoy</th>
+          <th>Visitados</th>
+          <th>Pendientes</th>
+          <th>Alertas</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tablaRutas"></tbody>
+    </table>
+  </div>
+
+  <h2 class="seccion-titulo">2. Diagnóstico - Clientes con problemas</h2>
+  <div class="tabla-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Ruta</th>
+          <th>Vendedor</th>
+          <th>Frecuencia</th>
+          <th>Problema</th>
+          <th>3. Corrección</th>
+        </tr>
+      </thead>
+      <tbody id="tablaProblemas"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modalRuta" class="modal">
+  <div class="modal-contenido">
+    <div class="modal-cabecera">
+      <h2 id="tituloModalRuta">Ruta</h2>
+      <button class="cerrar" onclick="cerrarModalRuta()">✕</button>
+    </div>
+    <div id="infoRuta"></div>
+    <div class="tabla-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Frecuencia</th>
+            <th>Corresponde fecha</th>
+            <th>Visitado</th>
+            <th>Coordenadas</th>
+          </tr>
+        </thead>
+        <tbody id="clientesRuta"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+let catalogos = { rutas: [], vendedores: [], frecuencias: [] };
+
+document.getElementById("fecha").value =
+  new Date().toISOString().slice(0, 10);
+
+function escapar(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+async function pedir(url, opciones) {
+  const respuesta = await fetch(url, opciones);
+  const datos = await respuesta.json();
+
+  if (!respuesta.ok) {
+    throw new Error(datos.error || datos.detalle || "Error de servidor");
+  }
+
+  return datos;
+}
+
+async function cargarCatalogos() {
+  catalogos = await pedir(
+    `${API}/diagnostico-rutas/catalogos/opciones`
+  );
+}
+
+async function cargarTodo() {
+  try {
+    const fecha = document.getElementById("fecha").value;
+
+    const [diagnostico, problemas] =
+      await Promise.all([
+        pedir(`${API}/diagnostico-rutas?fecha=${encodeURIComponent(fecha)}`),
+        pedir(`${API}/diagnostico-rutas/clientes-problema/listado`)
+      ]);
+
+    pintarResumen(diagnostico.resumen_global);
+    pintarRutas(diagnostico.rutas);
+    pintarProblemas(problemas);
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function pintarResumen(r) {
+  document.getElementById("kpiSinRuta").textContent = r.sin_ruta || 0;
+  document.getElementById("kpiSinRutaVendedor").textContent = r.sin_ruta_ni_vendedor || 0;
+  document.getElementById("kpiSinFrecuencia").textContent = r.sin_frecuencia || 0;
+  document.getElementById("kpiSinCoordenadas").textContent = r.sin_coordenadas || 0;
+  document.getElementById("kpiRutaInactiva").textContent = r.en_ruta_inactiva || 0;
+}
+
+function pintarRutas(rutas) {
+  const tbody = document.getElementById("tablaRutas");
+
+  tbody.innerHTML = rutas.map(r => {
+    const alertas = Number(r.cantidad_alertas || 0);
+    const clase = alertas === 0 ? "ok" : alertas >= 2 ? "crit" : "warn";
+
+    return `
+      <tr>
+        <td><strong>${escapar(r.ruta)}</strong></td>
+        <td>${escapar(r.vendedor_efectivo) || '<span class="crit">SIN VENDEDOR</span>'}</td>
+        <td>${escapar(r.origen_vendedor)}</td>
+        <td>${r.clientes_activos || 0}</td>
+        <td>${r.programados_hoy || 0}</td>
+        <td>${r.visitados_hoy || 0}</td>
+        <td>${r.pendientes_hoy || 0}</td>
+        <td class="${clase}">${alertas === 0 ? "✅ OK" : `⚠ ${alertas}`}</td>
+        <td>
+          <button class="btn" onclick="verRuta('${r.ruta_id}')">Ver</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function opcionesRutas() {
+  return catalogos.rutas.map(r => `
+    <option value="${r.id}">
+      ${escapar(r.nombre)}${r.activo ? "" : " (inactiva)"}
+    </option>
+  `).join("");
+}
+
+function opcionesVendedores() {
+  return catalogos.vendedores.map(v => `
+    <option value="${v.id}">
+      ${escapar(v.nombre_completo)}${v.legajo ? ` - ${escapar(v.legajo)}` : ""}
+    </option>
+  `).join("");
+}
+
+function opcionesFrecuencias() {
+  return catalogos.frecuencias.map(f => `
+    <option value="${f.id}">${escapar(f.nombre)}</option>
+  `).join("");
+}
+
+function pintarProblemas(clientes) {
+  const tbody = document.getElementById("tablaProblemas");
+
+  if (!clientes.length) {
+    tbody.innerHTML = `
+      <tr><td colspan="6" class="ok">✅ No se detectaron problemas de asignación.</td></tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = clientes.map(c => {
+    let correccion = "";
+
+    if (c.problema === "SIN_RUTA" || c.problema === "SIN_RUTA_NI_VENDEDOR") {
+      correccion = `
+        <div class="acciones-inline">
+          <select id="ruta_${c.id}">
+            <option value="">Elegir ruta...</option>
+            ${opcionesRutas()}
+          </select>
+          <button class="btn-verde" onclick="asignarRutaCliente('${c.id}')">
+            Asignar ruta
+          </button>
+        </div>
+      `;
+    } else if (c.problema === "RUTA_SIN_VENDEDOR") {
+      correccion = `
+        <div class="acciones-inline">
+          <select id="vendedor_${c.ruta_id}">
+            <option value="">Elegir vendedor...</option>
+            ${opcionesVendedores()}
+          </select>
+          <button class="btn-verde" onclick="asignarVendedorRuta('${c.ruta_id}')">
+            Asignar vendedor
+          </button>
+        </div>
+      `;
+    } else if (c.problema === "SIN_FRECUENCIA") {
+      correccion = `
+        <div class="acciones-inline">
+          <select id="frecuencia_${c.id}">
+            <option value="">Elegir frecuencia...</option>
+            ${opcionesFrecuencias()}
+          </select>
+          <button class="btn-verde" onclick="asignarFrecuencia('${c.id}')">
+            Asignar
+          </button>
+        </div>
+      `;
+    } else if (c.problema === "RUTA_INACTIVA") {
+      correccion = `
+        <button class="btn-verde" onclick="activarRuta('${c.ruta_id}')">
+          Activar ruta
+        </button>
+      `;
+    } else {
+      correccion = "Corregir desde Clientes / ubicación";
+    }
+
+    const vendedor = c.vendedor_ruta || c.vendedor_directo || "-";
+
+    return `
+      <tr>
+        <td><strong>${escapar(c.codigo_cliente || "")}</strong><br>${escapar(c.nombre || "")}</td>
+        <td>${escapar(c.ruta || "-")}</td>
+        <td>${escapar(vendedor)}</td>
+        <td>${escapar(c.frecuencia || "-")}</td>
+        <td class="crit">${escapar(c.problema)}</td>
+        <td>${correccion}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function asignarRutaCliente(clienteId) {
+  const rutaId = document.getElementById(`ruta_${clienteId}`).value;
+
+  if (!rutaId) {
+    alert("Elegí una ruta.");
+    return;
+  }
+
+  if (!confirm("¿Asignar este cliente a la ruta seleccionada?")) {
+    return;
+  }
+
+  await pedir(
+    `${API}/diagnostico-rutas/cliente/${clienteId}/ruta`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ruta_id: rutaId })
+    }
+  );
+
+  await cargarTodo();
+}
+
+async function asignarVendedorRuta(rutaId) {
+  const vendedorId = document.getElementById(`vendedor_${rutaId}`).value;
+
+  if (!vendedorId) {
+    alert("Elegí un vendedor.");
+    return;
+  }
+
+  if (!confirm("¿Asignar este vendedor como titular de la ruta?")) {
+    return;
+  }
+
+  await pedir(
+    `${API}/diagnostico-rutas/ruta/${rutaId}/vendedor`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vendedor_id: vendedorId })
+    }
+  );
+
+  await cargarTodo();
+}
+
+async function asignarFrecuencia(clienteId) {
+  const frecuenciaId = document.getElementById(`frecuencia_${clienteId}`).value;
+
+  if (!frecuenciaId) {
+    alert("Elegí una frecuencia.");
+    return;
+  }
+
+  await pedir(
+    `${API}/diagnostico-rutas/cliente/${clienteId}/frecuencia`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ frecuencia_id: frecuenciaId })
+    }
+  );
+
+  await cargarTodo();
+}
+
+async function activarRuta(rutaId) {
+  if (!confirm("¿Activar esta ruta?")) {
+    return;
+  }
+
+  await pedir(
+    `${API}/diagnostico-rutas/ruta/${rutaId}/activar`,
+    { method: "PATCH" }
+  );
+
+  await cargarTodo();
+}
+
+async function verRuta(rutaId) {
+  try {
+    const fecha = document.getElementById("fecha").value;
+
+    const datos = await pedir(
+      `${API}/diagnostico-rutas/ruta/${rutaId}?fecha=${encodeURIComponent(fecha)}`
+    );
+
+    document.getElementById("tituloModalRuta").textContent =
+      `Ruta ${datos.ruta.ruta}`;
+
+    document.getElementById("infoRuta").innerHTML = `
+      <p><strong>Vendedor titular:</strong> ${escapar(datos.ruta.vendedor_titular || "SIN ASIGNAR")}</p>
+      <p><strong>Vendedor trabajando:</strong> ${escapar(datos.ruta.vendedor_reemplazo || datos.ruta.vendedor_titular || "SIN ASIGNAR")} (${escapar(datos.ruta.origen_vendedor)})</p>
+    `;
+
+    document.getElementById("clientesRuta").innerHTML =
+      datos.clientes.map(c => `
+        <tr>
+          <td>${escapar(c.codigo_cliente || "")}<br><strong>${escapar(c.nombre || "")}</strong></td>
+          <td>${escapar(c.frecuencia || "-")}${c.sin_frecuencia ? '<br><span class="crit">SIN FRECUENCIA</span>' : ""}</td>
+          <td>${c.corresponde_fecha ? "✅ Sí" : "—"}</td>
+          <td>${c.visitado_fecha ? "✅ Sí" : "—"}</td>
+          <td>${c.sin_coordenadas ? '<span class="crit">❌ Faltan</span>' : "✅"}</td>
+        </tr>
+      `).join("");
+
+    document.getElementById("modalRuta").style.display = "flex";
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function cerrarModalRuta() {
+  document.getElementById("modalRuta").style.display = "none";
+}
+
+(async function iniciar() {
+  try {
+    await cargarCatalogos();
+    await cargarTodo();
+  } catch (error) {
+    alert(error.message);
+  }
+})();
+</script>
+
+</body>
+</html>

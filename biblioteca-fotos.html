@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Biblioteca de Fotos</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #071b3a;
+      color: white;
+      padding: 22px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: #dbeafe;
+    }
+
+    .contenedor {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .filtros {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.10);
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .campo label {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      color: #4b5563;
+      margin-bottom: 5px;
+    }
+
+    .campo input,
+    .campo select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      background: white;
+    }
+
+    .acciones {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+    }
+
+    button,
+    .volver {
+      border: none;
+      border-radius: 9px;
+      padding: 11px 14px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-buscar {
+      background: #0b55c7;
+      color: white;
+    }
+
+    .btn-limpiar {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .volver {
+      background: #071b3a;
+      color: white;
+      margin-bottom: 14px;
+    }
+
+    .resumen {
+      margin-bottom: 12px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .galeria {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .foto-card {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 3px 12px rgba(0,0,0,.10);
+      border: 1px solid #e5e7eb;
+    }
+
+    .foto-card img {
+      width: 100%;
+      height: 230px;
+      object-fit: contain;
+      background: #f9fafb;
+      display: block;
+      cursor: pointer;
+    }
+
+    .foto-info {
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .foto-info strong {
+      color: #071b3a;
+      font-size: 15px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-top: 5px;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .sin-resultados {
+      background: white;
+      border-radius: 14px;
+      padding: 30px;
+      text-align: center;
+      color: #6b7280;
+      grid-column: 1 / -1;
+    }
+
+    .visor {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.9);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .visor img {
+      max-width: 95vw;
+      max-height: 88vh;
+      object-fit: contain;
+      background: white;
+      border-radius: 10px;
+    }
+
+    .visor button {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      font-size: 24px;
+      background: white;
+      color: #111827;
+    }
+
+    @media (max-width: 900px) {
+      .filtros {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .filtros {
+        grid-template-columns: 1fr;
+      }
+
+      .acciones {
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <h1>📷 Biblioteca de Fotos</h1>
+    <p>SEC · Evidencias fotográficas de vendedores y visitas</p>
+  </div>
+
+  <div class="contenedor">
+    <a class="volver" href="index.html">← Volver al menú</a>
+
+    <div class="filtros">
+      <div class="campo">
+        <label>Vendedor</label>
+        <select id="filtroVendedor">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label>Desde</label>
+        <input id="fechaDesde" type="date">
+      </div>
+
+      <div class="campo">
+        <label>Hasta</label>
+        <input id="fechaHasta" type="date">
+      </div>
+
+      <div class="campo">
+        <label>Tipo</label>
+        <select id="filtroTipo">
+          <option value="">Todos</option>
+          <option value="VISITA">Visita</option>
+          <option value="CLIENTE">Cliente</option>
+          <option value="LIBRE">Libre</option>
+        </select>
+      </div>
+
+      <div class="acciones">
+        <button class="btn-buscar" onclick="cargarFotos()">Buscar</button>
+        <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    <div id="resumen" class="resumen">Cargando...</div>
+    <div id="galeria" class="galeria"></div>
+  </div>
+
+  <div id="visor" class="visor" onclick="cerrarVisor(event)">
+    <button onclick="cerrarVisor(event, true)">×</button>
+    <img id="visorImagen" alt="Fotografía SEC">
+  </div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+let usuarios = [];
+let clientes = [];
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatearFecha(valor) {
+  if (!valor) return "-";
+
+  const fecha = new Date(valor);
+
+  if (Number.isNaN(fecha.getTime())) {
+    return String(valor);
+  }
+
+  return fecha.toLocaleString(
+    "es-AR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  );
+}
+
+function nombreVendedor(id) {
+  const usuario =
+    usuarios.find(u =>
+      String(u.id) === String(id)
+    );
+
+  if (!usuario) {
+    return `Vendedor ${String(id || "").slice(0, 8)}`;
+  }
+
+  return [
+    usuario.nombre,
+    usuario.apellido
+  ].filter(Boolean).join(" ");
+}
+
+function nombreCliente(id) {
+  if (!id) {
+    return "Foto libre";
+  }
+
+  const cliente =
+    clientes.find(c =>
+      String(c.id) === String(id)
+    );
+
+  return cliente
+    ? (cliente.nombre || cliente.direccion || "Cliente")
+    : `Cliente ${String(id).slice(0, 8)}`;
+}
+
+async function cargarCatalogos() {
+  const resultados =
+    await Promise.allSettled([
+      fetch(`${API}/usuarios`).then(r => r.json()),
+      fetch(`${API}/clientes`).then(r => r.json())
+    ]);
+
+  if (
+    resultados[0].status === "fulfilled" &&
+    Array.isArray(resultados[0].value)
+  ) {
+    usuarios = resultados[0].value;
+  }
+
+  if (
+    resultados[1].status === "fulfilled" &&
+    Array.isArray(resultados[1].value)
+  ) {
+    clientes = resultados[1].value;
+  }
+
+  const select =
+    document.getElementById(
+      "filtroVendedor"
+    );
+
+  usuarios
+    .filter(u =>
+      u.activo !== false &&
+      String(u.rol || "").toUpperCase() !== "ADMIN"
+    )
+    .sort((a, b) =>
+      `${a.apellido || ""} ${a.nombre || ""}`
+        .localeCompare(
+          `${b.apellido || ""} ${b.nombre || ""}`,
+          "es"
+        )
+    )
+    .forEach(u => {
+      const option =
+        document.createElement("option");
+
+      option.value = u.id;
+
+      option.textContent =
+        `${u.apellido || ""} ${u.nombre || ""}`.trim() ||
+        u.legajo ||
+        u.id;
+
+      select.appendChild(option);
+    });
+}
+
+async function cargarFotos() {
+  const galeria =
+    document.getElementById(
+      "galeria"
+    );
+
+  const resumen =
+    document.getElementById(
+      "resumen"
+    );
+
+  galeria.innerHTML =
+    '<div class="sin-resultados">Cargando fotografías...</div>';
+
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "estado",
+    "SINCRONIZADA"
+  );
+
+  const vendedor =
+    document.getElementById(
+      "filtroVendedor"
+    ).value;
+
+  const desde =
+    document.getElementById(
+      "fechaDesde"
+    ).value;
+
+  const hasta =
+    document.getElementById(
+      "fechaHasta"
+    ).value;
+
+  if (vendedor) {
+    params.set(
+      "vendedor_id",
+      vendedor
+    );
+  }
+
+  if (desde) {
+    params.set(
+      "fecha_desde",
+      desde
+    );
+  }
+
+  if (hasta) {
+    params.set(
+      "fecha_hasta",
+      hasta
+    );
+  }
+
+  try {
+    const respuesta =
+      await fetch(
+        `${API}/fotos/evidencias?${params.toString()}`
+      );
+
+    let fotos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        fotos.error ||
+        fotos.detalle ||
+        "No se pudieron cargar las fotografías"
+      );
+    }
+
+    const tipo =
+      document.getElementById(
+        "filtroTipo"
+      ).value;
+
+    if (tipo) {
+      fotos =
+        fotos.filter(f =>
+          String(f.tipo_foto || "").toUpperCase() === tipo
+        );
+    }
+
+    resumen.textContent =
+      `${fotos.length} fotografía` +
+      (fotos.length === 1 ? "" : "s");
+
+    if (fotos.length === 0) {
+      galeria.innerHTML =
+        '<div class="sin-resultados">No hay fotografías para los filtros seleccionados.</div>';
+      return;
+    }
+
+    galeria.innerHTML =
+      fotos.map(foto => {
+        const url =
+          foto.url_segura ||
+          foto.url_imagen ||
+          "";
+
+        const urlSeguro =
+          escaparHtml(url);
+
+        const vendedorNombre =
+          nombreVendedor(
+            foto.vendedor_id
+          );
+
+        const clienteNombre =
+          nombreCliente(
+            foto.cliente_id
+          );
+
+        return `
+          <div class="foto-card">
+            ${
+              url
+                ? `
+                  <img
+                    src="${urlSeguro}"
+                    loading="lazy"
+                    alt="Evidencia SEC"
+                    onclick="abrirVisor('${urlSeguro}')"
+                  >
+                `
+                : `
+                  <div class="sin-resultados">
+                    Imagen no disponible
+                  </div>
+                `
+            }
+
+            <div class="foto-info">
+              <strong>${escaparHtml(vendedorNombre)}</strong>
+              <br>
+
+              ${escaparHtml(clienteNombre)}
+              <br>
+
+              ${escaparHtml(formatearFecha(foto.fecha_captura))}
+              <br>
+
+              <span class="badge">
+                ${escaparHtml(foto.tipo_foto || "LIBRE")}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+  } catch (error) {
+    console.error(
+      "Error biblioteca fotos:",
+      error
+    );
+
+    resumen.textContent =
+      "Error";
+
+    galeria.innerHTML =
+      '<div class="sin-resultados">No se pudieron cargar las fotografías.</div>';
+  }
+}
+
+function limpiarFiltros() {
+  document.getElementById(
+    "filtroVendedor"
+  ).value = "";
+
+  document.getElementById(
+    "fechaDesde"
+  ).value = "";
+
+  document.getElementById(
+    "fechaHasta"
+  ).value = "";
+
+  document.getElementById(
+    "filtroTipo"
+  ).value = "";
+
+  cargarFotos();
+}
+
+function abrirVisor(url) {
+  if (!url) return;
+
+  document.getElementById(
+    "visorImagen"
+  ).src = url;
+
+  document.getElementById(
+    "visor"
+  ).style.display = "flex";
+}
+
+function cerrarVisor(evento, forzar = false) {
+  const visor =
+    document.getElementById(
+      "visor"
+    );
+
+  if (
+    !forzar &&
+    evento &&
+    evento.target !== visor
+  ) {
+    return;
+  }
+
+  visor.style.display = "none";
+
+  document.getElementById(
+    "visorImagen"
+  ).src = "";
+}
+
+(async function iniciar() {
+  await cargarCatalogos();
+  await cargarFotos();
+})();
+</script>
+
+</body>
+</html>

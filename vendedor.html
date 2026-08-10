@@ -480,6 +480,102 @@
       margin-top: 8px;
       font-weight: bold;
     }
+
+    /* ==============================
+       MIS FOTOS - VENDEDOR
+       ============================== */
+    .panel-fotos {
+      z-index: 1900;
+      max-height: 72vh;
+    }
+
+    .fotos-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .fotos-toolbar button {
+      flex: 1;
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-weight: bold;
+      background: #0b55c7;
+      color: white;
+    }
+
+    .foto-card {
+      border: 1px solid #e5e7eb;
+      background: white;
+      border-radius: 14px;
+      padding: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    .foto-card img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #f9fafb;
+      display: block;
+      cursor: pointer;
+    }
+
+    .foto-card-info {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #374151;
+    }
+
+    .foto-card-info strong {
+      color: #071b3a;
+    }
+
+    .foto-vacia {
+      padding: 24px 12px;
+      text-align: center;
+      color: #6b7280;
+      font-weight: bold;
+    }
+
+    .visor-foto {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .visor-foto img {
+      max-width: 100%;
+      max-height: 82vh;
+      object-fit: contain;
+      border-radius: 10px;
+      background: white;
+    }
+
+    .visor-foto button {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 24px;
+      font-weight: bold;
+      background: white;
+      color: #111827;
+    }
+
   </style>
 </head>
 
@@ -665,6 +761,41 @@
   </button>
 </div>
 
+
+<div id="panelMisFotos" class="panel panel-fotos">
+  <h3>🖼️ Mis fotos</h3>
+
+  <div class="fotos-toolbar">
+    <button onclick="cargarMisFotos()">Actualizar</button>
+  </div>
+
+  <div id="listaMisFotos">
+    <div class="foto-vacia">Cargando fotografías...</div>
+  </div>
+
+  <button
+    class="btn-panel"
+    onclick="cerrarMisFotos()"
+  >
+    Cerrar
+  </button>
+</div>
+
+<div
+  id="visorFoto"
+  class="visor-foto"
+  onclick="cerrarVisorFoto(event)"
+>
+  <button
+    type="button"
+    onclick="cerrarVisorFoto(event, true)"
+  >
+    ×
+  </button>
+
+  <img id="visorFotoImagen" alt="Fotografía SEC">
+</div>
+
 <div class="bottom-nav">
   <button onclick="mostrarListado()">
     ☰
@@ -692,6 +823,11 @@
   <button onclick="tomarFotoManual()">
     📷
     <span>Foto</span>
+  </button>
+
+  <button onclick="mostrarMisFotos()">
+    🖼️
+    <span>Mis fotos</span>
   </button>
 
   <button onclick="window.location.href='localizador-pro.html'">
@@ -3439,6 +3575,237 @@ function centrarMapa() {
     );
   }
 }
+
+
+/*
+=================================
+MIS FOTOS DEL VENDEDOR
+=================================
+*/
+
+function escaparHtml(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function nombreClienteFoto(clienteId) {
+  if (!clienteId) {
+    return "Foto libre";
+  }
+
+  const cliente =
+    clientes.find(c =>
+      String(c.id) === String(clienteId)
+    );
+
+  return cliente
+    ? (cliente.nombre || cliente.direccion || "Cliente")
+    : `Cliente ${String(clienteId).slice(0, 8)}`;
+}
+
+function formatearFechaFoto(valor) {
+  if (!valor) {
+    return "-";
+  }
+
+  const fecha = new Date(valor);
+
+  if (Number.isNaN(fecha.getTime())) {
+    return String(valor);
+  }
+
+  return fecha.toLocaleString(
+    "es-AR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  );
+}
+
+async function mostrarMisFotos() {
+  document.getElementById(
+    "panelListado"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelHistorial"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelClientesCercanos"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelAsociarFoto"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelSeleccionFoto"
+  ).style.display = "none";
+
+  document.getElementById(
+    "panelMisFotos"
+  ).style.display = "block";
+
+  await cargarMisFotos();
+}
+
+function cerrarMisFotos() {
+  document.getElementById(
+    "panelMisFotos"
+  ).style.display = "none";
+}
+
+async function cargarMisFotos() {
+  const lista =
+    document.getElementById(
+      "listaMisFotos"
+    );
+
+  lista.innerHTML =
+    '<div class="foto-vacia">Cargando fotografías...</div>';
+
+  try {
+    const respuesta =
+      await fetch(
+        `${API}/fotos/evidencias?` +
+        `vendedor_id=${encodeURIComponent(vendedorId)}` +
+        `&estado=SINCRONIZADA`
+      );
+
+    const fotos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        fotos.error ||
+        fotos.detalle ||
+        "No se pudieron obtener las fotografías"
+      );
+    }
+
+    if (
+      !Array.isArray(fotos) ||
+      fotos.length === 0
+    ) {
+      lista.innerHTML =
+        '<div class="foto-vacia">Todavía no tenés fotografías sincronizadas.</div>';
+      return;
+    }
+
+    lista.innerHTML =
+      fotos.map(foto => {
+        const url =
+          foto.url_segura ||
+          foto.url_imagen ||
+          "";
+
+        const tipo =
+          foto.tipo_foto || "LIBRE";
+
+        const cliente =
+          tipo === "LIBRE"
+            ? "Foto libre"
+            : nombreClienteFoto(
+                foto.cliente_id
+              );
+
+        const urlSeguro =
+          escaparHtml(url);
+
+        return `
+          <div class="foto-card">
+            ${
+              url
+                ? `
+                  <img
+                    src="${urlSeguro}"
+                    alt="Evidencia SEC"
+                    loading="lazy"
+                    onclick="abrirVisorFoto('${urlSeguro}')"
+                  >
+                `
+                : `
+                  <div class="foto-vacia">
+                    Imagen no disponible
+                  </div>
+                `
+            }
+
+            <div class="foto-card-info">
+              <strong>${escaparHtml(cliente)}</strong>
+              <br>
+              ${escaparHtml(tipo)}
+              <br>
+              ${escaparHtml(
+                formatearFechaFoto(
+                  foto.fecha_captura
+                )
+              )}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+  } catch (error) {
+    console.error(
+      "Error cargando Mis fotos:",
+      error
+    );
+
+    lista.innerHTML =
+      '<div class="foto-vacia">No se pudieron cargar las fotografías.</div>';
+  }
+}
+
+function abrirVisorFoto(url) {
+  if (!url) {
+    return;
+  }
+
+  const visor =
+    document.getElementById(
+      "visorFoto"
+    );
+
+  document.getElementById(
+    "visorFotoImagen"
+  ).src = url;
+
+  visor.style.display =
+    "flex";
+}
+
+function cerrarVisorFoto(evento, forzar = false) {
+  const visor =
+    document.getElementById(
+      "visorFoto"
+    );
+
+  if (
+    !forzar &&
+    evento &&
+    evento.target !== visor
+  ) {
+    return;
+  }
+
+  visor.style.display =
+    "none";
+
+  document.getElementById(
+    "visorFotoImagen"
+  ).src = "";
+}
+
 
 async function cerrarSesion() {
   const confirmar = window.confirm(

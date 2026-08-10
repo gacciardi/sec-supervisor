@@ -61,12 +61,21 @@
 
   <div class="resumen-global">
     <h3>Calidad general del padrón</h3>
+
+    <h4>Clientes</h4>
     <div class="resumen-grid">
       <div class="kpi"><strong id="kpiSinRuta">0</strong>Clientes sin ruta</div>
       <div class="kpi"><strong id="kpiSinRutaVendedor">0</strong>Sin ruta ni vendedor</div>
       <div class="kpi"><strong id="kpiSinFrecuencia">0</strong>Sin frecuencia</div>
       <div class="kpi"><strong id="kpiSinCoordenadas">0</strong>Sin coordenadas</div>
-      <div class="kpi"><strong id="kpiRutaInactiva">0</strong>En ruta inactiva</div>
+      <div class="kpi"><strong id="kpiRutaInactiva">0</strong>Clientes en ruta inactiva</div>
+    </div>
+
+    <h4 style="margin-top:18px;">Rutas</h4>
+    <div class="resumen-grid">
+      <div class="kpi"><strong id="kpiRutasSinVendedor">0</strong>Rutas sin vendedor</div>
+      <div class="kpi"><strong id="kpiClientesRutasSinVendedor">0</strong>Clientes afectados por rutas sin vendedor</div>
+      <div class="kpi"><strong id="kpiRutasInactivasConClientes">0</strong>Rutas inactivas con clientes</div>
     </div>
   </div>
 
@@ -83,6 +92,7 @@
           <th>Visitados</th>
           <th>Pendientes</th>
           <th>Alertas</th>
+          <th>Detalle</th>
           <th></th>
         </tr>
       </thead>
@@ -190,6 +200,9 @@ function pintarResumen(r) {
   document.getElementById("kpiSinFrecuencia").textContent = r.sin_frecuencia || 0;
   document.getElementById("kpiSinCoordenadas").textContent = r.sin_coordenadas || 0;
   document.getElementById("kpiRutaInactiva").textContent = r.en_ruta_inactiva || 0;
+  document.getElementById("kpiRutasSinVendedor").textContent = r.rutas_sin_vendedor || 0;
+  document.getElementById("kpiClientesRutasSinVendedor").textContent = r.clientes_en_rutas_sin_vendedor || 0;
+  document.getElementById("kpiRutasInactivasConClientes").textContent = r.rutas_inactivas_con_clientes || 0;
 }
 
 function pintarRutas(rutas) {
@@ -209,6 +222,26 @@ function pintarRutas(rutas) {
         <td>${r.visitados_hoy || 0}</td>
         <td>${r.pendientes_hoy || 0}</td>
         <td class="${clase}">${alertas === 0 ? "✅ OK" : `⚠ ${alertas}`}</td>
+        <td>
+          ${
+            alertas === 0
+              ? '<span class="ok">Sin observaciones</span>'
+              : [
+                  r.alerta_sin_vendedor
+                    ? `🔴 Ruta sin vendedor · ${r.clientes_activos || 0} clientes afectados`
+                    : "",
+                  r.alerta_sin_frecuencia
+                    ? `🟠 ${r.sin_frecuencia || 0} cliente(s) sin frecuencia`
+                    : "",
+                  r.alerta_sin_coordenadas
+                    ? `🟠 ${r.sin_coordenadas || 0} cliente(s) sin coordenadas`
+                    : "",
+                  r.alerta_ruta_inactiva
+                    ? `🔴 Ruta inactiva con ${r.clientes_activos || 0} clientes activos`
+                    : ""
+                ].filter(Boolean).join("<br>")
+          }
+        </td>
         <td>
           <button class="btn" onclick="verRuta('${r.ruta_id}')">Ver</button>
         </td>
@@ -405,9 +438,34 @@ async function verRuta(rutaId) {
     document.getElementById("tituloModalRuta").textContent =
       `Ruta ${datos.ruta.ruta}`;
 
+    const clientesRuta = datos.clientes || [];
+    const activos = clientesRuta.filter(c => c.activo === true).length;
+    const sinFrecuencia = clientesRuta.filter(c => c.activo === true && c.sin_frecuencia).length;
+    const sinCoordenadas = clientesRuta.filter(c => c.activo === true && c.sin_coordenadas).length;
+
     document.getElementById("infoRuta").innerHTML = `
       <p><strong>Vendedor titular:</strong> ${escapar(datos.ruta.vendedor_titular || "SIN ASIGNAR")}</p>
       <p><strong>Vendedor trabajando:</strong> ${escapar(datos.ruta.vendedor_reemplazo || datos.ruta.vendedor_titular || "SIN ASIGNAR")} (${escapar(datos.ruta.origen_vendedor)})</p>
+
+      <h3>Alertas de la ruta</h3>
+
+      ${
+        !datos.ruta.vendedor_titular_id
+          ? `<p class="crit">🔴 Ruta sin vendedor titular · ${activos} clientes afectados</p>`
+          : `<p class="ok">✅ Vendedor titular asignado</p>`
+      }
+
+      ${
+        sinFrecuencia > 0
+          ? `<p class="warn">🟠 ${sinFrecuencia} cliente(s) sin frecuencia</p>`
+          : `<p class="ok">✅ Frecuencias completas</p>`
+      }
+
+      ${
+        sinCoordenadas > 0
+          ? `<p class="warn">🟠 ${sinCoordenadas} cliente(s) sin coordenadas</p>`
+          : `<p class="ok">✅ Coordenadas completas</p>`
+      }
     `;
 
     document.getElementById("clientesRuta").innerHTML =

@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Gestión de Ejecución</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .topbar {
+      background: #071b3a;
+      color: white;
+      padding: 22px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .contenedor {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .volver {
+      display: inline-block;
+      padding: 10px 14px;
+      background: #071b3a;
+      color: white;
+      text-decoration: none;
+      border-radius: 9px;
+      margin-bottom: 14px;
+      font-weight: bold;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    }
+
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .kpi {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .kpi strong {
+      display: block;
+      font-size: 24px;
+      color: #6b21a8;
+      margin-bottom: 4px;
+    }
+
+    .filtros {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn {
+      background: #6b21a8;
+      color: white;
+      border: none;
+    }
+
+    .btn-secundario {
+      background: #e5e7eb;
+      color: #111827;
+      border: none;
+    }
+
+    .btn-verde {
+      background: #16a34a;
+      color: white;
+      border: none;
+    }
+
+    .btn-rojo {
+      background: #dc2626;
+      color: white;
+      border: none;
+    }
+
+    .acciones {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .tabla-wrap {
+      overflow-x: auto;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th,
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #071b3a;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .ejecucion {
+      display: inline-block;
+      background: #7e22ce;
+      color: white;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .normal {
+      display: inline-block;
+      background: #e5e7eb;
+      color: #374151;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .seleccion {
+      width: 18px;
+      height: 18px;
+    }
+
+    .fila-ejecucion {
+      background: #faf5ff;
+    }
+
+    .paginacion {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .paginacion button {
+      width: auto;
+      min-width: 120px;
+    }
+
+    .mensaje {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .mensaje.ok {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .mensaje.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .subtitulo {
+      color: #6b21a8;
+      margin-top: 0;
+    }
+
+    @media (max-width: 900px) {
+      .filtros,
+      .acciones {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <h1>🟣 Gestión de Ejecución</h1>
+  <div>Clasificación de clientes por semana de ejecución</div>
+</div>
+
+<div class="contenedor">
+
+  <a class="volver" href="index.html">← Volver al menú</a>
+
+  <div class="panel">
+    <h2 class="subtitulo">Resumen</h2>
+
+    <div class="resumen-grid">
+      <div class="kpi">
+        <strong id="kpiTotal">0</strong>
+        Clientes de Ejecución
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiS1">0</strong>
+        Semana 1
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiS2">0</strong>
+        Semana 2
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiS3">0</strong>
+        Semana 3
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiS4">0</strong>
+        Semana 4
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiS5">0</strong>
+        Semana 5
+      </div>
+
+      <div class="kpi">
+        <strong id="kpiSinSemana">0</strong>
+        Ejecución sin semana
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="subtitulo">Buscar y filtrar clientes</h2>
+
+    <div class="filtros">
+      <div>
+        <label>Buscar</label>
+        <input
+          id="buscar"
+          type="text"
+          placeholder="Código, cliente, dirección, localidad o ruta"
+          onkeydown="if(event.key==='Enter'){buscarClientes();}"
+        >
+      </div>
+
+      <div>
+        <label>Estado</label>
+        <select id="estado">
+          <option value="todos">Todos</option>
+          <option value="ejecucion">Solo Ejecución</option>
+          <option value="normal">Solo normales</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Semana</label>
+        <select id="semanaFiltro">
+          <option value="">Todas</option>
+          <option value="1">Semana 1</option>
+          <option value="2">Semana 2</option>
+          <option value="3">Semana 3</option>
+          <option value="4">Semana 4</option>
+          <option value="5">Semana 5</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Ruta</label>
+        <select id="rutaFiltro">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div>
+        <button class="btn" onclick="buscarClientes()">Buscar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="subtitulo">Asignación masiva por selección</h2>
+
+    <div class="acciones">
+      <div>
+        <label>Semana de Ejecución</label>
+        <select id="semanaMasiva">
+          <option value="">Elegir semana...</option>
+          <option value="1">Semana 1</option>
+          <option value="2">Semana 2</option>
+          <option value="3">Semana 3</option>
+          <option value="4">Semana 4</option>
+          <option value="5">Semana 5</option>
+        </select>
+      </div>
+
+      <div>
+        <button class="btn-verde" onclick="marcarSeleccionados()">
+          Marcar seleccionados como Ejecución
+        </button>
+      </div>
+
+      <div>
+        <button class="btn-rojo" onclick="quitarSeleccionados()">
+          Quitar seleccionados de Ejecución
+        </button>
+      </div>
+    </div>
+
+    <div id="mensajeSeleccion" class="mensaje"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="subtitulo">Asignación masiva por código de cliente</h2>
+
+    <p>
+      Pegá uno o varios códigos. Pueden estar separados por línea,
+      coma, punto y coma o espacio.
+    </p>
+
+    <textarea
+      id="codigosMasivos"
+      placeholder="Ejemplo:
+100123
+100124
+100125"
+    ></textarea>
+
+    <div class="acciones" style="margin-top:10px;">
+      <div>
+        <label>Semana de Ejecución</label>
+        <select id="semanaCodigos">
+          <option value="">Elegir semana...</option>
+          <option value="1">Semana 1</option>
+          <option value="2">Semana 2</option>
+          <option value="3">Semana 3</option>
+          <option value="4">Semana 4</option>
+          <option value="5">Semana 5</option>
+        </select>
+      </div>
+
+      <div>
+        <button class="btn-verde" onclick="marcarPorCodigos()">
+          Marcar códigos como Ejecución
+        </button>
+      </div>
+
+      <div>
+        <button class="btn-rojo" onclick="quitarPorCodigos()">
+          Quitar códigos de Ejecución
+        </button>
+      </div>
+    </div>
+
+    <div id="mensajeCodigos" class="mensaje"></div>
+  </div>
+
+  <div class="tabla-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <input
+              type="checkbox"
+              id="seleccionarTodos"
+              class="seleccion"
+              onchange="cambiarSeleccionTodos()"
+            >
+          </th>
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Ruta</th>
+          <th>Vendedor</th>
+          <th>Frecuencia</th>
+          <th>Estado</th>
+          <th>Semana</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+
+      <tbody id="tablaClientes"></tbody>
+    </table>
+  </div>
+
+  <div class="paginacion">
+    <button
+      id="btnAnterior"
+      class="btn-secundario"
+      onclick="paginaAnterior()"
+    >
+      ← Anterior
+    </button>
+
+    <div id="infoPagina">0 clientes</div>
+
+    <button
+      id="btnSiguiente"
+      class="btn-secundario"
+      onclick="paginaSiguiente()"
+    >
+      Siguiente →
+    </button>
+  </div>
+
+</div>
+
+<script>
+const API =
+  "https://sec-backend-gg4j.onrender.com";
+
+const LIMIT = 100;
+
+let offset = 0;
+let total = 0;
+let clientesActuales = [];
+
+function escapar(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+async function pedir(url, opciones) {
+  const respuesta =
+    await fetch(
+      url,
+      opciones
+    );
+
+  const datos =
+    await respuesta.json();
+
+  if (!respuesta.ok) {
+    throw new Error(
+      datos.error ||
+      datos.detalle ||
+      "Error de servidor"
+    );
+  }
+
+  return datos;
+}
+
+function mostrarMensaje(
+  id,
+  texto,
+  tipo
+) {
+  const elemento =
+    document.getElementById(id);
+
+  elemento.className =
+    "mensaje " + tipo;
+
+  elemento.textContent =
+    texto;
+}
+
+async function cargarResumen() {
+  const datos =
+    await pedir(
+      `${API}/clientes/ejecucion/resumen`
+    );
+
+  document.getElementById(
+    "kpiTotal"
+  ).textContent =
+    datos.ejecucion_total || 0;
+
+  document.getElementById(
+    "kpiS1"
+  ).textContent =
+    datos.semana_1 || 0;
+
+  document.getElementById(
+    "kpiS2"
+  ).textContent =
+    datos.semana_2 || 0;
+
+  document.getElementById(
+    "kpiS3"
+  ).textContent =
+    datos.semana_3 || 0;
+
+  document.getElementById(
+    "kpiS4"
+  ).textContent =
+    datos.semana_4 || 0;
+
+  document.getElementById(
+    "kpiS5"
+  ).textContent =
+    datos.semana_5 || 0;
+
+  document.getElementById(
+    "kpiSinSemana"
+  ).textContent =
+    datos.ejecucion_sin_semana || 0;
+}
+
+async function cargarRutas() {
+  try {
+    const respuesta =
+      await pedir(
+        `${API}/rutas`
+      );
+
+    const rutas =
+      Array.isArray(respuesta)
+        ? respuesta
+        : [];
+
+    const select =
+      document.getElementById(
+        "rutaFiltro"
+      );
+
+    select.innerHTML =
+      '<option value="">Todas</option>' +
+      rutas
+        .map(
+          ruta => `
+            <option value="${ruta.id}">
+              ${escapar(ruta.nombre)}
+            </option>
+          `
+        )
+        .join("");
+
+  } catch (error) {
+    console.error(
+      "No se pudieron cargar rutas:",
+      error
+    );
+  }
+}
+
+async function cargarClientes() {
+  const buscar =
+    document.getElementById(
+      "buscar"
+    ).value.trim();
+
+  const estado =
+    document.getElementById(
+      "estado"
+    ).value;
+
+  const semana =
+    document.getElementById(
+      "semanaFiltro"
+    ).value;
+
+  const ruta =
+    document.getElementById(
+      "rutaFiltro"
+    ).value;
+
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "limit",
+    LIMIT
+  );
+
+  params.set(
+    "offset",
+    offset
+  );
+
+  if (buscar) {
+    params.set(
+      "buscar",
+      buscar
+    );
+  }
+
+  if (estado) {
+    params.set(
+      "estado",
+      estado
+    );
+  }
+
+  if (semana) {
+    params.set(
+      "semana",
+      semana
+    );
+  }
+
+  if (ruta) {
+    params.set(
+      "ruta_id",
+      ruta
+    );
+  }
+
+  const datos =
+    await pedir(
+      `${API}/clientes/ejecucion?${params.toString()}`
+    );
+
+  total =
+    Number(
+      datos.total || 0
+    );
+
+  clientesActuales =
+    datos.clientes || [];
+
+  pintarTabla();
+  actualizarPaginacion();
+}
+
+function pintarTabla() {
+  const tbody =
+    document.getElementById(
+      "tablaClientes"
+    );
+
+  document.getElementById(
+    "seleccionarTodos"
+  ).checked = false;
+
+  if (
+    clientesActuales.length === 0
+  ) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9">
+          No se encontraron clientes.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  tbody.innerHTML =
+    clientesActuales
+      .map(
+        cliente => {
+          const esEjecucion =
+            cliente.es_ejecucion === true;
+
+          return `
+            <tr class="${esEjecucion ? "fila-ejecucion" : ""}">
+              <td>
+                <input
+                  type="checkbox"
+                  class="seleccion chkCliente"
+                  value="${cliente.id}"
+                >
+              </td>
+
+              <td>
+                ${escapar(cliente.codigo_cliente || "")}
+              </td>
+
+              <td>
+                <strong>
+                  ${escapar(cliente.nombre || "")}
+                </strong>
+                <br>
+                ${escapar(cliente.direccion || "")}
+              </td>
+
+              <td>
+                ${escapar(cliente.ruta || "-")}
+              </td>
+
+              <td>
+                ${escapar(cliente.vendedor_ruta || "-")}
+              </td>
+
+              <td>
+                ${escapar(cliente.frecuencia || "-")}
+              </td>
+
+              <td>
+                ${
+                  esEjecucion
+                    ? '<span class="ejecucion">🟣 EJECUCIÓN</span>'
+                    : '<span class="normal">Normal</span>'
+                }
+              </td>
+
+              <td>
+                ${
+                  esEjecucion
+                    ? `Semana ${cliente.semana_ejecucion || "-"}`
+                    : "-"
+                }
+              </td>
+
+              <td>
+                ${
+                  esEjecucion
+                    ? `
+                      <button
+                        class="btn-rojo"
+                        onclick="quitarIndividual('${cliente.id}')"
+                      >
+                        Quitar
+                      </button>
+                    `
+                    : `
+                      <select
+                        id="semana_${cliente.id}"
+                        style="margin-bottom:6px;"
+                      >
+                        <option value="">Semana...</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                      </select>
+
+                      <button
+                        class="btn-verde"
+                        onclick="marcarIndividual('${cliente.id}')"
+                      >
+                        Marcar
+                      </button>
+                    `
+                }
+              </td>
+            </tr>
+          `;
+        }
+      )
+      .join("");
+}
+
+function actualizarPaginacion() {
+  const desde =
+    total === 0
+      ? 0
+      : offset + 1;
+
+  const hasta =
+    Math.min(
+      offset + LIMIT,
+      total
+    );
+
+  document.getElementById(
+    "infoPagina"
+  ).textContent =
+    `${desde}-${hasta} de ${total} clientes`;
+
+  document.getElementById(
+    "btnAnterior"
+  ).disabled =
+    offset === 0;
+
+  document.getElementById(
+    "btnSiguiente"
+  ).disabled =
+    offset + LIMIT >= total;
+}
+
+function buscarClientes() {
+  offset = 0;
+
+  cargarClientes()
+    .catch(
+      error =>
+        alert(error.message)
+    );
+}
+
+function paginaAnterior() {
+  offset =
+    Math.max(
+      0,
+      offset - LIMIT
+    );
+
+  cargarClientes()
+    .catch(
+      error =>
+        alert(error.message)
+    );
+}
+
+function paginaSiguiente() {
+  if (
+    offset + LIMIT < total
+  ) {
+    offset += LIMIT;
+
+    cargarClientes()
+      .catch(
+        error =>
+          alert(error.message)
+      );
+  }
+}
+
+function cambiarSeleccionTodos() {
+  const checked =
+    document.getElementById(
+      "seleccionarTodos"
+    ).checked;
+
+  document
+    .querySelectorAll(
+      ".chkCliente"
+    )
+    .forEach(
+      checkbox => {
+        checkbox.checked =
+          checked;
+      }
+    );
+}
+
+function idsSeleccionados() {
+  return [
+    ...document.querySelectorAll(
+      ".chkCliente:checked"
+    )
+  ].map(
+    checkbox =>
+      checkbox.value
+  );
+}
+
+async function actualizarMasivo(
+  payload
+) {
+  return pedir(
+    `${API}/clientes/ejecucion/masivo`,
+    {
+      method: "PATCH",
+
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+
+      body:
+        JSON.stringify(
+          payload
+        )
+    }
+  );
+}
+
+async function marcarSeleccionados() {
+  try {
+    const ids =
+      idsSeleccionados();
+
+    const semana =
+      Number(
+        document.getElementById(
+          "semanaMasiva"
+        ).value
+      );
+
+    if (
+      ids.length === 0
+    ) {
+      alert(
+        "Seleccioná al menos un cliente."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(semana) ||
+      semana < 1 ||
+      semana > 5
+    ) {
+      alert(
+        "Elegí la semana de Ejecución."
+      );
+
+      return;
+    }
+
+    if (
+      !confirm(
+        `¿Marcar ${ids.length} cliente(s) como Ejecución - Semana ${semana}?`
+      )
+    ) {
+      return;
+    }
+
+    const datos =
+      await actualizarMasivo({
+        cliente_ids:
+          ids,
+
+        es_ejecucion:
+          true,
+
+        semana_ejecucion:
+          semana
+      });
+
+    mostrarMensaje(
+      "mensajeSeleccion",
+      `Actualizados: ${datos.actualizados}`,
+      "ok"
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    mostrarMensaje(
+      "mensajeSeleccion",
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function quitarSeleccionados() {
+  try {
+    const ids =
+      idsSeleccionados();
+
+    if (
+      ids.length === 0
+    ) {
+      alert(
+        "Seleccioná al menos un cliente."
+      );
+
+      return;
+    }
+
+    if (
+      !confirm(
+        `¿Quitar ${ids.length} cliente(s) del programa Ejecución?`
+      )
+    ) {
+      return;
+    }
+
+    const datos =
+      await actualizarMasivo({
+        cliente_ids:
+          ids,
+
+        es_ejecucion:
+          false,
+
+        semana_ejecucion:
+          null
+      });
+
+    mostrarMensaje(
+      "mensajeSeleccion",
+      `Actualizados: ${datos.actualizados}`,
+      "ok"
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    mostrarMensaje(
+      "mensajeSeleccion",
+      error.message,
+      "error"
+    );
+  }
+}
+
+function leerCodigos() {
+  const texto =
+    document.getElementById(
+      "codigosMasivos"
+    ).value;
+
+  return [
+    ...new Set(
+      texto
+        .split(
+          /[\s,;]+/
+        )
+        .map(
+          codigo =>
+            codigo
+              .trim()
+              .replace(
+                /\.0$/,
+                ""
+              )
+        )
+        .filter(Boolean)
+    )
+  ];
+}
+
+async function marcarPorCodigos() {
+  try {
+    const codigos =
+      leerCodigos();
+
+    const semana =
+      Number(
+        document.getElementById(
+          "semanaCodigos"
+        ).value
+      );
+
+    if (
+      codigos.length === 0
+    ) {
+      alert(
+        "Pegá al menos un código."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(semana) ||
+      semana < 1 ||
+      semana > 5
+    ) {
+      alert(
+        "Elegí la semana de Ejecución."
+      );
+
+      return;
+    }
+
+    if (
+      !confirm(
+        `¿Marcar ${codigos.length} código(s) como Ejecución - Semana ${semana}?`
+      )
+    ) {
+      return;
+    }
+
+    const datos =
+      await actualizarMasivo({
+        codigos_cliente:
+          codigos,
+
+        es_ejecucion:
+          true,
+
+        semana_ejecucion:
+          semana
+      });
+
+    mostrarMensaje(
+      "mensajeCodigos",
+      `Códigos ingresados: ${codigos.length}. Clientes actualizados: ${datos.actualizados}.`,
+      "ok"
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    mostrarMensaje(
+      "mensajeCodigos",
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function quitarPorCodigos() {
+  try {
+    const codigos =
+      leerCodigos();
+
+    if (
+      codigos.length === 0
+    ) {
+      alert(
+        "Pegá al menos un código."
+      );
+
+      return;
+    }
+
+    if (
+      !confirm(
+        `¿Quitar ${codigos.length} código(s) del programa Ejecución?`
+      )
+    ) {
+      return;
+    }
+
+    const datos =
+      await actualizarMasivo({
+        codigos_cliente:
+          codigos,
+
+        es_ejecucion:
+          false,
+
+        semana_ejecucion:
+          null
+      });
+
+    mostrarMensaje(
+      "mensajeCodigos",
+      `Códigos ingresados: ${codigos.length}. Clientes actualizados: ${datos.actualizados}.`,
+      "ok"
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    mostrarMensaje(
+      "mensajeCodigos",
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function marcarIndividual(
+  clienteId
+) {
+  try {
+    const semana =
+      Number(
+        document.getElementById(
+          `semana_${clienteId}`
+        ).value
+      );
+
+    if (
+      !Number.isInteger(semana) ||
+      semana < 1 ||
+      semana > 5
+    ) {
+      alert(
+        "Elegí una semana."
+      );
+
+      return;
+    }
+
+    await pedir(
+      `${API}/clientes/${clienteId}/ejecucion`,
+      {
+        method:
+          "PATCH",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            es_ejecucion:
+              true,
+
+            semana_ejecucion:
+              semana
+          })
+      }
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    alert(
+      error.message
+    );
+  }
+}
+
+async function quitarIndividual(
+  clienteId
+) {
+  try {
+    if (
+      !confirm(
+        "¿Quitar este cliente del programa Ejecución?"
+      )
+    ) {
+      return;
+    }
+
+    await pedir(
+      `${API}/clientes/${clienteId}/ejecucion`,
+      {
+        method:
+          "PATCH",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            es_ejecucion:
+              false,
+
+            semana_ejecucion:
+              null
+          })
+      }
+    );
+
+    await refrescar();
+
+  } catch (error) {
+    alert(
+      error.message
+    );
+  }
+}
+
+async function refrescar() {
+  await Promise.all([
+    cargarResumen(),
+    cargarClientes()
+  ]);
+}
+
+(async function iniciar() {
+  try {
+    await cargarRutas();
+    await refrescar();
+  } catch (error) {
+    alert(
+      error.message
+    );
+  }
+})();
+</script>
+
+</body>
+</html>

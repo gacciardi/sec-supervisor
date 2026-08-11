@@ -132,10 +132,43 @@
       color: #1d4ed8;
     }
 
-    .estado-ejecucion {
-     background: #fef3c7;
-    color: #92400e;
-   }
+   .estado-ejecucion {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
+.fila-programa-ejecucion {
+  background: #faf5ff;
+}
+
+.marca-ejecucion {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #7e22ce;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+    .fila-programa-ejecucion {
+      background: #faf5ff;
+    }
+
+    .marca-ejecucion {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #7e22ce;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
 
     .situacion-titular {
       color: #166534;
@@ -744,31 +777,46 @@ function renderizarPlan(datos) {
   tabla.innerHTML =
     clientes.map(function(cliente) {
 
-       let textoEstado;
+      let textoEstado;
       let claseEstado;
 
+      const esProgramaEjecucion =
+  cliente.programa_ejecucion === true ||
+  cliente.programa_ejecucion === "true" ||
+  cliente.programa_ejecucion === 1 ||
+  cliente.programa_ejecucion === "1";
+
+const semanaEjecucion =
+  cliente.semana_ejecucion || "";
+
+const marcaEjecucion =
+  esProgramaEjecucion
+    ? '<div class="marca-ejecucion">' +
+      '🟣 EJECUCIÓN · Semana ' +
+      esc(semanaEjecucion) +
+      '</div>'
+    : "";
+
+const claseFila =
+  esProgramaEjecucion
+    ? ' class="fila-programa-ejecucion"'
+    : "";
+
+      const esProgramaEjecucion =
+        cliente.programa_ejecucion === true ||
+        cliente.programa_ejecucion === "true" ||
+        cliente.programa_ejecucion === 1 ||
+        cliente.programa_ejecucion === "1";
+
+      const semanaEjecucion =
+        cliente.semana_ejecucion || "";
+
+      /*
+      es_ejecucion ya existía en esta pantalla para identificar
+      clientes agregados excepcionalmente al día.
+      programa_ejecucion identifica el nuevo programa mensual.
+      */
       if (
-        cliente.es_ejecucion &&
-        cliente.visitado
-      ) {
-
-        textoEstado =
-          "EJECUCIÓN - VISITADO";
-
-        claseEstado =
-          "estado-visitado";
-
-      } else if (
-        cliente.es_ejecucion
-      ) {
-
-        textoEstado =
-          "EJECUCIÓN";
-
-        claseEstado =
-          "estado-ejecucion";
-
-      } else if (
         cliente.visitado &&
         !cliente.programado
       ) {
@@ -798,6 +846,21 @@ function renderizarPlan(datos) {
           "estado-pendiente";
       }
 
+      const marcaEjecucion =
+        esProgramaEjecucion
+          ? (
+              '<div class="marca-ejecucion">' +
+              '🟣 EJECUCIÓN · Semana ' +
+              esc(semanaEjecucion) +
+              '</div>'
+            )
+          : "";
+
+      const claseFila =
+        esProgramaEjecucion
+          ? ' class="fila-programa-ejecucion"'
+          : "";
+
       const coordenadas =
         cliente.tiene_coordenadas
           ? "SI"
@@ -806,7 +869,7 @@ function renderizarPlan(datos) {
             '</span>';
 
       return (
-        "<tr>" +
+        "<tr" + claseFila + ">" +
 
         "<td>" +
         esc(cliente.codigo_cliente) +
@@ -814,6 +877,7 @@ function renderizarPlan(datos) {
 
         "<td>" +
         esc(cliente.nombre) +
+        marcaEjecucion +
         "</td>" +
 
         "<td>" +

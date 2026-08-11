@@ -208,6 +208,22 @@
       margin-bottom: 10px;
     }
 
+    .item-panel.item-ejecucion {
+      background: #faf5ff;
+      border: 2px solid #a855f7;
+    }
+
+    .badge-ejecucion {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #7e22ce;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
     .panel-cercanos {
       border: 3px solid #f59e0b;
       background: #fffbeb;
@@ -973,6 +989,30 @@ function distanciaMetros(lat1, lon1, lat2, lon2) {
   );
 }
 
+function esClienteProgramaEjecucion(cliente) {
+  return (
+    cliente &&
+    (
+      cliente.programa_ejecucion === true ||
+      cliente.programa_ejecucion === "true" ||
+      cliente.programa_ejecucion === 1 ||
+      cliente.programa_ejecucion === "1"
+    )
+  );
+}
+
+function marcaProgramaEjecucion(cliente) {
+  if (!esClienteProgramaEjecucion(cliente)) {
+    return "";
+  }
+
+  const semana = Number(cliente.semana_ejecucion || 0);
+
+  return semana >= 1 && semana <= 5
+    ? `<span class="badge-ejecucion">EJECUCION - SEMANA ${semana}</span>`
+    : `<span class="badge-ejecucion">EJECUCION</span>`;
+}
+
 function inicioElegidoHoy() {
   return (
     !!localStorage.getItem(KEY_INICIO_DIA) ||
@@ -1375,6 +1415,11 @@ function dibujarMapa(
         <b>
           ${index + 1}. ${c.nombre || ""}
         </b>
+        ${
+          marcaProgramaEjecucion(c)
+            ? `<br>${marcaProgramaEjecucion(c)}`
+            : ""
+        }
         <br>
 
         ${c.direccion || ""}
@@ -1518,8 +1563,16 @@ function calcularProximoCliente() {
     return;
   }
 
+  const marcaEjecucion =
+    marcaProgramaEjecucion(mejor);
+
   texto.innerHTML = `
     <b>${mejor.nombre || ""}</b>
+    ${
+      marcaEjecucion
+        ? `<br>${marcaEjecucion}`
+        : ""
+    }
     <br>
 
     ${mejor.direccion || ""}
@@ -3223,8 +3276,14 @@ function mostrarListado(
           `;
         }
 
+        const esEjecucion =
+          esClienteProgramaEjecucion(c);
+
+        const marcaEjecucion =
+          marcaProgramaEjecucion(c);
+
         return `
-          <div class="item-panel">
+          <div class="item-panel ${esEjecucion ? "item-ejecucion" : ""}">
             <b>
               ${
                 hecho
@@ -3235,6 +3294,12 @@ function mostrarListado(
               ${i + 1}.
               ${c.nombre || ""}
             </b>
+
+            ${
+              marcaEjecucion
+                ? `<br>${marcaEjecucion}`
+                : ""
+            }
 
             <br>
             ${c.direccion || ""}

@@ -387,6 +387,18 @@
       background: #16a34a;
     }
 
+    .marker-ejecucion {
+      background: #7e22ce;
+    }
+
+    .marker-ejecucion-visitado {
+      background: #7e22ce;
+      border-color: #16a34a;
+      box-shadow:
+        0 0 0 3px #16a34a,
+        0 2px 6px rgba(0,0,0,.35);
+    }
+
     .leaflet-popup-content button {
       width: 100%;
       padding: 9px;
@@ -628,6 +640,7 @@
 <div class="legend">
   🔴 Pendiente &nbsp;&nbsp;
   🟢 Visitado &nbsp;&nbsp;
+  🟣 Ejecucion &nbsp;&nbsp;
   🔵 Recorrido
 </div>
 
@@ -1339,15 +1352,21 @@ async function forzarActualizar() {
   await cargarDatos(true);
 }
 
-function crearIcono(numero, visitado) {
+function crearIcono(numero, visitado, esEjecucion = false) {
+  let claseMarker = "marker-rojo";
+
+  if (esEjecucion) {
+    claseMarker = visitado
+      ? "marker-ejecucion-visitado"
+      : "marker-ejecucion";
+  } else if (visitado) {
+    claseMarker = "marker-verde";
+  }
+
   return L.divIcon({
     className: "",
     html: `
-      <div class="numero-marker ${
-        visitado
-          ? "marker-verde"
-          : "marker-rojo"
-      }">
+      <div class="numero-marker ${claseMarker}">
         ${numero}
       </div>
     `,
@@ -1406,7 +1425,8 @@ function dibujarMapa(
       {
         icon: crearIcono(
           index + 1,
-          visitado
+          visitado,
+          esClienteProgramaEjecucion(c)
         )
       }
     )

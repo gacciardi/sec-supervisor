@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -332,7 +332,7 @@
       </div>
 
       <div class="dato-ruta">
-        <span>Situación</span>
+        <span>SituaciÃ³n</span>
         <strong id="datoSituacion">-</strong>
       </div>
 
@@ -342,7 +342,7 @@
 
       <div class="tarjeta-plan">
         <strong id="totalPlan">0</strong>
-        <span>Total del día</span>
+        <span>Total del dÃ­a</span>
       </div>
 
       <div class="tarjeta-plan">
@@ -379,9 +379,9 @@
 
         <thead>
           <tr>
-            <th>Código</th>
+            <th>CÃ³digo</th>
             <th>Cliente</th>
-            <th>Dirección</th>
+            <th>DirecciÃ³n</th>
             <th>Localidad</th>
             <th>Ruta</th>
             <th>Frecuencia</th>
@@ -586,7 +586,7 @@ async function cargarPlan() {
   if (!rutaId) {
 
     mostrarMensaje(
-      "Seleccioná una ruta.",
+      "SeleccionÃ¡ una ruta.",
       "error"
     );
 
@@ -596,7 +596,7 @@ async function cargarPlan() {
   if (!fecha) {
 
     mostrarMensaje(
-      "Seleccioná una fecha.",
+      "SeleccionÃ¡ una fecha.",
       "error"
     );
 
@@ -781,28 +781,6 @@ function renderizarPlan(datos) {
       let claseEstado;
 
       const esProgramaEjecucion =
-  cliente.programa_ejecucion === true ||
-  cliente.programa_ejecucion === "true" ||
-  cliente.programa_ejecucion === 1 ||
-  cliente.programa_ejecucion === "1";
-
-const semanaEjecucion =
-  cliente.semana_ejecucion || "";
-
-const marcaEjecucion =
-  esProgramaEjecucion
-    ? '<div class="marca-ejecucion">' +
-      '🟣 EJECUCIÓN · Semana ' +
-      esc(semanaEjecucion) +
-      '</div>'
-    : "";
-
-const claseFila =
-  esProgramaEjecucion
-    ? ' class="fila-programa-ejecucion"'
-    : "";
-
-      const esProgramaEjecucion =
         cliente.programa_ejecucion === true ||
         cliente.programa_ejecucion === "true" ||
         cliente.programa_ejecucion === 1 ||
@@ -812,8 +790,8 @@ const claseFila =
         cliente.semana_ejecucion || "";
 
       /*
-      es_ejecucion ya existía en esta pantalla para identificar
-      clientes agregados excepcionalmente al día.
+      es_ejecucion ya existÃ­a en esta pantalla para identificar
+      clientes agregados excepcionalmente al dÃ­a.
       programa_ejecucion identifica el nuevo programa mensual.
       */
       if (
@@ -850,7 +828,7 @@ const claseFila =
         esProgramaEjecucion
           ? (
               '<div class="marca-ejecucion">' +
-              '🟣 EJECUCIÓN · Semana ' +
+              'ðŸŸ£ EJECUCIÃ“N Â· Semana ' +
               esc(semanaEjecucion) +
               '</div>'
             )

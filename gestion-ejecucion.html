@@ -216,6 +216,7 @@
       padding: 10px;
       border-radius: 8px;
       display: none;
+      white-space: pre-wrap;
     }
 
     .mensaje.ok {
@@ -228,6 +229,12 @@
       display: block;
       background: #fee2e2;
       color: #991b1b;
+    }
+
+    .mensaje.warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e;
     }
 
     .subtitulo {
@@ -1068,6 +1075,67 @@ function leerCodigos() {
   ];
 }
 
+function construirMensajeCodigos(
+  datos,
+  codigos,
+  accion
+) {
+  const ingresados =
+    Number(
+      datos.ingresados ??
+      codigos.length
+    );
+
+  const encontrados =
+    Number(
+      datos.encontrados ??
+      datos.actualizados ??
+      0
+    );
+
+  const noEncontrados =
+    Number(
+      datos.no_encontrados ??
+      Math.max(
+        ingresados - encontrados,
+        0
+      )
+    );
+
+  const faltantes =
+    Array.isArray(
+      datos.codigos_no_encontrados
+    )
+      ? datos.codigos_no_encontrados
+      : [];
+
+  if (noEncontrados === 0) {
+    return {
+      tipo: "ok",
+      texto:
+        "✅ Operación realizada correctamente\n" +
+        `Códigos ingresados: ${ingresados}\n` +
+        `Clientes ${accion}: ${encontrados}\n` +
+        "No encontrados: 0"
+    };
+  }
+
+  return {
+    tipo: "warning",
+    texto:
+      "⚠️ ATENCIÓN — Hay códigos que no fueron encontrados\n" +
+      `Códigos ingresados: ${ingresados}\n` +
+      `Clientes ${accion}: ${encontrados}\n` +
+      `No encontrados: ${noEncontrados}` +
+      (
+        faltantes.length > 0
+          ? "\nCódigos no encontrados: " +
+            faltantes.join(", ")
+          : ""
+      )
+  };
+}
+
 async function marcarPorCodigos() {
   try {
     const codigos =
@@ -1122,10 +1190,17 @@ async function marcarPorCodigos() {
           semana
       });
 
+    const resultadoMensaje =
+      construirMensajeCodigos(
+        datos,
+        codigos,
+        "asignados"
+      );
+
     mostrarMensaje(
       "mensajeCodigos",
-      `Códigos ingresados: ${codigos.length}. Clientes actualizados: ${datos.actualizados}.`,
-      "ok"
+      resultadoMensaje.texto,
+      resultadoMensaje.tipo
     );
 
     await refrescar();
@@ -1174,10 +1249,17 @@ async function quitarPorCodigos() {
           null
       });
 
+    const resultadoMensaje =
+      construirMensajeCodigos(
+        datos,
+        codigos,
+        "quitados de Ejecución"
+      );
+
     mostrarMensaje(
       "mensajeCodigos",
-      `Códigos ingresados: ${codigos.length}. Clientes actualizados: ${datos.actualizados}.`,
-      "ok"
+      resultadoMensaje.texto,
+      resultadoMensaje.tipo
     );
 
     await refrescar();

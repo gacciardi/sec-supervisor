@@ -88,12 +88,15 @@ async function ingresar() {
       await fetch(`${API}/usuarios`)
       .then(r => r.json());
 
-    const vendedor =
-      usuarios.find(u =>
-        String(u.legajo || "") === String(legajo)
-        &&
-        u.rol === "VENDEDOR"
-      );
+   const vendedor =
+  usuarios.find(u =>
+    String(u.legajo || "") === String(legajo)
+    &&
+    (
+      u.rol === "VENDEDOR" ||
+      u.rol === "TRADE_MARKETING"
+    )
+  );
 
     if (!vendedor) {
       document.getElementById("mensaje").textContent =

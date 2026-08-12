@@ -39,19 +39,20 @@
     <input id="legajo" placeholder="Legajo">
 
     <select id="rol">
-      <option value="VENDEDOR">VENDEDOR</option>
-      <option value="SUPERVISOR">SUPERVISOR</option>
-      <option value="ADMIN">ADMIN</option>
-    </select>
+  <option value="VENDEDOR">VENDEDOR</option>
+  <option value="TRADE_MARKETING">TRADE MARKETING</option>
+  <option value="SUPERVISOR">SUPERVISOR</option>
+  <option value="ADMIN">ADMIN</option>
+</select>
 
-    <input id="horaAlertaLogin" type="time" value="08:45">
+<input id="horaAlertaLogin" type="time" value="08:45">
 
-    <select id="alertaLoginActiva">
-      <option value="true">Alerta login activa</option>
-      <option value="false">Alerta login inactiva</option>
-    </select>
+<select id="alertaLoginActiva">
+  <option value="true">Alerta login activa</option>
+  <option value="false">Alerta login inactiva</option>
+</select>
 
-    <button onclick="crearUsuario()">Crear</button>
+<button onclick="crearUsuario()">Crear</button>
   </div>
 
   <h2>Usuarios cargados</h2>
@@ -103,10 +104,11 @@ async function cargarUsuarios() {
 
         <td>
           <select id="rol-${u.id}">
-            <option value="VENDEDOR" ${u.rol === "VENDEDOR" ? "selected" : ""}>VENDEDOR</option>
-            <option value="SUPERVISOR" ${u.rol === "SUPERVISOR" ? "selected" : ""}>SUPERVISOR</option>
-            <option value="ADMIN" ${u.rol === "ADMIN" ? "selected" : ""}>ADMIN</option>
-          </select>
+  <option value="VENDEDOR" ${u.rol === "VENDEDOR" ? "selected" : ""}>VENDEDOR</option>
+  <option value="TRADE_MARKETING" ${u.rol === "TRADE_MARKETING" ? "selected" : ""}>TRADE MARKETING</option>
+  <option value="SUPERVISOR" ${u.rol === "SUPERVISOR" ? "selected" : ""}>SUPERVISOR</option>
+  <option value="ADMIN" ${u.rol === "ADMIN" ? "selected" : ""}>ADMIN</option>
+</select>
         </td>
 
         <td><input id="legajo-${u.id}" value="${esc(u.legajo)}"></td>

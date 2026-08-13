@@ -128,7 +128,36 @@ function mostrarMensaje(texto,tipo="info"){const el=document.getElementById("men
 function ocultarMensaje(){const el=document.getElementById("mensaje");el.textContent="";el.className="mensaje"}
 function cambiarPantalla(nombre){["pantallaInicio","panelProgreso","pantallaCliente","pantallaFinal"].forEach(id=>document.getElementById(id).classList.add("oculto"));if(nombre==="inicio")document.getElementById("pantallaInicio").classList.remove("oculto");if(nombre==="cliente"){document.getElementById("panelProgreso").classList.remove("oculto");document.getElementById("pantallaCliente").classList.remove("oculto")}if(nombre==="final"){document.getElementById("panelProgreso").classList.remove("oculto");document.getElementById("pantallaFinal").classList.remove("oculto")}}
 
-async function cargarVendedores(){try{const r=await fetch(`${API}/usuarios`);const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudieron cargar vendedores");vendedores=(Array.isArray(d)?d:d.usuarios||[]).filter(u=>String(u.rol||"").toUpperCase()==="VENDEDOR"&&u.activo!==false);document.getElementById("vendedorSelect").innerHTML=`<option value="">Seleccionar vendedor</option>`+vendedores.map(v=>`<option value="${v.id}">${v.nombre||""} ${v.apellido||""}</option>`).join("")}catch(e){mostrarMensaje(e.message,"error")}}
+async function cargarVendedores(){
+  try{
+    const r=await fetch(`${API}/usuarios`);
+    const d=await r.json();
+
+    if(!r.ok)
+      throw new Error(
+        d.error||"No se pudieron cargar vendedores"
+      );
+
+    vendedores=(Array.isArray(d)?d:d.usuarios||[])
+      .filter(u=>{
+        const rol=String(u.rol||"").toUpperCase();
+
+        return (
+          rol==="VENDEDOR" ||
+          rol==="TRADE_MARKETING"
+        ) && u.activo!==false;
+      });
+
+    document.getElementById("vendedorSelect").innerHTML=
+      `<option value="">Seleccionar vendedor</option>`+
+      vendedores.map(v=>
+        `<option value="${v.id}">${v.nombre||""} ${v.apellido||""}</option>`
+      ).join("");
+
+  }catch(e){
+    mostrarMensaje(e.message,"error");
+  }
+}
 
 async function comenzarRelevamiento(){const id=document.getElementById("vendedorSelect").value;if(!id){mostrarMensaje("Seleccioná un vendedor.","error");return}ocultarMensaje();vendedorIdActual=id;saltadosSesion=[];revisionSesion=[];localizadosSesion=0;await cargarPendientes();totalInicial=clientesPendientes.length;guardarSesion();if(clientesPendientes.length===0){mostrarFinal();return}cambiarPantalla("cliente");await actualizarGps();seleccionarClienteMasCercano()}
 

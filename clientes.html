@@ -399,6 +399,13 @@
       📤 Exportar padrón actualizado
     </button>
 
+  <button
+  class="boton-exportar"
+  onclick="exportarCambiosCoordenadas()"
+>
+  📍 Exportar cambios de coordenadas
+</button>  
+
   </div>
 
   <div class="tabla-clientes-wrap">
@@ -1344,6 +1351,11 @@ function exportarPadron() {
     `${API}/clientes/exportar/csv`;
 }
 
+function exportarCambiosCoordenadas() {
+
+  window.location.href =
+    `${API}/clientes/exportar/coordenadas`;
+}
 
 cargarDatos();
 

@@ -151,6 +151,22 @@
       color: #166534;
     }
 
+    .btn-eliminar-foto {
+      width: 100%;
+      margin-top: 10px;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-eliminar-foto:hover {
+      background: #b91c1c;
+    }
+
     .sin-resultados {
       background: white;
       border-radius: 14px;
@@ -531,6 +547,13 @@ async function cargarFotos() {
               <span class="badge">
                 ${escaparHtml(foto.tipo_foto || "LIBRE")}
               </span>
+
+              <button
+                class="btn-eliminar-foto"
+                onclick="eliminarFoto('${escaparHtml(foto.id)}')"
+              >
+                Eliminar foto
+              </button>
             </div>
           </div>
         `;
@@ -547,6 +570,56 @@ async function cargarFotos() {
 
     galeria.innerHTML =
       '<div class="sin-resultados">No se pudieron cargar las fotografías.</div>';
+  }
+}
+
+async function eliminarFoto(id) {
+  if (!id) {
+    return;
+  }
+
+  const confirmar =
+    window.confirm(
+      "¿Seguro que desea eliminar esta fotografía?\n\n" +
+      "La eliminación es permanente."
+    );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    const respuesta =
+      await fetch(
+        `${API}/fotos/evidencias/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+    const datos =
+      await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos.error ||
+        datos.detalle ||
+        "No se pudo eliminar la fotografía"
+      );
+    }
+
+    await cargarFotos();
+
+  } catch (error) {
+    console.error(
+      "Error eliminando fotografía:",
+      error
+    );
+
+    alert(
+      error.message ||
+      "No se pudo eliminar la fotografía."
+    );
   }
 }
 

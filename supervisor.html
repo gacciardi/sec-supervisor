@@ -219,7 +219,9 @@
     🟢 GPS menor a 5 min<br>
     🟡 GPS entre 5 y 15 min<br>
     🔴 GPS entre 15 y 60 min<br>
-    ⚫ Cerró sesión o más de 1 hora
+    ⚫ Cerró sesión o más de 1 hora<br>
+    🟣 Cliente de Ejecución pendiente<br>
+    🟣 Cliente de Ejecución con borde verde: visitado
   </div>
 
   <div class="panel">
@@ -501,6 +503,54 @@ function vendedorConEstado(
 
     primer_cliente:
       estado?.primer_cliente
+  };
+}
+
+function esProgramaEjecucion(cliente) {
+  return (
+    cliente &&
+    (
+      cliente.programa_ejecucion === true ||
+      cliente.programa_ejecucion === "true" ||
+      cliente.programa_ejecucion === 1 ||
+      cliente.programa_ejecucion === "1" ||
+      cliente.es_ejecucion === true ||
+      cliente.es_ejecucion === "true" ||
+      cliente.es_ejecucion === 1 ||
+      cliente.es_ejecucion === "1"
+    )
+  );
+}
+
+function estiloClienteMapa(
+  esEjecucion,
+  visitado
+) {
+  if (esEjecucion) {
+    return {
+      color: visitado
+        ? "#16a34a"
+        : "#7e22ce",
+      weight: visitado ? 4 : 2,
+      fillColor: "#7e22ce",
+      fillOpacity: .95
+    };
+  }
+
+  if (visitado) {
+    return {
+      color: "green",
+      weight: 2,
+      fillColor: "green",
+      fillOpacity: .9
+    };
+  }
+
+  return {
+    color: "orange",
+    weight: 2,
+    fillColor: "orange",
+    fillOpacity: .9
   };
 }
 
@@ -967,7 +1017,8 @@ async function seleccionarVendedor(
   try {
     const [
       respuestaDetalle,
-      respuestaRecorrido
+      respuestaRecorrido,
+      respuestaClientesHoy
     ] = await Promise.all([
       fetch(
         `${API}/dashboard/vendedores/${id}`
@@ -975,6 +1026,10 @@ async function seleccionarVendedor(
 
       fetch(
         `${API}/gps-logs/vendedor/${id}/hoy`
+      ),
+
+      fetch(
+        `${API}/clientes/vendedor/${id}/hoy`
       )
     ]);
 
@@ -983,6 +1038,9 @@ async function seleccionarVendedor(
 
     const recorrido =
       await respuestaRecorrido.json();
+
+    const clientesHoy =
+      await respuestaClientesHoy.json();
 
     if (!respuestaDetalle.ok) {
       throw new Error(
@@ -997,6 +1055,14 @@ async function seleccionarVendedor(
         recorrido.error ||
         recorrido.detalle ||
         "No se pudo cargar el recorrido"
+      );
+    }
+
+    if (!respuestaClientesHoy.ok) {
+      throw new Error(
+        clientesHoy.error ||
+        clientesHoy.detalle ||
+        "No se pudieron cargar los clientes de hoy"
       );
     }
 
@@ -1091,6 +1157,9 @@ async function seleccionarVendedor(
       detalle,
       Array.isArray(recorrido)
         ? recorrido
+        : [],
+      Array.isArray(clientesHoy)
+        ? clientesHoy
         : []
     );
 
@@ -1105,11 +1174,31 @@ async function seleccionarVendedor(
 function dibujarDetalle(
   vendedor,
   detalle,
-  recorrido
+  recorrido,
+  clientesHoy
 ) {
   capaDetalle.clearLayers();
 
   const puntos = [];
+
+  const clientesHoyPorId = new Map(
+    (clientesHoy || []).map(cliente => [
+      String(cliente.id),
+      cliente
+    ])
+  );
+
+  const clientesHoyPorCodigo = new Map(
+    (clientesHoy || [])
+      .filter(cliente =>
+        cliente.codigo_cliente !== null &&
+        cliente.codigo_cliente !== undefined
+      )
+      .map(cliente => [
+        String(cliente.codigo_cliente),
+        cliente
+      ])
+  );
 
   const puntosRecorrido =
     recorrido
@@ -1219,13 +1308,29 @@ function dibujarDetalle(
         [lat, lng]
       );
 
+      const clientePlan =
+        clientesHoyPorId.get(
+          String(cliente.id || cliente.cliente_id || "")
+        ) ||
+        clientesHoyPorCodigo.get(
+          String(cliente.codigo_cliente || "")
+        ) ||
+        cliente;
+
+      const ejecucion =
+        esProgramaEjecucion(clientePlan);
+
+      const estilo =
+        estiloClienteMapa(
+          ejecucion,
+          false
+        );
+
       L.circleMarker(
         [lat, lng],
         {
           radius: 10,
-          color: "orange",
-          fillColor: "orange",
-          fillOpacity: .9
+          ...estilo
         }
       )
         .addTo(capaDetalle)
@@ -1244,6 +1349,12 @@ function dibujarDetalle(
           )}
 
           <br>
+
+          ${
+            ejecucion
+              ? "🟣 EJECUCIÓN<br>"
+              : ""
+          }
 
           Estado:
           <b>PENDIENTE</b>
@@ -1275,13 +1386,29 @@ function dibujarDetalle(
         [lat, lng]
       );
 
+      const clientePlan =
+        clientesHoyPorId.get(
+          String(visita.cliente_id || "")
+        ) ||
+        clientesHoyPorCodigo.get(
+          String(visita.codigo_cliente || "")
+        ) ||
+        visita;
+
+      const ejecucion =
+        esProgramaEjecucion(clientePlan);
+
+      const estilo =
+        estiloClienteMapa(
+          ejecucion,
+          true
+        );
+
       L.circleMarker(
         [lat, lng],
         {
           radius: 10,
-          color: "green",
-          fillColor: "green",
-          fillOpacity: .9
+          ...estilo
         }
       )
         .addTo(capaDetalle)
@@ -1293,6 +1420,12 @@ function dibujarDetalle(
           </b>
 
           <br>
+
+          ${
+            ejecucion
+              ? "🟣 EJECUCIÓN<br>"
+              : ""
+          }
 
           Estado:
           <b>VISITADO</b>

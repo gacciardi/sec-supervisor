@@ -917,6 +917,13 @@ let primeraVisitaDetectada =
   localStorage.getItem(KEY_PRIMERA_DETECTADA) === "true";
 
 let ultimaActualizacion = 0;
+
+/*
+Evita que una carga de datos más antigua termine después
+de una más nueva y deje contadores/mapa desincronizados.
+*/
+let versionCargaDatos = 0;
+
 let ultimaPosicionEnviada = null;
 let primeraCargaMapa = true;
 let enviandoGPS = false;
@@ -1261,20 +1268,106 @@ function iniciarMapa() {
 }
 
 async function cargarDatos(ajustarMapa = false) {
+  const miVersion = ++versionCargaDatos;
+
   try {
-    const detalle = await fetch(
-      `${API}/dashboard/vendedores/${vendedorId}`
-    ).then(r => r.json());
+    const [
+      respuestaDetalle,
+      respuestaClientes,
+      respuestaRecorrido
+    ] = await Promise.all([
+      fetch(
+        `${API}/dashboard/vendedores/${vendedorId}`
+      ),
 
-    clientes = await fetch(
-      `${API}/clientes/vendedor/${vendedorId}/hoy`
-    ).then(r => r.json());
+      fetch(
+        `${API}/clientes/vendedor/${vendedorId}/hoy`
+      ),
 
-    recorrido = await fetch(
-      `${API}/gps-logs/vendedor/${vendedorId}/hoy`
-    ).then(r => r.json());
+      fetch(
+        `${API}/gps-logs/vendedor/${vendedorId}/hoy`
+      )
+    ]);
 
-    visitas = detalle.visitas || [];
+    const [
+      detalleNuevo,
+      clientesNuevos,
+      recorridoNuevo
+    ] = await Promise.all([
+      respuestaDetalle.json(),
+      respuestaClientes.json(),
+      respuestaRecorrido.json()
+    ]);
+
+    /*
+    Si mientras esperábamos al servidor comenzó una carga
+    más reciente, esta respuesta vieja no puede modificar
+    ni los contadores ni el mapa.
+    */
+    if (miVersion !== versionCargaDatos) {
+      return;
+    }
+
+    if (!respuestaDetalle.ok) {
+      throw new Error(
+        detalleNuevo.error ||
+        detalleNuevo.detalle ||
+        "No se pudo cargar el detalle del vendedor"
+      );
+    }
+
+    if (!respuestaClientes.ok) {
+      throw new Error(
+        clientesNuevos.error ||
+        clientesNuevos.detalle ||
+        "No se pudieron cargar los clientes de hoy"
+      );
+    }
+
+    if (!respuestaRecorrido.ok) {
+      throw new Error(
+        recorridoNuevo.error ||
+        recorridoNuevo.detalle ||
+        "No se pudo cargar el recorrido del vendedor"
+      );
+    }
+
+    const nuevasVisitas =
+      Array.isArray(detalleNuevo.visitas)
+        ? detalleNuevo.visitas
+        : [];
+
+    const nuevosClientes =
+      Array.isArray(clientesNuevos)
+        ? clientesNuevos
+        : [];
+
+    const nuevoRecorrido =
+      Array.isArray(recorridoNuevo)
+        ? recorridoNuevo
+        : [];
+
+    const visitadosIds = new Set(
+      nuevasVisitas
+        .map(v => v.cliente_id)
+        .filter(Boolean)
+        .map(id => String(id))
+    );
+
+    const visitadosCantidad =
+      nuevosClientes.filter(c =>
+        visitadosIds.has(
+          String(c.id)
+        )
+      ).length;
+
+    /*
+    Recién aquí, con un único snapshot consistente,
+    actualizamos las variables globales y la pantalla.
+    */
+    clientes = nuevosClientes;
+    visitas = nuevasVisitas;
+    recorrido = nuevoRecorrido;
 
     if (
       visitas.length > 0 &&
@@ -1292,20 +1385,6 @@ async function cargarDatos(ajustarMapa = false) {
     if (debeElegirInicio) {
       pausarSugerenciasInicio();
     }
-
-    const visitadosIds = new Set(
-      visitas
-        .map(v => v.cliente_id)
-        .filter(Boolean)
-        .map(id => String(id))
-    );
-
-    const visitadosCantidad =
-      clientes.filter(c =>
-        visitadosIds.has(
-          String(c.id)
-        )
-      ).length;
 
     document.getElementById(
       "visitados"
@@ -1336,6 +1415,14 @@ async function cargarDatos(ajustarMapa = false) {
     actualizarEstadoConexion();
 
   } catch (error) {
+    /*
+    Una carga vieja descartada tampoco debe mostrar
+    errores ni alterar el estado de una carga nueva.
+    */
+    if (miVersion !== versionCargaDatos) {
+      return;
+    }
+
     console.error(
       "Error cargando datos:",
       error

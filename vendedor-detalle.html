@@ -72,7 +72,9 @@
     <p>
       🔵 Recorrido / última posición |
       🟠 Pendientes |
-      🟢 Visitados
+      🟢 Visitados |
+      🟣 Ejecución pendiente |
+      🟣 borde verde: Ejecución visitado
     </p>
 
     <div id="mapaVendedor"></div>
@@ -288,6 +290,25 @@ function agruparVisitas(visitas) {
   return Object.values(agrupadas);
 }
 
+function esProgramaEjecucion(cliente) {
+  return !!cliente && (
+    [true, "true", 1, "1"].includes(cliente.programa_ejecucion) ||
+    [true, "true", 1, "1"].includes(cliente.es_ejecucion)
+  );
+}
+
+function estiloClienteMapa(esEjecucion, visitado) {
+  if (esEjecucion) return {
+    color: visitado ? "#16a34a" : "#7e22ce",
+    weight: visitado ? 4 : 2,
+    fillColor: "#7e22ce",
+    fillOpacity: 0.95
+  };
+  return visitado
+    ? { color:"green", weight:2, fillColor:"green", fillOpacity:0.95 }
+    : { color:"orange", weight:2, fillColor:"orange", fillOpacity:0.9 };
+}
+
 async function cargarDetalle() {
   if (!vendedorId) {
     document.getElementById(
@@ -301,7 +322,8 @@ async function cargarDetalle() {
   try {
     const [
       respuestaDetalle,
-      respuestaRecorrido
+      respuestaRecorrido,
+      respuestaClientesHoy
     ] = await Promise.all([
       fetch(
         `${API}/dashboard/vendedores/${vendedorId}`
@@ -309,6 +331,10 @@ async function cargarDetalle() {
 
       fetch(
         `${API}/gps-logs/vendedor/${vendedorId}/hoy`
+      ),
+
+      fetch(
+        `${API}/clientes/vendedor/${vendedorId}/hoy`
       )
     ]);
 
@@ -317,6 +343,29 @@ async function cargarDetalle() {
 
     const recorrido =
       await respuestaRecorrido.json();
+
+    let clientesHoy = [];
+    if (respuestaClientesHoy.ok) {
+      const respuestaHoy = await respuestaClientesHoy.json();
+      clientesHoy = Array.isArray(respuestaHoy)
+        ? respuestaHoy
+        : (Array.isArray(respuestaHoy.clientes) ? respuestaHoy.clientes : []);
+    }
+
+    const ejecucionCodigos = new Set(
+      clientesHoy.filter(esProgramaEjecucion)
+        .map(c => String(c.codigo_cliente))
+    );
+
+    const ejecucionIds = new Set(
+      clientesHoy.filter(esProgramaEjecucion)
+        .map(c => String(c.id))
+    );
+
+    const esEjecucionCliente = cliente =>
+      esProgramaEjecucion(cliente) ||
+      ejecucionIds.has(String(cliente?.id ?? cliente?.cliente_id ?? "")) ||
+      ejecucionCodigos.has(String(cliente?.codigo_cliente ?? ""));
 
     if (!respuestaDetalle.ok) {
       throw new Error(
@@ -394,7 +443,8 @@ async function cargarDetalle() {
     );
 
     renderizarVisitas(
-      visitasAgrupadas
+      visitasAgrupadas,
+      esEjecucionCliente
     );
 
     dibujarMapa(
@@ -567,7 +617,8 @@ function iniciarMapa() {
 function dibujarMapa(
   datos,
   recorrido,
-  visitasAgrupadas
+  visitasAgrupadas,
+  esEjecucionCliente
 ) {
   iniciarMapa();
 
@@ -678,9 +729,10 @@ function dibujarMapa(
         [lat, lng],
         {
           radius: 10,
-          color: "orange",
-          fillColor: "orange",
-          fillOpacity: 0.9
+          ...estiloClienteMapa(
+            esEjecucionCliente(cliente),
+            false
+          )
         }
       )
         .addTo(capaMapa)
@@ -744,9 +796,10 @@ function dibujarMapa(
         [lat, lng],
         {
           radius: 11,
-          color: "green",
-          fillColor: "green",
-          fillOpacity: 0.95
+          ...estiloClienteMapa(
+            esEjecucionCliente(visita),
+            true
+          )
         }
       )
         .addTo(capaMapa)

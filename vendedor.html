@@ -399,6 +399,29 @@
         0 2px 6px rgba(0,0,0,.35);
     }
 
+    .marker-trade {
+      background: #f97316;
+    }
+
+    .marker-trade-visitado {
+      background: #f97316;
+      border-color: #16a34a;
+      box-shadow:
+        0 0 0 3px #16a34a,
+        0 2px 6px rgba(0,0,0,.35);
+    }
+
+    .badge-trade {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #f97316;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
     .leaflet-popup-content button {
       width: 100%;
       padding: 9px;
@@ -641,6 +664,7 @@
   🔴 Pendiente &nbsp;&nbsp;
   🟢 Visitado &nbsp;&nbsp;
   🟣 Ejecucion &nbsp;&nbsp;
+  🟠 Trade &nbsp;&nbsp;
   🔵 Recorrido
 </div>
 
@@ -1031,6 +1055,39 @@ function marcaProgramaEjecucion(cliente) {
   return semana >= 1 && semana <= 5
     ? `<span class="badge-ejecucion">EJECUCION - SEMANA ${semana}</span>`
     : `<span class="badge-ejecucion">EJECUCION</span>`;
+}
+
+function esClienteProgramaTrade(cliente) {
+  return (
+    cliente &&
+    (
+      cliente.programa_trade === true ||
+      cliente.programa_trade === "true" ||
+      cliente.programa_trade === 1 ||
+      cliente.programa_trade === "1"
+    )
+  );
+}
+
+function marcaProgramaTrade(cliente) {
+  if (!esClienteProgramaTrade(cliente)) {
+    return "";
+  }
+
+  const semana = Number(cliente.semana_trade || 0);
+
+  return semana >= 1 && semana <= 5
+    ? `<span class="badge-trade">TRADE - SEMANA ${semana}</span>`
+    : `<span class="badge-trade">TRADE</span>`;
+}
+
+function marcaProgramaCliente(cliente) {
+  const marcaTrade = marcaProgramaTrade(cliente);
+  if (marcaTrade) {
+    return marcaTrade;
+  }
+
+  return marcaProgramaCliente(cliente);
 }
 
 function inicioElegidoHoy() {
@@ -1439,10 +1496,19 @@ async function forzarActualizar() {
   await cargarDatos(true);
 }
 
-function crearIcono(numero, visitado, esEjecucion = false) {
+function crearIcono(
+  numero,
+  visitado,
+  esEjecucion = false,
+  esTrade = false
+) {
   let claseMarker = "marker-rojo";
 
-  if (esEjecucion) {
+  if (esTrade) {
+    claseMarker = visitado
+      ? "marker-trade-visitado"
+      : "marker-trade";
+  } else if (esEjecucion) {
     claseMarker = visitado
       ? "marker-ejecucion-visitado"
       : "marker-ejecucion";
@@ -1513,7 +1579,8 @@ function dibujarMapa(
         icon: crearIcono(
           index + 1,
           visitado,
-          esClienteProgramaEjecucion(c)
+          esClienteProgramaEjecucion(c),
+          esClienteProgramaTrade(c)
         )
       }
     )
@@ -1523,8 +1590,8 @@ function dibujarMapa(
           ${index + 1}. ${c.nombre || ""}
         </b>
         ${
-          marcaProgramaEjecucion(c)
-            ? `<br>${marcaProgramaEjecucion(c)}`
+          marcaProgramaCliente(c)
+            ? `<br>${marcaProgramaCliente(c)}`
             : ""
         }
         <br>
@@ -1670,14 +1737,14 @@ function calcularProximoCliente() {
     return;
   }
 
-  const marcaEjecucion =
-    marcaProgramaEjecucion(mejor);
+  const marcaPrograma =
+    marcaProgramaCliente(mejor);
 
   texto.innerHTML = `
     <b>${mejor.nombre || ""}</b>
     ${
-      marcaEjecucion
-        ? `<br>${marcaEjecucion}`
+      marcaPrograma
+        ? `<br>${marcaPrograma}`
         : ""
     }
     <br>
@@ -3387,7 +3454,7 @@ function mostrarListado(
           esClienteProgramaEjecucion(c);
 
         const marcaEjecucion =
-          marcaProgramaEjecucion(c);
+          marcaProgramaCliente(c);
 
         return `
           <div class="item-panel ${esEjecucion ? "item-ejecucion" : ""}">

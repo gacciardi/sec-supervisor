@@ -291,22 +291,46 @@ function agruparVisitas(visitas) {
 }
 
 function esProgramaEjecucion(cliente) {
-  return !!cliente && (
-    [true, "true", 1, "1"].includes(cliente.programa_ejecucion) ||
-    [true, "true", 1, "1"].includes(cliente.es_ejecucion)
+  return (
+    cliente &&
+    (
+      cliente.programa_ejecucion === true ||
+      cliente.programa_ejecucion === "true" ||
+      cliente.programa_ejecucion === 1 ||
+      cliente.programa_ejecucion === "1" ||
+      cliente.es_ejecucion === true ||
+      cliente.es_ejecucion === "true" ||
+      cliente.es_ejecucion === 1 ||
+      cliente.es_ejecucion === "1"
+    )
   );
 }
 
 function estiloClienteMapa(esEjecucion, visitado) {
-  if (esEjecucion) return {
-    color: visitado ? "#16a34a" : "#7e22ce",
-    weight: visitado ? 4 : 2,
-    fillColor: "#7e22ce",
-    fillOpacity: 0.95
+  if (esEjecucion) {
+    return {
+      color: visitado ? "#16a34a" : "#7e22ce",
+      weight: visitado ? 4 : 2,
+      fillColor: "#7e22ce",
+      fillOpacity: 0.95
+    };
+  }
+
+  if (visitado) {
+    return {
+      color: "green",
+      weight: 2,
+      fillColor: "green",
+      fillOpacity: 0.95
+    };
+  }
+
+  return {
+    color: "orange",
+    weight: 2,
+    fillColor: "orange",
+    fillOpacity: 0.9
   };
-  return visitado
-    ? { color:"green", weight:2, fillColor:"green", fillOpacity:0.95 }
-    : { color:"orange", weight:2, fillColor:"orange", fillOpacity:0.9 };
 }
 
 async function cargarDetalle() {
@@ -345,27 +369,53 @@ async function cargarDetalle() {
       await respuestaRecorrido.json();
 
     let clientesHoy = [];
+
     if (respuestaClientesHoy.ok) {
-      const respuestaHoy = await respuestaClientesHoy.json();
-      clientesHoy = Array.isArray(respuestaHoy)
-        ? respuestaHoy
-        : (Array.isArray(respuestaHoy.clientes) ? respuestaHoy.clientes : []);
+      const respuestaHoy =
+        await respuestaClientesHoy.json();
+
+      clientesHoy =
+        Array.isArray(respuestaHoy)
+          ? respuestaHoy
+          : (
+              Array.isArray(respuestaHoy.clientes)
+                ? respuestaHoy.clientes
+                : []
+            );
     }
 
     const ejecucionCodigos = new Set(
-      clientesHoy.filter(esProgramaEjecucion)
-        .map(c => String(c.codigo_cliente))
+      clientesHoy
+        .filter(esProgramaEjecucion)
+        .map(cliente =>
+          String(cliente.codigo_cliente)
+        )
     );
 
     const ejecucionIds = new Set(
-      clientesHoy.filter(esProgramaEjecucion)
-        .map(c => String(c.id))
+      clientesHoy
+        .filter(esProgramaEjecucion)
+        .map(cliente =>
+          String(cliente.id)
+        )
     );
 
-    const esEjecucionCliente = cliente =>
-      esProgramaEjecucion(cliente) ||
-      ejecucionIds.has(String(cliente?.id ?? cliente?.cliente_id ?? "")) ||
-      ejecucionCodigos.has(String(cliente?.codigo_cliente ?? ""));
+    const esEjecucionCliente =
+      cliente =>
+        esProgramaEjecucion(cliente) ||
+        ejecucionIds.has(
+          String(
+            cliente?.id ??
+            cliente?.cliente_id ??
+            ""
+          )
+        ) ||
+        ejecucionCodigos.has(
+          String(
+            cliente?.codigo_cliente ??
+            ""
+          )
+        );
 
     if (!respuestaDetalle.ok) {
       throw new Error(
@@ -443,8 +493,7 @@ async function cargarDetalle() {
     );
 
     renderizarVisitas(
-      visitasAgrupadas,
-      esEjecucionCliente
+      visitasAgrupadas
     );
 
     dibujarMapa(
@@ -452,7 +501,8 @@ async function cargarDetalle() {
       Array.isArray(recorrido)
         ? recorrido
         : [],
-      visitasAgrupadas
+      visitasAgrupadas,
+      esEjecucionCliente
     );
 
   } catch (error) {

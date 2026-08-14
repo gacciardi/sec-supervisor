@@ -384,37 +384,69 @@ async function cargarDetalle() {
             );
     }
 
+    /*
+    Un visitado puede no haber estado programado y luego
+    ser marcado como Ejecución. Consultamos su cliente
+    maestro actual para resolver correctamente el color.
+    */
+    const idsVisitados = [
+      ...new Set(
+        (datos.visitas || [])
+          .map(visita =>
+            String(visita.cliente_id || "").trim()
+          )
+          .filter(Boolean)
+      )
+    ];
+
+    const clientesMaestrosVisitados =
+      await Promise.all(
+        idsVisitados.map(async clienteId => {
+          try {
+            const respuestaCliente =
+              await fetch(`${API}/clientes/${clienteId}`);
+
+            if (!respuestaCliente.ok) {
+              return null;
+            }
+
+            return await respuestaCliente.json();
+          } catch (error) {
+            console.warn(
+              "No se pudo consultar cliente visitado:",
+              clienteId,
+              error
+            );
+            return null;
+          }
+        })
+      );
+
+    const clientesReferencia = [
+      ...clientesHoy,
+      ...clientesMaestrosVisitados.filter(Boolean)
+    ];
+
     const ejecucionCodigos = new Set(
-      clientesHoy
+      clientesReferencia
         .filter(esProgramaEjecucion)
-        .map(cliente =>
-          String(cliente.codigo_cliente)
-        )
+        .map(cliente => String(cliente.codigo_cliente))
     );
 
     const ejecucionIds = new Set(
-      clientesHoy
+      clientesReferencia
         .filter(esProgramaEjecucion)
-        .map(cliente =>
-          String(cliente.id)
-        )
+        .map(cliente => String(cliente.id))
     );
 
     const esEjecucionCliente =
       cliente =>
         esProgramaEjecucion(cliente) ||
         ejecucionIds.has(
-          String(
-            cliente?.id ??
-            cliente?.cliente_id ??
-            ""
-          )
+          String(cliente?.id ?? cliente?.cliente_id ?? "")
         ) ||
         ejecucionCodigos.has(
-          String(
-            cliente?.codigo_cliente ??
-            ""
-          )
+          String(cliente?.codigo_cliente ?? "")
         );
 
     if (!respuestaDetalle.ok) {

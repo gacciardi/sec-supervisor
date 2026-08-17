@@ -170,6 +170,22 @@
       white-space: nowrap;
     }
 
+    .fila-programa-trade {
+      background: #fff7ed;
+    }
+
+    .marca-trade {
+      display: inline-block;
+      margin-top: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f97316;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
     .situacion-titular {
       color: #166534;
     }
@@ -789,6 +805,15 @@ function renderizarPlan(datos) {
       const semanaEjecucion =
         cliente.semana_ejecucion || "";
 
+      const esProgramaTrade =
+        cliente.programa_trade === true ||
+        cliente.programa_trade === "true" ||
+        cliente.programa_trade === 1 ||
+        cliente.programa_trade === "1";
+
+      const semanaTrade =
+        cliente.semana_trade || "";
+
       /*
       es_ejecucion ya existÃ­a en esta pantalla para identificar
       clientes agregados excepcionalmente al dÃ­a.
@@ -834,10 +859,24 @@ function renderizarPlan(datos) {
             )
           : "";
 
-      const claseFila =
-        esProgramaEjecucion
-          ? ' class="fila-programa-ejecucion"'
+      const marcaTrade =
+        esProgramaTrade
+          ? (
+              '<div class="marca-trade">' +
+              'TRADE · Semana ' +
+              esc(semanaTrade) +
+              '</div>'
+            )
           : "";
+
+      const claseFila =
+        esProgramaTrade
+          ? ' class="fila-programa-trade"'
+          : (
+              esProgramaEjecucion
+                ? ' class="fila-programa-ejecucion"'
+                : ""
+            );
 
       const coordenadas =
         cliente.tiene_coordenadas
@@ -855,6 +894,7 @@ function renderizarPlan(datos) {
 
         "<td>" +
         esc(cliente.nombre) +
+        marcaTrade +
         marcaEjecucion +
         "</td>" +
 

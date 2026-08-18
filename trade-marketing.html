@@ -1375,13 +1375,24 @@ function renderizarPlanTrade() {
 }
 
 function actualizarResumen() {
+  /*
+  El backend guarda "Todas" como 5 registros
+  internos (semanas 1 a 5). Para que las
+  tarjetas coincidan con la tabla visible,
+  contamos el plan ya agrupado.
+  */
+  const planResumen =
+    agruparTodasLasSemanas(
+      planTrade
+    );
+
   document.getElementById(
     "totalAsignaciones"
   ).textContent =
-    planTrade.length;
+    planResumen.length;
 
   const activas =
-    planTrade.filter(
+    planResumen.filter(
       asignacion =>
         asignacion.activo
     ).length;

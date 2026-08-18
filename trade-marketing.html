@@ -396,6 +396,7 @@
         </label>
         <select id="semanaAsignar">
           <option value="">Seleccionar semana</option>
+          <option value="TODAS">Todas las semanas</option>
           <option value="1">Semana 1</option>
           <option value="2">Semana 2</option>
           <option value="3">Semana 3</option>
@@ -942,11 +943,9 @@ async function confirmarAsignacion() {
     ).value;
 
   const semana =
-    Number(
-      document.getElementById(
-        "semanaAsignar"
-      ).value
-    );
+    document.getElementById(
+      "semanaAsignar"
+    ).value;
 
   const reemplazar_existentes =
     document.getElementById(
@@ -1167,6 +1166,73 @@ async function cargarPlanTrade() {
   }
 }
 
+function agruparTodasLasSemanas(asignaciones) {
+  const grupos = new Map();
+
+  asignaciones.forEach(asignacion => {
+    const clave = [
+      asignacion.cliente_id,
+      asignacion.trade_id,
+      asignacion.ruta_trade_id,
+      asignacion.frecuencia_id,
+      asignacion.activo ? "1" : "0"
+    ].join("|");
+
+    if (!grupos.has(clave)) {
+      grupos.set(clave, []);
+    }
+
+    grupos.get(clave).push(asignacion);
+  });
+
+  const resultado = [];
+
+  grupos.forEach(grupo => {
+    const semanas =
+      [...new Set(
+        grupo
+          .map(item => Number(item.semana))
+          .filter(numero =>
+            Number.isInteger(numero) &&
+            numero >= 1 &&
+            numero <= 5
+          )
+      )]
+        .sort((a, b) => a - b);
+
+    const esTodas =
+      semanas.length === 5 &&
+      semanas.every(
+        (numero, indice) =>
+          numero === indice + 1
+      );
+
+    if (esTodas) {
+      resultado.push({
+        ...grupo[0],
+        semana: "TODAS",
+        ids_todas_semanas:
+          grupo.map(item => item.id)
+      });
+    } else {
+      resultado.push(...grupo);
+    }
+  });
+
+  return resultado.sort((a, b) => {
+    const clienteA =
+      String(a.cliente || "");
+
+    const clienteB =
+      String(b.cliente || "");
+
+    return clienteA.localeCompare(
+      clienteB,
+      "es"
+    );
+  });
+}
+
 function renderizarPlanTrade() {
   const tabla =
     document.getElementById(
@@ -1186,8 +1252,13 @@ function renderizarPlanTrade() {
     return;
   }
 
+  const planMostrar =
+    agruparTodasLasSemanas(
+      planTrade
+    );
+
   tabla.innerHTML =
-    planTrade
+    planMostrar
       .map(asignacion => `
         <tr
           class="${asignacion.activo ? "" : "fila-inactiva"}"
@@ -1234,6 +1305,19 @@ function renderizarPlanTrade() {
             <select
               id="semana-${asignacion.id}"
             >
+              <option
+                value="TODAS"
+                ${
+                  String(
+                    asignacion.semana
+                  ).toUpperCase() === "TODAS"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Todas
+              </option>
+
               ${[1,2,3,4,5]
                 .map(
                   numero => `
@@ -1344,11 +1428,9 @@ async function guardarAsignacion(id) {
     ).value;
 
   const semana =
-    Number(
-      document.getElementById(
-        `semana-${id}`
-      ).value
-    );
+    document.getElementById(
+      `semana-${id}`
+    ).value;
 
   const activo =
     document.getElementById(

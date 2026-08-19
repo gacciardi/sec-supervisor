@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -111,6 +111,18 @@
       font-size: 12px;
       font-weight: 700;
     }
+  
+    .badge-ejecucion {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #f3e8ff;
+      color: #6b21a8;
+      border: 1px solid #d8b4fe;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
   </style>
 </head>
 
@@ -131,7 +143,7 @@
 
 <nav>
   <a href="dashboard-vendedores.html">
-    ← Volver
+    â† Volver
   </a>
 </nav>
 
@@ -142,7 +154,7 @@
   </h2>
 
   <div class="card">
-    <h3>Última posición GPS</h3>
+    <h3>Ãšltima posiciÃ³n GPS</h3>
     <div id="gps">
       Cargando GPS...
     </div>
@@ -154,7 +166,7 @@
     <div class="leyenda-mapa">
       <span class="leyenda-item">
         <span class="punto-leyenda punto-recorrido"></span>
-        Recorrido / última posición
+        Recorrido / Ãºltima posiciÃ³n
       </span>
 
       <span class="leyenda-item">
@@ -169,12 +181,12 @@
 
       <span class="leyenda-item">
         <span class="punto-leyenda punto-ejecucion"></span>
-        Ejecución pendiente
+        EjecuciÃ³n pendiente
       </span>
 
       <span class="leyenda-item">
         <span class="punto-leyenda punto-ejecucion-visitado"></span>
-        Ejecución visitado
+        EjecuciÃ³n visitado
       </span>
 
       <span class="leyenda-item">
@@ -197,7 +209,7 @@
     <table>
       <thead>
         <tr>
-          <th>Código</th>
+          <th>CÃ³digo</th>
           <th>Cliente</th>
           <th>Canal</th>
           <th>Frecuencia</th>
@@ -446,7 +458,7 @@ function estiloClienteMapa(
   - pendiente: rosa/fucsia
   - visitado: verde con borde rosa
 
-  EJECUCIÓN:
+  EJECUCIÃ“N:
   - pendiente: violeta
   - visitado: violeta con borde verde
   */
@@ -548,7 +560,7 @@ async function cargarDetalle() {
 
     /*
     Un visitado puede no haber estado programado y luego
-    ser marcado como Ejecución. Consultamos su cliente
+    ser marcado como EjecuciÃ³n. Consultamos su cliente
     maestro actual para resolver correctamente el color.
     */
     const idsVisitados = [
@@ -733,17 +745,19 @@ async function cargarDetalle() {
       document.getElementById(
         "gps"
       ).innerHTML =
-        "Sin posición registrada";
+        "Sin posiciÃ³n registrada";
     }
 
     renderizarPendientes(
       datos.pendientes || [],
-      esTradeCliente
+      esTradeCliente,
+      esEjecucionCliente
     );
 
     renderizarVisitas(
       visitasAgrupadas,
-      esTradeCliente
+      esTradeCliente,
+      esEjecucionCliente
     );
 
     dibujarMapa(
@@ -769,7 +783,7 @@ async function cargarDetalle() {
   }
 }
 
-function renderizarPendientes(pendientes, esTradeCliente) {
+function renderizarPendientes(pendientes, esTradeCliente, esEjecucionCliente) {
   const tabla =
     document.getElementById(
       "tablaPendientes"
@@ -830,7 +844,7 @@ function renderizarPendientes(pendientes, esTradeCliente) {
       .join("");
 }
 
-function renderizarVisitas(visitas, esTradeCliente) {
+function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
   const tabla =
     document.getElementById(
       "tablaVisitas"
@@ -843,7 +857,7 @@ function renderizarVisitas(visitas, esTradeCliente) {
           colspan="5"
           class="sin-datos"
         >
-          Todavía no hay visitas registradas.
+          TodavÃ­a no hay visitas registradas.
         </td>
       </tr>
     `;
@@ -968,7 +982,7 @@ function dibujarMapa(
     )
       .addTo(capaMapa)
       .bindPopup(
-        "Recorrido del día"
+        "Recorrido del dÃ­a"
       );
 
     puntosMapa.push(
@@ -1017,7 +1031,7 @@ function dibujarMapa(
             )}
           </b>
           <br>
-          Última posición GPS
+          Ãšltima posiciÃ³n GPS
         `);
     }
   }
@@ -1063,7 +1077,7 @@ function dibujarMapa(
           </b>
           <br>
 
-          Código:
+          CÃ³digo:
           ${escaparHtml(
             cliente.codigo_cliente
           )}
@@ -1136,7 +1150,7 @@ function dibujarMapa(
           </b>
           <br>
 
-          Código:
+          CÃ³digo:
           ${escaparHtml(
             visita.codigo_cliente
           )}
@@ -1183,7 +1197,7 @@ function dibujarMapa(
     });
 
   /*
-  Únicamente ajusta la vista una vez.
+  Ãšnicamente ajusta la vista una vez.
 
   Las actualizaciones posteriores limpian
   y vuelven a dibujar puntos, pero nunca
@@ -1214,7 +1228,7 @@ function dibujarMapa(
 cargarDetalle();
 
 /*
-Actualiza la información y los marcadores,
+Actualiza la informaciÃ³n y los marcadores,
 pero conserva el zoom elegido.
 */
 setInterval(
@@ -1225,3 +1239,4 @@ setInterval(
 
 </body>
 </html>
+

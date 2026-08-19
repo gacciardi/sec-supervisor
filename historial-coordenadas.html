@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Historial de Coordenadas</title>
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .panel-coordenadas {
+      background: white;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 3px 12px rgba(0,0,0,.10);
+      margin-top: 22px;
+    }
+
+    .panel-coordenadas h2 {
+      margin-top: 0;
+      color: #071b3a;
+    }
+
+    .filtros-coordenadas {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+      margin-top: 18px;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .campo label {
+      font-size: 13px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .campo input,
+    .campo select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      background: white;
+    }
+
+    .atajos,
+    .acciones {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .atajos button,
+    .acciones button {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .atajo {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .boton-exportar {
+      background: #166534;
+      color: white;
+    }
+
+    .boton-limpiar {
+      background: #64748b;
+      color: white;
+    }
+
+    .resumen-seleccion {
+      margin-top: 14px;
+      font-weight: bold;
+      color: #334155;
+    }
+
+    .ayuda {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media(max-width: 950px) {
+      .filtros-coordenadas {
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
+      }
+    }
+
+    @media(max-width: 600px) {
+      .filtros-coordenadas {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="header-sec">
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
+  <div>
+    <h1><span class="nombre-empresa-sec">REBESA</span> - Historial de Coordenadas</h1>
+    <p>Exportación y auditoría de cambios de ubicación</p>
+  </div>
+</header>
+
+<nav>
+  <a href="index.html">Inicio</a>
+  <a href="supervisor.html">Supervisor</a>
+  <a href="plan-trabajo.html">Plan de trabajo</a>
+  <a href="trade-marketing.html">Trade Marketing</a>
+  <a href="clientes.html">Clientes</a>
+  <a href="historial-coordenadas.html">Coordenadas</a>
+</nav>
+
+<div class="container">
+  <div class="panel-coordenadas">
+
+    <h2>📍 Exportar cambios de coordenadas</h2>
+
+    <p>
+      Seleccioná un período y, si querés, filtrá también por vendedor o ruta.
+      Si dejás todos los filtros vacíos, SEC exportará el historial completo.
+    </p>
+
+    <div class="atajos">
+      <button class="atajo" onclick="seleccionarHoy()">Hoy</button>
+      <button class="atajo" onclick="seleccionarUltimos7()">Últimos 7 días</button>
+      <button class="atajo" onclick="seleccionarEsteMes()">Este mes</button>
+      <button class="atajo" onclick="seleccionarMesAnterior()">Mes anterior</button>
+      <button class="atajo" onclick="seleccionarTodo()">Todo el historial</button>
+    </div>
+
+    <div class="filtros-coordenadas">
+
+      <div class="campo">
+        <label for="fechaDesde">Desde</label>
+        <input id="fechaDesde" type="date" onchange="actualizarResumen()">
+      </div>
+
+      <div class="campo">
+        <label for="fechaHasta">Hasta</label>
+        <input id="fechaHasta" type="date" onchange="actualizarResumen()">
+      </div>
+
+      <div class="campo">
+        <label for="vendedorFiltro">Vendedor</label>
+        <select id="vendedorFiltro" onchange="actualizarResumen()">
+          <option value="">Todos los vendedores</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="rutaFiltro">Ruta</label>
+        <select id="rutaFiltro" onchange="actualizarResumen()">
+          <option value="">Todas las rutas</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div id="resumenSeleccion" class="resumen-seleccion"></div>
+
+    <div class="acciones">
+      <button class="boton-exportar" onclick="exportarCambios()">
+        📊 Exportar a Excel
+      </button>
+
+      <button class="boton-limpiar" onclick="limpiarFiltros()">
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div class="ayuda">
+      El archivo Excel mantiene fecha y hora del cambio, cliente, ruta, vendedor titular,
+      coordenadas anteriores y nuevas, distancia desplazada, origen del cambio y
+      usuario que realizó la modificación.
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = "https://sec-backend-gg4j.onrender.com";
+
+function fechaISO(fecha) {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
+function hoyLocal() {
+  return new Date();
+}
+
+function seleccionarHoy() {
+  const hoy = fechaISO(hoyLocal());
+  fechaDesde.value = hoy;
+  fechaHasta.value = hoy;
+  actualizarResumen();
+}
+
+function seleccionarUltimos7() {
+  const hasta = hoyLocal();
+  const desde = new Date(hasta);
+  desde.setDate(desde.getDate() - 6);
+
+  fechaDesde.value = fechaISO(desde);
+  fechaHasta.value = fechaISO(hasta);
+  actualizarResumen();
+}
+
+function seleccionarEsteMes() {
+  const hoy = hoyLocal();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+  fechaDesde.value = fechaISO(desde);
+  fechaHasta.value = fechaISO(hoy);
+  actualizarResumen();
+}
+
+function seleccionarMesAnterior() {
+  const hoy = hoyLocal();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+
+  fechaDesde.value = fechaISO(desde);
+  fechaHasta.value = fechaISO(hasta);
+  actualizarResumen();
+}
+
+function seleccionarTodo() {
+  fechaDesde.value = "";
+  fechaHasta.value = "";
+  actualizarResumen();
+}
+
+function limpiarFiltros() {
+  fechaDesde.value = "";
+  fechaHasta.value = "";
+  vendedorFiltro.value = "";
+  rutaFiltro.value = "";
+  actualizarResumen();
+}
+
+function actualizarResumen() {
+  const partes = [];
+
+  if (fechaDesde.value || fechaHasta.value) {
+    partes.push(
+      `Período: ${fechaDesde.value || "inicio"} a ${fechaHasta.value || "hoy"}`
+    );
+  } else {
+    partes.push("Período: todo el historial");
+  }
+
+  if (vendedorFiltro.value) {
+    partes.push(
+      "Vendedor: " +
+      vendedorFiltro.options[vendedorFiltro.selectedIndex].text
+    );
+  }
+
+  if (rutaFiltro.value) {
+    partes.push(
+      "Ruta: " +
+      rutaFiltro.options[rutaFiltro.selectedIndex].text
+    );
+  }
+
+  resumenSeleccion.textContent = partes.join(" · ");
+}
+
+async function cargarFiltros() {
+  try {
+    const [usuarios, rutas] = await Promise.all([
+      fetch(`${API}/usuarios`).then(r => r.json()),
+      fetch(`${API}/rutas`).then(r => r.json())
+    ]);
+
+    const vendedores = Array.isArray(usuarios)
+      ? usuarios.filter(usuario =>
+          usuario.activo !== false &&
+          ["VENDEDOR", "TRADE_MARKETING"].includes(
+            String(usuario.rol || "").trim().toUpperCase()
+          )
+        )
+      : [];
+
+    vendedores.forEach(vendedor => {
+      const option = document.createElement("option");
+      option.value = vendedor.id;
+      option.textContent =
+        `${vendedor.legajo || ""} - ${vendedor.nombre || ""} ${vendedor.apellido || ""}`;
+      vendedorFiltro.appendChild(option);
+    });
+
+    (Array.isArray(rutas) ? rutas : []).forEach(ruta => {
+      const option = document.createElement("option");
+      option.value = ruta.id;
+      option.textContent = `Ruta ${ruta.nombre || ""}`;
+      rutaFiltro.appendChild(option);
+    });
+
+    seleccionarEsteMes();
+
+  } catch (error) {
+    console.error("Error cargando filtros:", error);
+    seleccionarEsteMes();
+  }
+}
+
+function exportarCambios() {
+  const desde = fechaDesde.value;
+  const hasta = fechaHasta.value;
+
+  if (desde && hasta && desde > hasta) {
+    alert("La fecha desde no puede ser posterior a la fecha hasta.");
+    return;
+  }
+
+  const params = new URLSearchParams();
+
+  if (desde) params.set("desde", desde);
+  if (hasta) params.set("hasta", hasta);
+  if (vendedorFiltro.value) params.set("vendedor_id", vendedorFiltro.value);
+  if (rutaFiltro.value) params.set("ruta_id", rutaFiltro.value);
+
+  const query = params.toString();
+
+  window.location.href =
+    `${API}/clientes/exportar/coordenadas` +
+    (query ? `?${query}` : "");
+}
+
+cargarFiltros();
+</script>
+
+<script src="config-sec.js"></script>
+
+</body>
+</html>

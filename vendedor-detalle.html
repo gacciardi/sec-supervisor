@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>SEC - Detalle Vendedor</title>
+  <title>SEC - Detalle Vendedor / Trade Marketing</title>
 
   <link rel="stylesheet" href="style.css">
 
@@ -29,6 +29,88 @@
       color: #6b7280;
       padding: 18px;
     }
+
+    .leyenda-mapa {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      align-items: center;
+      margin: 8px 0 16px 0;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .leyenda-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .punto-leyenda {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      box-sizing: border-box;
+      flex: 0 0 auto;
+    }
+
+    .punto-recorrido {
+      background: #2563eb;
+      border: 2px solid #2563eb;
+    }
+
+    .punto-pendiente {
+      background: #f59e0b;
+      border: 2px solid #f59e0b;
+    }
+
+    .punto-visitado {
+      background: #16a34a;
+      border: 2px solid #16a34a;
+    }
+
+    .punto-ejecucion {
+      background: #7e22ce;
+      border: 2px solid #7e22ce;
+    }
+
+    .punto-ejecucion-visitado {
+      background: #7e22ce;
+      border: 4px solid #16a34a;
+    }
+
+    .punto-trade {
+      background: #e91e63;
+      border: 2px solid #e91e63;
+    }
+
+    .punto-trade-visitado {
+      background: #16a34a;
+      border: 4px solid #e91e63;
+    }
+
+    .badge-trade {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #fce7f3;
+      color: #be185d;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .badge-venta {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -42,8 +124,8 @@
   >
 
   <div>
-    <h1>Detalle del Vendedor</h1>
-    <p>Seguimiento individual</p>
+    <h1>Detalle Vendedor / Trade Marketing</h1>
+    <p>Seguimiento individual de recorrido, clientes y visitas</p>
   </div>
 </header>
 
@@ -67,15 +149,44 @@
   </div>
 
   <div class="card">
-    <h3>Mapa del vendedor</h3>
+    <h3>Mapa de recorrido y clientes</h3>
 
-    <p>
-      🔵 Recorrido / última posición |
-      🟠 Pendientes |
-      🟢 Visitados |
-      🟣 Ejecución pendiente |
-      🟣 borde verde: Ejecución visitado
-    </p>
+    <div class="leyenda-mapa">
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-recorrido"></span>
+        Recorrido / última posición
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-pendiente"></span>
+        Pendiente
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-visitado"></span>
+        Visitado
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-ejecucion"></span>
+        Ejecución pendiente
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-ejecucion-visitado"></span>
+        Ejecución visitado
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-trade"></span>
+        Trade pendiente
+      </span>
+
+      <span class="leyenda-item">
+        <span class="punto-leyenda punto-trade-visitado"></span>
+        Trade visitado
+      </span>
+    </div>
 
     <div id="mapaVendedor"></div>
   </div>
@@ -90,6 +201,7 @@
           <th>Cliente</th>
           <th>Canal</th>
           <th>Frecuencia</th>
+          <th>Tipo</th>
         </tr>
       </thead>
 
@@ -107,6 +219,7 @@
           <th>Llegada</th>
           <th>Salida</th>
           <th>Permanencia total</th>
+          <th>Tipo</th>
         </tr>
       </thead>
 
@@ -306,7 +419,56 @@ function esProgramaEjecucion(cliente) {
   );
 }
 
-function estiloClienteMapa(esEjecucion, visitado) {
+function esProgramaTrade(cliente) {
+  if (!cliente) return false;
+
+  const motivo =
+    String(
+      cliente.motivo || ""
+    ).trim().toUpperCase();
+
+  return (
+    cliente.programa_trade === true ||
+    cliente.programa_trade === "true" ||
+    cliente.programa_trade === 1 ||
+    cliente.programa_trade === "1" ||
+    motivo === "PLAN TRADE"
+  );
+}
+
+function estiloClienteMapa(
+  esEjecucion,
+  visitado,
+  esTrade
+) {
+  /*
+  TRADE:
+  - pendiente: rosa/fucsia
+  - visitado: verde con borde rosa
+
+  EJECUCIÓN:
+  - pendiente: violeta
+  - visitado: violeta con borde verde
+  */
+
+  if (esTrade) {
+    if (visitado) {
+      return {
+        color: "#e91e63",
+        weight: 4,
+        fillColor: "#16a34a",
+        fillOpacity: 0.95
+      };
+    }
+
+    return {
+      color: "#e91e63",
+      weight: 2,
+      fillColor: "#e91e63",
+      fillOpacity: 0.95
+    };
+  }
+
   if (esEjecucion) {
     return {
       color: visitado ? "#16a34a" : "#7e22ce",
@@ -318,17 +480,17 @@ function estiloClienteMapa(esEjecucion, visitado) {
 
   if (visitado) {
     return {
-      color: "green",
+      color: "#16a34a",
       weight: 2,
-      fillColor: "green",
+      fillColor: "#16a34a",
       fillOpacity: 0.95
     };
   }
 
   return {
-    color: "orange",
+    color: "#f59e0b",
     weight: 2,
-    fillColor: "orange",
+    fillColor: "#f59e0b",
     fillOpacity: 0.9
   };
 }
@@ -449,6 +611,41 @@ async function cargarDetalle() {
           String(cliente?.codigo_cliente ?? "")
         );
 
+    const tradeCodigos = new Set(
+      clientesHoy
+        .filter(esProgramaTrade)
+        .map(cliente =>
+          String(cliente.codigo_cliente ?? "")
+        )
+        .filter(Boolean)
+    );
+
+    const tradeIds = new Set(
+      clientesHoy
+        .filter(esProgramaTrade)
+        .map(cliente =>
+          String(cliente.id ?? "")
+        )
+        .filter(Boolean)
+    );
+
+    const esTradeCliente =
+      cliente =>
+        esProgramaTrade(cliente) ||
+        tradeIds.has(
+          String(
+            cliente?.id ??
+            cliente?.cliente_id ??
+            ""
+          )
+        ) ||
+        tradeCodigos.has(
+          String(
+            cliente?.codigo_cliente ??
+            ""
+          )
+        );
+
     if (!respuestaDetalle.ok) {
       throw new Error(
         datos.error ||
@@ -479,12 +676,31 @@ async function cargarDetalle() {
         datos.visitas || []
       );
 
+    const rolVendedor =
+      String(
+        datos.vendedor.rol || ""
+      ).trim().toUpperCase();
+
+    const rolVisible =
+      rolVendedor === "TRADE_MARKETING"
+        ? "Trade Marketing"
+        : (
+            rolVendedor === "VENDEDOR"
+              ? "Vendedor"
+              : rolVendedor.replaceAll("_", " ")
+          );
+
     document.getElementById(
       "nombreVendedor"
     ).textContent =
       `${datos.vendedor.nombre || ""} ` +
       `${datos.vendedor.apellido || ""} - ` +
-      `Legajo ${datos.vendedor.legajo || ""}`;
+      `Legajo ${datos.vendedor.legajo || ""}` +
+      (
+        rolVisible
+          ? ` - ${rolVisible}`
+          : ""
+      );
 
     if (datos.ultimo_gps) {
       document.getElementById(
@@ -521,11 +737,13 @@ async function cargarDetalle() {
     }
 
     renderizarPendientes(
-      datos.pendientes || []
+      datos.pendientes || [],
+      esTradeCliente
     );
 
     renderizarVisitas(
-      visitasAgrupadas
+      visitasAgrupadas,
+      esTradeCliente
     );
 
     dibujarMapa(
@@ -534,7 +752,8 @@ async function cargarDetalle() {
         ? recorrido
         : [],
       visitasAgrupadas,
-      esEjecucionCliente
+      esEjecucionCliente,
+      esTradeCliente
     );
 
   } catch (error) {
@@ -550,7 +769,7 @@ async function cargarDetalle() {
   }
 }
 
-function renderizarPendientes(pendientes) {
+function renderizarPendientes(pendientes, esTradeCliente) {
   const tabla =
     document.getElementById(
       "tablaPendientes"
@@ -560,7 +779,7 @@ function renderizarPendientes(pendientes) {
     tabla.innerHTML = `
       <tr>
         <td
-          colspan="4"
+          colspan="5"
           class="sin-datos"
         >
           No hay clientes pendientes.
@@ -598,12 +817,20 @@ function renderizarPendientes(pendientes) {
               cliente.frecuencia
             )}
           </td>
+
+          <td>
+            ${
+              esTradeCliente(cliente)
+                ? '<span class="badge-trade">TRADE</span>'
+                : '<span class="badge-venta">VENTA</span>'
+            }
+          </td>
         </tr>
       `)
       .join("");
 }
 
-function renderizarVisitas(visitas) {
+function renderizarVisitas(visitas, esTradeCliente) {
   const tabla =
     document.getElementById(
       "tablaVisitas"
@@ -613,7 +840,7 @@ function renderizarVisitas(visitas) {
     tabla.innerHTML = `
       <tr>
         <td
-          colspan="4"
+          colspan="5"
           class="sin-datos"
         >
           Todavía no hay visitas registradas.
@@ -663,6 +890,14 @@ function renderizarVisitas(visitas) {
               visita.permanencia_segundos
             )}
           </td>
+
+          <td>
+            ${
+              esTradeCliente(visita)
+                ? '<span class="badge-trade">TRADE</span>'
+                : '<span class="badge-venta">VENTA</span>'
+            }
+          </td>
         </tr>
       `)
       .join("");
@@ -700,7 +935,8 @@ function dibujarMapa(
   datos,
   recorrido,
   visitasAgrupadas,
-  esEjecucionCliente
+  esEjecucionCliente,
+  esTradeCliente
 ) {
   iniciarMapa();
 
@@ -813,7 +1049,8 @@ function dibujarMapa(
           radius: 10,
           ...estiloClienteMapa(
             esEjecucionCliente(cliente),
-            false
+            false,
+            esTradeCliente(cliente)
           )
         }
       )
@@ -846,6 +1083,11 @@ function dibujarMapa(
 
           Estado:
           <b>PENDIENTE</b>
+          ${
+            esTradeCliente(cliente)
+              ? '<br><b style="color:#e91e63;">TRADE MARKETING</b>'
+              : ''
+          }
         `);
     });
 
@@ -880,7 +1122,8 @@ function dibujarMapa(
           radius: 11,
           ...estiloClienteMapa(
             esEjecucionCliente(visita),
-            true
+            true,
+            esTradeCliente(visita)
           )
         }
       )
@@ -931,6 +1174,11 @@ function dibujarMapa(
 
           Estado:
           <b>VISITADO</b>
+          ${
+            esTradeCliente(visita)
+              ? '<br><b style="color:#e91e63;">TRADE MARKETING</b>'
+              : ''
+          }
         `);
     });
 

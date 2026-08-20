@@ -132,27 +132,11 @@
       color: #1d4ed8;
     }
 
-   .estado-ejecucion {
-  background: #f3e8ff;
-  color: #6b21a8;
-  border: 1px solid #d8b4fe;
-}
-
-.fila-programa-ejecucion {
-  background: #faf5ff;
-}
-
-.marca-ejecucion {
-  display: inline-block;
-  margin-top: 5px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #7e22ce;
-  color: white;
-  font-size: 11px;
-  font-weight: bold;
-  white-space: nowrap;
-}
+    .estado-ejecucion {
+      background: #f3e8ff;
+      color: #6b21a8;
+      border: 1px solid #d8b4fe;
+    }
 
     .fila-programa-ejecucion {
       background: #faf5ff;
@@ -196,6 +180,50 @@
 
     .sin-coordenadas {
       color: #b45309;
+      font-weight: bold;
+    }
+
+    /*
+    ==========================================
+    CLIENTES SIN COORDENADAS
+    ==========================================
+    Panel compacto para identificar rápidamente
+    los códigos de los clientes del plan que
+    todavía no tienen coordenadas.
+    */
+
+    .panel-sin-coordenadas {
+      display: none;
+      margin: -6px 0 16px;
+      padding: 10px 12px;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .panel-sin-coordenadas.visible {
+      display: block;
+    }
+
+    .codigos-sin-coordenadas {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      vertical-align: middle;
+    }
+
+    .codigo-sin-coordenadas {
+      display: inline-block;
+      padding: 3px 7px;
+      border: 1px solid #fdba74;
+      border-radius: 7px;
+      background: #ffffff;
+      color: #9a3412;
+      font-family: Consolas, monospace;
+      font-size: 12px;
       font-weight: bold;
     }
 
@@ -285,7 +313,12 @@
 
 <div class="container">
 
-  <h2>Consultar plan diario por ruta</h2>
+  <h2 style="
+    background:#e0f2fe;
+    border-left:5px solid #0284c7;
+    padding:10px 14px;
+    border-radius:8px;
+  ">Consultar plan diario por ruta</h2>
 
   <div class="filtros-plan">
 
@@ -348,7 +381,7 @@
       </div>
 
       <div class="dato-ruta">
-        <span>SituaciÃ³n</span>
+        <span>Situación</span>
         <strong id="datoSituacion">-</strong>
       </div>
 
@@ -358,7 +391,7 @@
 
       <div class="tarjeta-plan">
         <strong id="totalPlan">0</strong>
-        <span>Total del dÃ­a</span>
+        <span>Total del día</span>
       </div>
 
       <div class="tarjeta-plan">
@@ -383,6 +416,26 @@
 
     </div>
 
+    <!--
+    ==========================================
+    DETALLE COMPACTO SIN COORDENADAS
+    ==========================================
+    -->
+
+    <div
+      id="panelSinCoordenadas"
+      class="panel-sin-coordenadas"
+    >
+      <strong id="tituloSinCoordenadas">
+        ⚠ Sin coordenadas:
+      </strong>
+
+      <span
+        id="codigosSinCoordenadas"
+        class="codigos-sin-coordenadas"
+      ></span>
+    </div>
+
     <div class="barra-cobertura">
       <div id="barraCobertura"></div>
     </div>
@@ -395,9 +448,9 @@
 
         <thead>
           <tr>
-            <th>CÃ³digo</th>
+            <th>Código</th>
             <th>Cliente</th>
-            <th>DirecciÃ³n</th>
+            <th>Dirección</th>
             <th>Localidad</th>
             <th>Ruta</th>
             <th>Frecuencia</th>
@@ -602,7 +655,7 @@ async function cargarPlan() {
   if (!rutaId) {
 
     mostrarMensaje(
-      "SeleccionÃ¡ una ruta.",
+      "Seleccioná una ruta.",
       "error"
     );
 
@@ -612,7 +665,7 @@ async function cargarPlan() {
   if (!fecha) {
 
     mostrarMensaje(
-      "SeleccionÃ¡ una fecha.",
+      "Seleccioná una fecha.",
       "error"
     );
 
@@ -757,6 +810,86 @@ function renderizarPlan(datos) {
   ).textContent =
     resumen.sin_coordenadas || 0;
 
+  /*
+  ==========================================
+  MOSTRAR CÓDIGOS SIN COORDENADAS
+  ==========================================
+  Solamente toma clientes pertenecientes
+  al plan del día.
+  */
+
+  const clientesSinCoordenadas =
+    clientes.filter(function(cliente) {
+
+      const programado =
+        cliente.programado !== false;
+
+      const tieneCoordenadas =
+        cliente.tiene_coordenadas === true ||
+        cliente.tiene_coordenadas === "true" ||
+        cliente.tiene_coordenadas === 1 ||
+        cliente.tiene_coordenadas === "1";
+
+      return (
+        programado &&
+        !tieneCoordenadas
+      );
+    });
+
+  const panelSinCoordenadas =
+    document.getElementById(
+      "panelSinCoordenadas"
+    );
+
+  const tituloSinCoordenadas =
+    document.getElementById(
+      "tituloSinCoordenadas"
+    );
+
+  const codigosSinCoordenadas =
+    document.getElementById(
+      "codigosSinCoordenadas"
+    );
+
+  if (
+    clientesSinCoordenadas.length > 0
+  ) {
+
+    tituloSinCoordenadas.textContent =
+      "⚠ Sin coordenadas (" +
+      clientesSinCoordenadas.length +
+      "):";
+
+    codigosSinCoordenadas.innerHTML =
+      clientesSinCoordenadas
+        .map(function(cliente) {
+
+          return (
+            '<span class="codigo-sin-coordenadas">' +
+            esc(cliente.codigo_cliente) +
+            '</span>'
+          );
+
+        })
+        .join("");
+
+    panelSinCoordenadas.classList.add(
+      "visible"
+    );
+
+  } else {
+
+    tituloSinCoordenadas.textContent =
+      "✓ Todos los clientes programados tienen coordenadas";
+
+    codigosSinCoordenadas.innerHTML =
+      "";
+
+    panelSinCoordenadas.classList.add(
+      "visible"
+    );
+  }
+
   const cobertura =
     Number(
       resumen.cobertura_porcentaje ||
@@ -815,10 +948,14 @@ function renderizarPlan(datos) {
         cliente.semana_trade || "";
 
       /*
-      es_ejecucion ya existÃ­a en esta pantalla para identificar
-      clientes agregados excepcionalmente al dÃ­a.
-      programa_ejecucion identifica el nuevo programa mensual.
+      es_ejecucion ya existía en esta pantalla
+      para identificar clientes agregados
+      excepcionalmente al día.
+
+      programa_ejecucion identifica el
+      programa mensual.
       */
+
       if (
         cliente.visitado &&
         !cliente.programado
@@ -853,7 +990,7 @@ function renderizarPlan(datos) {
         esProgramaEjecucion
           ? (
               '<div class="marca-ejecucion">' +
-              'ðŸŸ£ EJECUCIÃ“N Â· Semana ' +
+              '🟣 EJECUCIÓN · Semana ' +
               esc(semanaEjecucion) +
               '</div>'
             )
@@ -878,8 +1015,14 @@ function renderizarPlan(datos) {
                 : ""
             );
 
+      const tieneCoordenadas =
+        cliente.tiene_coordenadas === true ||
+        cliente.tiene_coordenadas === "true" ||
+        cliente.tiene_coordenadas === 1 ||
+        cliente.tiene_coordenadas === "1";
+
       const coordenadas =
-        cliente.tiene_coordenadas
+        tieneCoordenadas
           ? "SI"
           : '<span class="sin-coordenadas">' +
             'Sin coordenadas' +

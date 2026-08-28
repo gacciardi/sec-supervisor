@@ -336,6 +336,145 @@ function coordenadaValida(lat, lng) {
   );
 }
 
+
+function distanciaMetros(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const rad = grados => grados * Math.PI / 180;
+
+  const dLat = rad(lat2 - lat1);
+  const dLng = rad(lng2 - lng1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(lat1)) *
+    Math.cos(rad(lat2)) *
+    Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.atan2(
+    Math.sqrt(a),
+    Math.sqrt(1 - a)
+  );
+}
+
+/*
+Filtra errores GPS sin modificar ni borrar datos de la base.
+
+Criterios:
+- descarta coordenadas inválidas;
+- descarta puntos con precisión peor a 100 m;
+- descarta saltos que exigirían una velocidad superior a 160 km/h;
+- divide el recorrido cuando hay más de 10 minutos sin señal,
+  para no unir con una recta dos tramos separados.
+*/
+function prepararRecorridoGPS(recorrido) {
+  const PRECISION_MAXIMA_METROS = 100;
+  const VELOCIDAD_MAXIMA_KMH = 160;
+  const CORTE_SIN_SENAL_MS = 10 * 60 * 1000;
+
+  const puntos = (Array.isArray(recorrido) ? recorrido : [])
+    .map(punto => ({
+      lat: Number(punto.latitud),
+      lng: Number(punto.longitud),
+      precision: Number(punto.precision_metros),
+      fecha: punto.fecha_hora
+        ? new Date(punto.fecha_hora)
+        : null
+    }))
+    .filter(punto =>
+      coordenadaValida(punto.lat, punto.lng) &&
+      (
+        !Number.isFinite(punto.precision) ||
+        punto.precision <= PRECISION_MAXIMA_METROS
+      ) &&
+      punto.fecha &&
+      !Number.isNaN(punto.fecha.getTime())
+    )
+    .sort((a, b) =>
+      a.fecha.getTime() - b.fecha.getTime()
+    );
+
+  if (puntos.length === 0) {
+    return {
+      segmentos: [],
+      primero: null,
+      ultimo: null
+    };
+  }
+
+  const aceptados = [puntos[0]];
+
+  for (let i = 1; i < puntos.length; i++) {
+    const candidato = puntos[i];
+    const anterior = aceptados[aceptados.length - 1];
+
+    const diferenciaMs =
+      candidato.fecha.getTime() -
+      anterior.fecha.getTime();
+
+    if (diferenciaMs <= 0) {
+      continue;
+    }
+
+    const metros = distanciaMetros(
+      anterior.lat,
+      anterior.lng,
+      candidato.lat,
+      candidato.lng
+    );
+
+    const velocidadNecesariaKmh =
+      (metros / (diferenciaMs / 1000)) * 3.6;
+
+    if (
+      diferenciaMs < CORTE_SIN_SENAL_MS &&
+      velocidadNecesariaKmh > VELOCIDAD_MAXIMA_KMH
+    ) {
+      continue;
+    }
+
+    aceptados.push(candidato);
+  }
+
+  const segmentos = [];
+  let segmentoActual = [];
+
+  aceptados.forEach((punto, indice) => {
+    if (indice === 0) {
+      segmentoActual.push([punto.lat, punto.lng]);
+      return;
+    }
+
+    const anterior = aceptados[indice - 1];
+    const diferenciaMs =
+      punto.fecha.getTime() -
+      anterior.fecha.getTime();
+
+    if (diferenciaMs > CORTE_SIN_SENAL_MS) {
+      if (segmentoActual.length > 0) {
+        segmentos.push(segmentoActual);
+      }
+
+      segmentoActual = [
+        [punto.lat, punto.lng]
+      ];
+    } else {
+      segmentoActual.push(
+        [punto.lat, punto.lng]
+      );
+    }
+  });
+
+  if (segmentoActual.length > 0) {
+    segmentos.push(segmentoActual);
+  }
+
+  return {
+    segmentos,
+    primero: aceptados[0],
+    ultimo: aceptados[aceptados.length - 1]
+  };
+}
+
 function escaparHtml(valor) {
   return String(valor ?? "")
     .replaceAll("&", "&amp;")
@@ -1048,36 +1187,82 @@ function dibujarMapa(
 
   const puntosMapa = [];
 
+  const recorridoPreparado =
+    prepararRecorridoGPS(recorrido);
+
   const puntosRecorrido =
-    recorrido
-      .map(punto => [
-        Number(punto.latitud),
-        Number(punto.longitud)
-      ])
-      .filter(punto =>
-        coordenadaValida(
-          punto[0],
-          punto[1]
+    recorridoPreparado.segmentos
+      .flat();
+
+  recorridoPreparado.segmentos
+    .forEach(segmento => {
+      if (segmento.length > 1) {
+        L.polyline(
+          segmento,
+          {
+            color: "blue",
+            weight: 5,
+            opacity: 0.75
+          }
         )
-      );
-
-  if (puntosRecorrido.length > 1) {
-    L.polyline(
-      puntosRecorrido,
-      {
-        color: "blue",
-        weight: 5,
-        opacity: 0.75
+          .addTo(capaMapa)
+          .bindPopup(
+            "Recorrido del día"
+          );
       }
-    )
-      .addTo(capaMapa)
-      .bindPopup(
-        "Recorrido del día"
-      );
+    });
 
+  if (puntosRecorrido.length > 0) {
     puntosMapa.push(
       ...puntosRecorrido
     );
+  }
+
+  /*
+  Marca el inicio y el final reales del recorrido filtrado.
+  El final se obtiene del último punto válido del recorrido,
+  no de un salto GPS aislado.
+  */
+  if (recorridoPreparado.primero) {
+    const inicio = recorridoPreparado.primero;
+
+    L.circleMarker(
+      [inicio.lat, inicio.lng],
+      {
+        radius: 8,
+        color: "#111827",
+        weight: 2,
+        fillColor: "#ffffff",
+        fillOpacity: 1
+      }
+    )
+      .addTo(capaMapa)
+      .bindPopup(`
+        <b>Inicio del recorrido</b>
+        <br>
+        ${inicio.fecha.toLocaleString("es-AR")}
+      `);
+  }
+
+  if (recorridoPreparado.ultimo) {
+    const fin = recorridoPreparado.ultimo;
+
+    L.circleMarker(
+      [fin.lat, fin.lng],
+      {
+        radius: 10,
+        color: "#111827",
+        weight: 3,
+        fillColor: "#2563eb",
+        fillOpacity: 1
+      }
+    )
+      .addTo(capaMapa)
+      .bindPopup(`
+        <b>Final del recorrido</b>
+        <br>
+        ${fin.fecha.toLocaleString("es-AR")}
+      `);
   }
 
   if (datos.ultimo_gps) {

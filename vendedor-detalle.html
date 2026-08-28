@@ -437,12 +437,6 @@ function agruparVisitas(visitas) {
       };
     }
 
-    agrupadas[clave]
-      .permanencia_segundos +=
-        Number(
-          visita.permanencia_segundos || 0
-        );
-
     if (
       visita.hora_llegada &&
       (
@@ -490,6 +484,37 @@ function agruparVisitas(visitas) {
       agrupadas[clave].longitud_llegada =
         visita.longitud_llegada;
     }
+  });
+
+  Object.values(agrupadas).forEach(visita => {
+    if (!visita.hora_llegada) {
+      visita.permanencia_segundos = 0;
+      return;
+    }
+
+    const llegada =
+      new Date(visita.hora_llegada).getTime();
+
+    const salida =
+      visita.hora_salida
+        ? new Date(visita.hora_salida).getTime()
+        : Date.now();
+
+    if (
+      !Number.isFinite(llegada) ||
+      !Number.isFinite(salida)
+    ) {
+      visita.permanencia_segundos = 0;
+      return;
+    }
+
+    visita.permanencia_segundos =
+      Math.max(
+        0,
+        Math.round(
+          (salida - llegada) / 1000
+        )
+      );
   });
 
   return Object.values(agrupadas);

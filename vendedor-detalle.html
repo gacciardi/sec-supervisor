@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -155,6 +155,81 @@
       color: #111827;
     }
 
+
+    .boton-visitas {
+      border: 0;
+      border-radius: 999px;
+      min-width: 32px;
+      padding: 5px 10px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .boton-visitas:hover {
+      background: #bfdbfe;
+    }
+
+    .modal-visitas {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0, 0, 0, .45);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-visitas.visible {
+      display: flex;
+    }
+
+    .modal-visitas-contenido {
+      width: min(680px, 100%);
+      max-height: 80vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.25);
+    }
+
+    .modal-visitas-cabecera {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 14px;
+    }
+
+    .modal-visitas-cerrar {
+      border: 0;
+      background: #e5e7eb;
+      border-radius: 8px;
+      padding: 7px 11px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .tabla-detalle-visitas {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .tabla-detalle-visitas th,
+    .tabla-detalle-visitas td {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    .total-detalle-visitas {
+      margin-top: 14px;
+      font-weight: 800;
+    }
+
     @media (max-width: 760px) {
       .resumen-avance {
         grid-template-columns: repeat(2, minmax(120px, 1fr));
@@ -287,9 +362,10 @@
       <thead>
         <tr>
           <th>Cliente</th>
-          <th>Llegada</th>
-          <th>Salida</th>
-          <th>Permanencia total</th>
+          <th>Primera llegada</th>
+          <th>Última salida</th>
+          <th>Permanencia acumulada</th>
+          <th>Visitas</th>
           <th>Tipo</th>
         </tr>
       </thead>
@@ -298,6 +374,16 @@
     </table>
   </div>
 
+</div>
+
+<div id="modalVisitas" class="modal-visitas" onclick="cerrarDetalleVisitas(event)">
+  <div class="modal-visitas-contenido" onclick="event.stopPropagation()">
+    <div class="modal-visitas-cabecera">
+      <h3 id="tituloDetalleVisitas">Detalle de visitas</h3>
+      <button class="modal-visitas-cerrar" onclick="cerrarDetalleVisitas()">Cerrar</button>
+    </div>
+    <div id="contenidoDetalleVisitas"></div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -568,6 +654,12 @@ function agruparVisitas(visitas) {
         permanencia_segundos:
           0,
 
+        cantidad_visitas:
+          0,
+
+        detalle_visitas:
+          [],
+
         latitud_llegada:
           visita.latitud_llegada,
 
@@ -581,6 +673,14 @@ function agruparVisitas(visitas) {
         Number(
           visita.permanencia_segundos || 0
         );
+
+    agrupadas[clave].cantidad_visitas += 1;
+
+    agrupadas[clave].detalle_visitas.push({
+      hora_llegada: visita.hora_llegada,
+      hora_salida: visita.hora_salida,
+      permanencia_segundos: Number(visita.permanencia_segundos || 0)
+    });
 
     if (
       visita.hora_llegada &&
@@ -1069,6 +1169,92 @@ function renderizarPendientes(pendientes, esTradeCliente, esEjecucionCliente) {
       .join("");
 }
 
+function abrirDetalleVisitas(clienteCodificado) {
+  const visita = JSON.parse(
+    decodeURIComponent(clienteCodificado)
+  );
+
+  const detalle =
+    Array.isArray(visita.detalle_visitas)
+      ? visita.detalle_visitas
+      : [];
+
+  document.getElementById(
+    "tituloDetalleVisitas"
+  ).textContent =
+    "Detalle de visitas - " +
+    (visita.cliente || visita.codigo_cliente || "");
+
+  const contenido =
+    document.getElementById(
+      "contenidoDetalleVisitas"
+    );
+
+  contenido.innerHTML =
+    detalle.length === 0
+      ? "<p>No hay detalle de visitas disponible.</p>"
+      : (
+          '<table class="tabla-detalle-visitas">' +
+          '<thead><tr>' +
+          '<th>#</th>' +
+          '<th>Llegada</th>' +
+          '<th>Salida</th>' +
+          '<th>Permanencia</th>' +
+          '</tr></thead><tbody>' +
+          detalle.map((item, indice) => (
+            "<tr>" +
+            "<td>" + (indice + 1) + "</td>" +
+            "<td>" +
+            (
+              item.hora_llegada
+                ? new Date(item.hora_llegada)
+                    .toLocaleString("es-AR")
+                : "-"
+            ) +
+            "</td>" +
+            "<td>" +
+            (
+              item.hora_salida
+                ? new Date(item.hora_salida)
+                    .toLocaleString("es-AR")
+                : "En curso"
+            ) +
+            "</td>" +
+            "<td>" +
+            formatoPermanencia(
+              item.permanencia_segundos
+            ) +
+            "</td>" +
+            "</tr>"
+          )).join("") +
+          "</tbody></table>" +
+          '<div class="total-detalle-visitas">' +
+          "Permanencia acumulada: " +
+          formatoPermanencia(
+            visita.permanencia_segundos
+          ) +
+          "</div>"
+        );
+
+  document.getElementById(
+    "modalVisitas"
+  ).classList.add("visible");
+}
+
+function cerrarDetalleVisitas(evento) {
+  if (
+    evento &&
+    evento.target &&
+    evento.target.id !== "modalVisitas"
+  ) {
+    return;
+  }
+
+  document.getElementById(
+    "modalVisitas"
+  ).classList.remove("visible");
+}
+
 function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
   const tabla =
     document.getElementById(
@@ -1079,7 +1265,7 @@ function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
     tabla.innerHTML = `
       <tr>
         <td
-          colspan="5"
+          colspan="6"
           class="sin-datos"
         >
           Todavía no hay visitas registradas.
@@ -1128,6 +1314,17 @@ function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
             ${formatoPermanencia(
               visita.permanencia_segundos
             )}
+          </td>
+
+          <td>
+            <button
+              type="button"
+              class="boton-visitas"
+              title="Ver detalle de visitas"
+              onclick="abrirDetalleVisitas('${encodeURIComponent(JSON.stringify(visita))}')"
+            >
+              ${visita.cantidad_visitas || 0}
+            </button>
           </td>
 
           <td>
@@ -1431,7 +1628,7 @@ function dibujarMapa(
           )}
           <br>
 
-          Llegada:
+          Primera llegada:
           ${
             visita.hora_llegada
               ? new Date(
@@ -1443,7 +1640,7 @@ function dibujarMapa(
           }
           <br>
 
-          Salida:
+          Última salida:
           ${
             visita.hora_salida
               ? new Date(
@@ -1455,10 +1652,14 @@ function dibujarMapa(
           }
           <br>
 
-          Permanencia total:
+          Permanencia acumulada:
           ${formatoPermanencia(
             visita.permanencia_segundos
           )}
+          <br>
+
+          Visitas:
+          ${visita.cantidad_visitas || 0}
           <br>
 
           Estado:

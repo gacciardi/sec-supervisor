@@ -250,6 +250,84 @@
       overflow-x: auto;
     }
 
+    /* Tabla compacta: mantiene visibles Visitas y Coordenadas en escritorio */
+    .tabla-wrap table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    .tabla-wrap th,
+    .tabla-wrap td {
+      padding: 8px 6px;
+      vertical-align: middle;
+      overflow-wrap: anywhere;
+    }
+
+    .tabla-wrap th:nth-child(1),
+    .tabla-wrap td:nth-child(1) { width: 5%; }
+
+    .tabla-wrap th:nth-child(2),
+    .tabla-wrap td:nth-child(2) { width: 15%; }
+
+    .tabla-wrap th:nth-child(3),
+    .tabla-wrap td:nth-child(3) { width: 14%; }
+
+    .tabla-wrap th:nth-child(4),
+    .tabla-wrap td:nth-child(4) { width: 10%; }
+
+    .tabla-wrap th:nth-child(5),
+    .tabla-wrap td:nth-child(5) { width: 4%; }
+
+    .tabla-wrap th:nth-child(6),
+    .tabla-wrap td:nth-child(6) { width: 5%; }
+
+    .tabla-wrap th:nth-child(7),
+    .tabla-wrap td:nth-child(7) { width: 13%; }
+
+    .tabla-wrap th:nth-child(8),
+    .tabla-wrap td:nth-child(8) { width: 8%; }
+
+    .tabla-wrap th:nth-child(9),
+    .tabla-wrap td:nth-child(9) { width: 8%; }
+
+    .tabla-wrap th:nth-child(10),
+    .tabla-wrap td:nth-child(10) { width: 10%; }
+
+    .tabla-wrap th:nth-child(11),
+    .tabla-wrap td:nth-child(11) {
+      width: 4%;
+      text-align: center;
+    }
+
+    .tabla-wrap th:nth-child(12),
+    .tabla-wrap td:nth-child(12) {
+      width: 4%;
+      text-align: center;
+    }
+
+    .boton-visitas {
+      border: 0;
+      border-radius: 999px;
+      min-width: 30px;
+      padding: 5px 9px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .boton-visitas:hover {
+      background: #bfdbfe;
+    }
+
+    @media (max-width: 1200px) {
+      .tabla-wrap table {
+        min-width: 1180px;
+        table-layout: auto;
+      }
+    }
+
     @media(max-width: 900px) {
       .filtros-plan {
         grid-template-columns: 1fr;
@@ -1142,6 +1220,22 @@ function renderizarPlan(datos) {
         formatearDuracion(
           cliente
             .permanencia_segundos
+        ) +
+        "</td>" +
+
+        "<td>" +
+        (
+          Number(cliente.cantidad_visitas || 0) > 0
+            ? (
+                '<button type="button" class="boton-visitas" ' +
+                'title="Ver detalle de visitas" ' +
+                'onclick="abrirDetalleVisitas(\'' +
+                encodeURIComponent(JSON.stringify(cliente)) +
+                '\')">' +
+                esc(cliente.cantidad_visitas) +
+                '</button>'
+              )
+            : "-"
         ) +
         "</td>" +
 

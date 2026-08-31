@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -270,6 +270,17 @@
         grid-template-columns: 1fr;
       }
     }
+
+    .cantidad-visitas-btn { border:0; background:#e0f2fe; color:#075985; font-weight:bold; border-radius:999px; padding:5px 10px; cursor:pointer; }
+    .modal-visitas { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; padding:20px; }
+    .modal-visitas.visible { display:flex; }
+    .modal-visitas-contenido { width:min(620px,100%); max-height:80vh; overflow:auto; background:#fff; border-radius:14px; padding:20px; }
+    .modal-visitas-cabecera { display:flex; justify-content:space-between; align-items:center; gap:15px; }
+    .modal-visitas-cerrar { border:0; background:#e5e7eb; border-radius:8px; padding:7px 11px; cursor:pointer; font-weight:bold; }
+    .tabla-detalle-visitas { width:100%; border-collapse:collapse; margin-top:12px; }
+    .tabla-detalle-visitas th, .tabla-detalle-visitas td { padding:9px; border-bottom:1px solid #e5e7eb; text-align:left; }
+    .total-detalle-visitas { margin-top:14px; font-weight:bold; color:#071b3a; }
+
   </style>
 </head>
 
@@ -455,9 +466,10 @@
             <th>Ruta</th>
             <th>Frecuencia</th>
             <th>Estado</th>
-            <th>Llegada</th>
-            <th>Salida</th>
-            <th>Permanencia</th>
+            <th>Primera llegada</th>
+            <th>Última salida</th>
+            <th>Permanencia acumulada</th>
+            <th>Visitas</th>
             <th>Coordenadas</th>
           </tr>
         </thead>
@@ -471,6 +483,16 @@
   </section>
 
 </div>
+
+  <div id="modalVisitas" class="modal-visitas" onclick="cerrarDetalleVisitas(event)">
+    <div class="modal-visitas-contenido" onclick="event.stopPropagation()">
+      <div class="modal-visitas-cabecera">
+        <h3 id="tituloDetalleVisitas">Detalle de visitas</h3>
+        <button class="modal-visitas-cerrar" onclick="cerrarDetalleVisitas()">Cerrar</button>
+      </div>
+      <div id="contenidoDetalleVisitas"></div>
+    </div>
+  </div>
 
 <script>
 
@@ -715,6 +737,47 @@ async function cargarPlan() {
       "error"
     );
   }
+}
+
+
+function normalizarDetalleVisitas(valor) {
+  if (Array.isArray(valor)) return valor;
+  if (typeof valor === "string") {
+    try {
+      const convertido = JSON.parse(valor);
+      return Array.isArray(convertido) ? convertido : [];
+    } catch (error) { return []; }
+  }
+  return [];
+}
+
+function abrirDetalleVisitas(clienteCodificado) {
+  const cliente = JSON.parse(decodeURIComponent(clienteCodificado));
+  const detalle = normalizarDetalleVisitas(cliente.detalle_visitas);
+
+  document.getElementById("tituloDetalleVisitas").textContent =
+    "Detalle de visitas - " + (cliente.nombre || cliente.codigo_cliente || "");
+
+  const contenido = document.getElementById("contenidoDetalleVisitas");
+
+  contenido.innerHTML = detalle.length === 0
+    ? "<p>No hay detalle de visitas disponible.</p>"
+    : '<table class="tabla-detalle-visitas"><thead><tr><th>#</th><th>Llegada</th><th>Salida</th><th>Permanencia</th></tr></thead><tbody>' +
+      detalle.map(function(visita, indice) {
+        return "<tr><td>" + (indice + 1) + "</td><td>" +
+          formatearHora(visita.hora_llegada) + "</td><td>" +
+          formatearHora(visita.hora_salida) + "</td><td>" +
+          formatearDuracion(visita.permanencia_segundos) + "</td></tr>";
+      }).join("") +
+      '</tbody></table><div class="total-detalle-visitas">Permanencia acumulada: ' +
+      formatearDuracion(cliente.permanencia_segundos) + "</div>";
+
+  document.getElementById("modalVisitas").classList.add("visible");
+}
+
+function cerrarDetalleVisitas(evento) {
+  if (evento && evento.target && evento.target.id !== "modalVisitas") return;
+  document.getElementById("modalVisitas").classList.remove("visible");
 }
 
 function renderizarPlan(datos) {
@@ -1095,7 +1158,7 @@ function renderizarPlan(datos) {
 
     tabla.innerHTML =
       '<tr>' +
-      '<td colspan="11">' +
+      '<td colspan="12">' +
       'No hay clientes programados ni visitas registradas para esta fecha.' +
       '</td>' +
       '</tr>';

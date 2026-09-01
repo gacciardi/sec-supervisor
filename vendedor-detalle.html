@@ -361,6 +361,7 @@
     <table>
       <thead>
         <tr>
+          <th>N° Cliente</th>
           <th>Cliente</th>
           <th>Primera llegada</th>
           <th>Última salida</th>
@@ -1265,7 +1266,7 @@ function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
     tabla.innerHTML = `
       <tr>
         <td
-          colspan="6"
+          colspan="7"
           class="sin-datos"
         >
           Todavía no hay visitas registradas.
@@ -1280,6 +1281,12 @@ function renderizarVisitas(visitas, esTradeCliente, esEjecucionCliente) {
     visitas
       .map(visita => `
         <tr>
+          <td>
+            ${escaparHtml(
+              visita.codigo_cliente || ""
+            )}
+          </td>
+
           <td>
             ${escaparHtml(
               visita.cliente

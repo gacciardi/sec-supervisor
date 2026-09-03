@@ -4,241 +4,69 @@
   <meta charset="UTF-8" />
   <title>SEC - Menú Principal</title>
   <link rel="stylesheet" href="style.css">
-
   <style>
-    .menu-principal {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 18px;
-      margin-top: 25px;
-      align-items: stretch;
-    }
-
-    .menu-card {
-      background: white;
-      border-radius: 18px;
-      padding: 25px;
-      text-decoration: none;
-      color: #111827;
-      box-shadow: 0 4px 14px rgba(0,0,0,.12);
-      transition: .2s;
-      border: 1px solid #e5e7eb;
-      min-height: 115px;
-      display: block;
-    }
-
-    .menu-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,.18);
-    }
-
-    .menu-card h3 {
-      margin: 0 0 8px 0;
-      color: #071b3a;
-      font-size: 22px;
-    }
-
-    .menu-card p {
-      margin: 0;
-      color: #4b5563;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .menu-card.trade {
-      border: 2px solid #f97316;
-      background: #fff7ed;
-    }
-
-    .menu-card.trade h3 {
-      color: #c2410c;
-    }
+    .menu-principal{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:25px;align-items:stretch}
+    .menu-card{background:white;border-radius:18px;padding:25px;text-decoration:none;color:#111827;box-shadow:0 4px 14px rgba(0,0,0,.12);transition:.2s;border:1px solid #e5e7eb;min-height:115px;display:block}
+    .menu-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.18)}
+    .menu-card h3{margin:0 0 8px 0;color:#071b3a;font-size:22px}
+    .menu-card p{margin:0;color:#4b5563;font-size:14px;line-height:1.45}
+    .menu-card-clientes{display:flex;flex-direction:column;justify-content:space-between;gap:16px}
+    .menu-card-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    .menu-card-acciones a{display:inline-block;padding:9px 12px;border-radius:9px;text-decoration:none;font-size:13px;font-weight:700;border:1px solid #cbd5e1;background:#f8fafc;color:#071b3a}
+    .menu-card-acciones .btn-listado{background:#071b3a;color:white;border-color:#071b3a}
   </style>
 </head>
-
 <body>
-
 <header class="header-sec">
-  <img
-    src="assets/logo-rebesa.jpg"
-    alt="Empresa"
-    class="logo-rebesa"
-  >
-
+  <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
   <div>
-    <h1>
-      <span class="nombre-empresa-sec">
-        REBESA
-      </span>
-      - Menú Principal
-    </h1>
-
+    <h1><span class="nombre-empresa-sec">REBESA</span> - Menú Principal</h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
 </header>
-
 <nav>
   <a href="index.html">Inicio</a>
   <a href="supervisor.html">Supervisor</a>
   <a href="plan-trabajo.html">Plan trabajo vendedor</a>
-  <a href="trade-marketing.html">Trade Marketing</a>
   <a href="dashboard-vendedores.html">Vendedores</a>
   <a href="mapa.html">Mapa</a>
   <a href="clientes.html">Clientes</a>
-  <a href="historial-coordenadas.html">Coordenadas</a>
   <a href="visitas.html">Visitas</a>
   <a href="login-vendedor.html">App Vendedor</a>
   <a href="admin-login.html">Administración</a>
 </nav>
 
 <div class="container">
-
   <h2>Accesos del sistema</h2>
-
   <div class="menu-principal">
+    <a class="menu-card" href="supervisor.html"><h3>🖥️ Supervisor</h3><p>Centro de control con vendedores, recorrido y alertas.</p></a>
+    <a class="menu-card" href="plan-trabajo.html"><h3>📋 Plan trabajo vendedor</h3><p>Clientes asignados por vendedor y fecha, con visitados, pendientes, cobertura y tiempos de atención.</p></a>
+    <a class="menu-card" href="reemplazos-ruta.html"><h3>🔄 Reemplazos de Ruta</h3><p>Asignación temporal de vendedores por vacaciones, enfermedad, licencia o ausencia.</p></a>
+    <a class="menu-card" href="dashboard-vendedores.html"><h3>👥 Dashboard Vendedores</h3><p>Rendimiento, cobertura, pendientes y último GPS.</p></a>
+    <a class="menu-card" href="mapa.html"><h3>🗺️ Mapa General</h3><p>Vista de clientes, estados y ubicaciones GPS.</p></a>
 
-    <a class="menu-card" href="supervisor.html">
-      <h3>🖥️ Supervisor</h3>
-      <p>
-        Centro de control con vendedores, recorrido y alertas.
-      </p>
-    </a>
+    <div class="menu-card menu-card-clientes">
+      <div>
+        <h3>🏪 Clientes</h3>
+        <p>Alta, edición, búsqueda, geolocalización e importación.</p>
+      </div>
+      <div class="menu-card-acciones">
+        <a href="clientes.html">Administrar clientes</a>
+        <a class="btn-listado" href="clientes-listado.html">📋 Ver listado completo</a>
+      </div>
+    </div>
 
-    <a class="menu-card" href="plan-trabajo.html">
-      <h3>📋 Plan trabajo vendedor</h3>
-      <p>
-        Clientes asignados por vendedor y fecha, con visitados,
-        pendientes, cobertura y tiempos de atención.
-      </p>
-    </a>
-
-    <a class="menu-card trade" href="trade-marketing.html">
-      <h3>🟠 Trade Marketing</h3>
-      <p>
-        Plan Trade, asignaciones, semanas, frecuencias,
-        importación masiva, exportación y reasignaciones.
-      </p>
-    </a>
-
-    <a class="menu-card" href="gestion-ejecucion.html">
-      <h3>🟣 Gestión de Ejecución</h3>
-      <p>
-        Clasificación de clientes de Ejecución por semana del mes.
-      </p>
-    </a>
-
-    <a class="menu-card" href="reemplazos-ruta.html">
-      <h3>🔄 Reemplazos de Ruta</h3>
-      <p>
-        Asignación temporal de vendedores por vacaciones,
-        enfermedad, licencia o ausencia.
-      </p>
-    </a>
-
-    <a class="menu-card" href="dashboard-vendedores.html">
-      <h3>👥 Dashboard Vendedores</h3>
-      <p>
-        Rendimiento, cobertura, pendientes y último GPS.
-      </p>
-    </a>
-
-    <a class="menu-card" href="mapa.html">
-      <h3>🗺️ Mapa General</h3>
-      <p>
-        Vista de clientes, estados y ubicaciones GPS.
-      </p>
-    </a>
-
-    <a class="menu-card" href="clientes.html">
-      <h3>🏪 Clientes</h3>
-      <p>
-        Alta, edición, búsqueda, geolocalización e importación.
-      </p>
-    </a>
-
-    <a class="menu-card" href="historial-coordenadas.html">
-  <h3>📍 Historial de Coordenadas</h3>
-  <p>
-    Auditoría y exportación a Excel de cambios de ubicación por fecha,
-    vendedor y ruta.
-  </p>
-</a>
-
-<a class="menu-card" href="visitas.html">
-      <h3>✅ Visitas</h3>
-      <p>
-        Registro de visitas, llegadas, salidas y permanencia.
-      </p>
-    </a>
-
-    <a class="menu-card" href="biblioteca-fotos.html">
-      <h3>📷 Biblioteca de Fotos</h3>
-      <p>
-        Evidencias fotográficas por vendedor, cliente, fecha y tipo.
-      </p>
-    </a>
-
-    <a class="menu-card" href="diagnostico-rutas.html">
-      <h3>🩺 Diagnóstico de Rutas</h3>
-      <p>
-        Estado de rutas, clientes con problemas y corrección de asignaciones.
-      </p>
-    </a>
-
-    <a class="menu-card" href="alertas.html">
-      <h3>⚠️ Alertas</h3>
-      <p>
-        Alertas operativas y desvíos detectados.
-      </p>
-    </a>
-
-    <a class="menu-card" href="pendientes.html">
-      <h3>📌 Pendientes</h3>
-      <p>
-        Clientes programados aún no visitados.
-      </p>
-    </a>
-
-    <a class="menu-card" href="cobertura.html">
-      <h3>📊 Cobertura</h3>
-      <p>
-        Avance diario por vendedor y cumplimiento.
-      </p>
-    </a>
-
-    <a class="menu-card" href="usuarios.html">
-      <h3>👤 Usuarios</h3>
-      <p>
-        Administración de vendedores, Trade, supervisores y administradores.
-      </p>
-    </a>
-
-    <a class="menu-card" href="importar-clientes.html">
-      <h3>📥 Importar Excel</h3>
-      <p>
-        Carga masiva de clientes, coordenadas y frecuencias.
-      </p>
-    </a>
-
-    <a class="menu-card" href="login-vendedor.html">
-      <h3>📱 App Vendedor</h3>
-      <p>
-        Ingreso móvil para recorrido, GPS y geocercas.
-      </p>
-    </a>
-
-    <a class="menu-card" href="admin-login.html">
-      <h3>⚙️ Administración</h3>
-      <p>
-        Configuración general del sistema, empresa y logo.
-      </p>
-    </a>
-
+    <a class="menu-card" href="visitas.html"><h3>✅ Visitas</h3><p>Registro de visitas, llegadas, salidas y permanencia.</p></a>
+    <a class="menu-card" href="alertas.html"><h3>⚠️ Alertas</h3><p>Alertas operativas y desvíos detectados.</p></a>
+    <a class="menu-card" href="pendientes.html"><h3>📌 Pendientes</h3><p>Clientes programados aún no visitados.</p></a>
+    <a class="menu-card" href="cobertura.html"><h3>📊 Cobertura</h3><p>Avance diario por vendedor y cumplimiento.</p></a>
+    <a class="menu-card" href="usuarios.html"><h3>👤 Usuarios</h3><p>Administración de vendedores y supervisores.</p></a>
+    <a class="menu-card" href="importar-clientes.html"><h3>📥 Importar Excel</h3><p>Carga masiva de clientes, coordenadas y frecuencias.</p></a>
+    <a class="menu-card" href="login-vendedor.html"><h3>📱 App Vendedor</h3><p>Ingreso móvil para recorrido, GPS y geocercas.</p></a>
+    <a class="menu-card" href="admin-login.html"><h3>⚙️ Administración</h3><p>Configuración general del sistema, empresa y logo.</p></a>
   </div>
-
 </div>
 
 <script src="config-sec.js"></script>
-
 </body>
 </html>

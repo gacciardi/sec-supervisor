@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEC - Listado completo de clientes</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.container{max-width:none;width:calc(100% - 24px);margin:0 auto;padding:0 6px}
+.encabezado-listado{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap;margin-bottom:15px}
+.acciones-superiores{display:flex;gap:8px;flex-wrap:wrap}
+.acciones-superiores a,.acciones-superiores button{display:inline-block;padding:9px 13px;border-radius:8px;border:0;text-decoration:none;cursor:pointer;font-size:13px;font-weight:700}
+.btn-volver{background:#e5e7eb;color:#111827}.btn-exportar{background:#166534;color:white}
+.filters{display:grid;grid-template-columns:minmax(260px,2fr) repeat(4,minmax(150px,1fr));gap:10px;margin:15px 0}
+.filters input,.filters select{width:100%;box-sizing:border-box;padding:9px 10px}
+.resumen-listado{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 15px}
+.dato-resumen{background:white;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;font-size:13px;box-shadow:0 2px 7px rgba(0,0,0,.06)}
+.tabla-wrap{width:100%;overflow-x:auto;background:white;border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.08)}
+table{width:100%;border-collapse:collapse;min-width:1100px;font-size:12px}
+th,td{padding:8px 7px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:middle}
+th{background:#071b3a;color:white;position:sticky;top:0;z-index:2;white-space:nowrap}
+tbody tr:nth-child(even){background:#f8fafc}tbody tr:hover{background:#eef4ff}
+.estado-si{color:#166534;font-weight:700}.estado-no{color:#b91c1c;font-weight:700}
+.cargando{padding:20px;text-align:center;color:#4b5563}
+@media(max-width:1100px){.filters{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.filters{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="header-sec">
+<img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
+<div><h1><span class="nombre-empresa-sec">REBESA</span> - Listado completo de clientes</h1><p>Sistema de Ejecución Comercial</p></div>
+</header>
+<nav>
+<a href="index.html">Inicio</a><a href="supervisor.html">Supervisor</a><a href="plan-trabajo.html">Plan trabajo vendedor</a>
+<a href="dashboard-vendedores.html">Vendedores</a><a href="mapa.html">Mapa</a><a href="clientes.html">Clientes</a>
+<a href="visitas.html">Visitas</a><a href="admin-login.html">Administración</a>
+</nav>
+
+<div class="container">
+<div class="encabezado-listado">
+<div><h2 style="margin-bottom:4px;">Padrón completo de clientes</h2><div style="color:#64748b;font-size:13px;">Vista de consulta. Esta pantalla no modifica clientes.</div></div>
+<div class="acciones-superiores"><a class="btn-volver" href="clientes.html">← Administrar clientes</a><button class="btn-exportar" onclick="exportarPadron()">📤 Exportar padrón</button></div>
+</div>
+
+<div class="filters">
+<input id="buscar" type="text" placeholder="Buscar por N° cliente, nombre, dirección o localidad..." oninput="aplicarFiltros()">
+<select id="filtroCanal" onchange="aplicarFiltros()"><option value="">Todos los canales</option></select>
+<select id="filtroFrecuencia" onchange="aplicarFiltros()"><option value="">Todas las frecuencias</option></select>
+<select id="filtroRuta" onchange="aplicarFiltros()"><option value="">Todas las rutas</option></select>
+<select id="filtroVendedor" onchange="aplicarFiltros()"><option value="">Todos los vendedores</option></select>
+</div>
+
+<div class="resumen-listado">
+<div class="dato-resumen">Total padrón: <strong id="totalPadron">0</strong></div>
+<div class="dato-resumen">Mostrando: <strong id="totalFiltrado">0</strong></div>
+<div class="dato-resumen">Con coordenadas: <strong id="conCoordenadas">0</strong></div>
+<div class="dato-resumen">Sin coordenadas: <strong id="sinCoordenadas">0</strong></div>
+</div>
+
+<div class="tabla-wrap">
+<table>
+<thead><tr><th>N° Cliente</th><th>Nombre</th><th>Dirección</th><th>Localidad</th><th>Canal</th><th>Frecuencia</th><th>Ruta</th><th>Vendedor</th><th>Coordenadas</th><th>Radio</th></tr></thead>
+<tbody id="tablaClientes"><tr><td colspan="10" class="cargando">Cargando padrón completo...</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<script>
+const API="https://sec-backend-gg4j.onrender.com";
+let clientes=[],canales=[],frecuencias=[],rutas=[],vendedores=[];
+
+function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
+function norm(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim()}
+function nomVend(c){if(c.vendedor_nombre||c.vendedor_apellido)return `${c.vendedor_nombre||""} ${c.vendedor_apellido||""}`.trim();const v=vendedores.find(x=>x.id===c.vendedor_id);return v?`${v.nombre||""} ${v.apellido||""}`.trim():""}
+function nomCat(lista,id,alt){if(alt)return alt;const x=lista.find(i=>i.id===id);return x?x.nombre:""}
+
+async function cargarTodos(){
+  const acum=[]; const bloque=500; let offset=0,total=null;
+  while(total===null||acum.length<total){
+    const r=await fetch(`${API}/clientes?limit=${bloque}&offset=${offset}&buscar=`);
+    if(!r.ok)throw new Error("No se pudo obtener el padrón de clientes.");
+    const d=await r.json(); const lote=Array.isArray(d.clientes)?d.clientes:[];
+    total=Number(d.total||0); acum.push(...lote);
+    if(lote.length===0)break;
+    offset+=lote.length;
+    if(offset>200000)break;
+  }
+  return acum;
+}
+
+async function cargarDatos(){
+  try{
+    const [a,b,c,d]=await Promise.all([fetch(`${API}/canales`),fetch(`${API}/frecuencias`),fetch(`${API}/rutas`),fetch(`${API}/usuarios`)]);
+    canales=await a.json(); frecuencias=await b.json(); rutas=await c.json();
+    const usuarios=await d.json(); vendedores=usuarios.filter(u=>u.rol==="VENDEDOR"&&u.activo);
+    cargarFiltros();
+    clientes=await cargarTodos();
+    clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));
+    document.getElementById("totalPadron").textContent=clientes.length;
+    aplicarFiltros();
+  }catch(e){
+    console.error(e);
+    document.getElementById("tablaClientes").innerHTML=`<tr><td colspan="10" class="cargando">Error al cargar el padrón: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function cargarFiltros(){
+  filtroCanal.innerHTML='<option value="">Todos los canales</option>'+canales.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join("");
+  filtroFrecuencia.innerHTML='<option value="">Todas las frecuencias</option>'+frecuencias.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join("");
+  filtroRuta.innerHTML='<option value="">Todas las rutas</option>'+rutas.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join("");
+  filtroVendedor.innerHTML='<option value="">Todos los vendedores</option>'+vendedores.map(x=>`<option value="${x.id}">${esc(x.nombre)} ${esc(x.apellido)}</option>`).join("");
+}
+
+function aplicarFiltros(){
+  const q=norm(buscar.value),ca=filtroCanal.value,fr=filtroFrecuencia.value,ru=filtroRuta.value,ve=filtroVendedor.value;
+  const lista=clientes.filter(c=>{
+    const texto=norm([c.codigo_cliente,c.nombre,c.direccion,c.localidad,c.canal,c.frecuencia,c.ruta,nomVend(c)].join(" "));
+    return (!q||texto.includes(q))&&(!ca||c.canal_id===ca)&&(!fr||c.frecuencia_id===fr)&&(!ru||c.ruta_id===ru)&&(!ve||c.vendedor_id===ve);
+  });
+  renderizar(lista);
+}
+
+function renderizar(lista){
+  const cc=lista.filter(c=>c.latitud!==null&&c.latitud!==""&&c.longitud!==null&&c.longitud!=="").length;
+  totalFiltrado.textContent=lista.length; conCoordenadas.textContent=cc; sinCoordenadas.textContent=lista.length-cc;
+  if(!lista.length){tablaClientes.innerHTML='<tr><td colspan="10" class="cargando">No se encontraron clientes para los filtros seleccionados.</td></tr>';return}
+  tablaClientes.innerHTML=lista.map(c=>{
+    const canal=nomCat(canales,c.canal_id,c.canal||c.canal_nombre);
+    const frecuencia=nomCat(frecuencias,c.frecuencia_id,c.frecuencia||c.frecuencia_nombre);
+    const ruta=nomCat(rutas,c.ruta_id,c.ruta||c.ruta_nombre);
+    const vendedor=nomVend(c);
+    const coords=c.latitud!==null&&c.latitud!==""&&c.longitud!==null&&c.longitud!=="";
+    return `<tr><td><strong>${esc(c.codigo_cliente)}</strong></td><td>${esc(c.nombre)}</td><td>${esc(c.direccion)}</td><td>${esc(c.localidad)}</td><td>${esc(canal||"Sin canal")}</td><td>${esc(frecuencia||"Sin frecuencia")}</td><td>${esc(ruta||"Sin ruta")}</td><td>${esc(vendedor||"Sin vendedor")}</td><td class="${coords?"estado-si":"estado-no"}">${coords?"Sí":"No"}</td><td>${esc(c.radio_geocerca||"")}</td></tr>`;
+  }).join("");
+}
+function exportarPadron(){window.location.href=`${API}/clientes/exportar/csv`}
+cargarDatos();
+</script>
+<script src="config-sec.js"></script>
+</body>
+</html>

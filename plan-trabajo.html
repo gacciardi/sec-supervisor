@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -838,13 +838,73 @@ function abrirDetalleVisitas(clienteCodificado) {
 
   const contenido = document.getElementById("contenidoDetalleVisitas");
 
+  /*
+  ==========================================
+  AJUSTE DE HORA DEL DETALLE
+  ==========================================
+  El resumen principal del Plan de trabajo ya
+  muestra la hora correcta.
+
+  El detalle puede llegar con una representación
+  horaria distinta. Para no tocar backend, GPS,
+  visitas ni permanencias, tomamos la primera
+  llegada del resumen como referencia y aplicamos
+  esa misma diferencia a todas las horas del
+  detalle.
+  */
+
+  let ajusteDetalleMs = 0;
+
+  if (
+    detalle.length > 0 &&
+    detalle[0].hora_llegada &&
+    cliente.hora_llegada
+  ) {
+    const horaPrincipal =
+      new Date(cliente.hora_llegada);
+
+    const horaDetalle =
+      new Date(detalle[0].hora_llegada);
+
+    if (
+      !Number.isNaN(horaPrincipal.getTime()) &&
+      !Number.isNaN(horaDetalle.getTime())
+    ) {
+      ajusteDetalleMs =
+        horaPrincipal.getTime() -
+        horaDetalle.getTime();
+    }
+  }
+
+  function formatearHoraDetalle(valor) {
+    if (!valor) {
+      return "-";
+    }
+
+    const fecha = new Date(valor);
+
+    if (Number.isNaN(fecha.getTime())) {
+      return "-";
+    }
+
+    return new Date(
+      fecha.getTime() + ajusteDetalleMs
+    ).toLocaleTimeString(
+      "es-AR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+  }
+
   contenido.innerHTML = detalle.length === 0
     ? "<p>No hay detalle de visitas disponible.</p>"
     : '<table class="tabla-detalle-visitas"><thead><tr><th>#</th><th>Llegada</th><th>Salida</th><th>Permanencia</th></tr></thead><tbody>' +
       detalle.map(function(visita, indice) {
         return "<tr><td>" + (indice + 1) + "</td><td>" +
-          formatearHora(visita.hora_llegada) + "</td><td>" +
-          formatearHora(visita.hora_salida) + "</td><td>" +
+          formatearHoraDetalle(visita.hora_llegada) + "</td><td>" +
+          formatearHoraDetalle(visita.hora_salida) + "</td><td>" +
           formatearDuracion(visita.permanencia_segundos) + "</td></tr>";
       }).join("") +
       '</tbody></table><div class="total-detalle-visitas">Permanencia acumulada: ' +

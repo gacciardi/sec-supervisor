@@ -11,18 +11,30 @@
 .acciones-superiores{display:flex;gap:8px;flex-wrap:wrap}
 .acciones-superiores a,.acciones-superiores button{display:inline-block;padding:9px 13px;border-radius:8px;border:0;text-decoration:none;cursor:pointer;font-size:13px;font-weight:700}
 .btn-volver{background:#e5e7eb;color:#111827}.btn-exportar{background:#166534;color:white}
-.filters{display:grid;grid-template-columns:minmax(260px,2fr) repeat(4,minmax(150px,1fr));gap:10px;margin:15px 0}
+.filters{display:grid;grid-template-columns:minmax(260px,2fr) repeat(5,minmax(150px,1fr));gap:10px;margin:15px 0}
 .filters input,.filters select{width:100%;box-sizing:border-box;padding:9px 10px}
 .resumen-listado{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 15px}
 .dato-resumen{background:white;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;font-size:13px;box-shadow:0 2px 7px rgba(0,0,0,.06)}
 .tabla-wrap{width:100%;overflow-x:auto;background:white;border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.08)}
-table{width:100%;border-collapse:collapse;min-width:1100px;font-size:12px}
+table{width:100%;border-collapse:collapse;min-width:1250px;font-size:12px}
 th,td{padding:8px 7px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:middle}
 th{background:#071b3a;color:white;position:sticky;top:0;z-index:2;white-space:nowrap}
 tbody tr:nth-child(even){background:#f8fafc}tbody tr:hover{background:#eef4ff}
 .estado-si{color:#166534;font-weight:700}.estado-no{color:#b91c1c;font-weight:700}
 .cargando{padding:20px;text-align:center;color:#4b5563}
-@media(max-width:1100px){.filters{grid-template-columns:1fr 1fr}}
+.btn-asignaciones{border:0;border-radius:999px;padding:6px 10px;cursor:pointer;font-weight:700;background:#e0e7ff;color:#3730a3}
+.btn-asignaciones.multiple{background:#fef3c7;color:#92400e}
+.sin-asignacion{color:#64748b}
+.modal-fondo{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;padding:20px}
+.modal-caja{background:white;width:min(900px,96vw);max-height:86vh;overflow:auto;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.modal-cabecera{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid #e5e7eb;position:sticky;top:0;background:white;z-index:2}
+.modal-cabecera h3{margin:0;font-size:18px}.modal-cerrar{border:0;background:#e5e7eb;border-radius:8px;padding:8px 11px;cursor:pointer;font-weight:700}
+.modal-contenido{padding:16px 18px}
+.tabla-asignaciones{width:100%;min-width:650px}
+.tabla-asignaciones th{position:static;background:#0f2f5f}
+.badge-modalidad{display:inline-block;padding:3px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:700}
+@media(max-width:1200px){.filters{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:800px){.filters{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.filters{grid-template-columns:1fr}}
 </style>
 </head>
@@ -39,31 +51,55 @@ tbody tr:nth-child(even){background:#f8fafc}tbody tr:hover{background:#eef4ff}
 
 <div class="container">
 <div class="encabezado-listado">
-<div><h2 style="margin-bottom:4px;">Padrón completo de clientes</h2><div style="color:#64748b;font-size:13px;">Vista de consulta. Esta pantalla no modifica clientes.</div></div>
+<div><h2 style="margin-bottom:4px;">Padrón completo de clientes</h2><div style="color:#64748b;font-size:13px;">Vista de consulta. Una fila por cliente, con detalle de todas sus asignaciones comerciales.</div></div>
 <div class="acciones-superiores"><a class="btn-volver" href="clientes.html">← Administrar clientes</a><button class="btn-exportar" onclick="exportarPadron()">📤 Exportar padrón</button></div>
 </div>
 
 <div class="filters">
-<input id="buscar" type="text" placeholder="Buscar por N° cliente, nombre, dirección o localidad..." oninput="aplicarFiltros()">
+<input id="buscar" type="text" placeholder="Buscar por N° cliente, nombre, dirección, localidad, ruta o vendedor..." oninput="aplicarFiltros()">
 <select id="filtroCanal" onchange="aplicarFiltros()"><option value="">Todos los canales</option></select>
 <select id="filtroFrecuencia" onchange="aplicarFiltros()"><option value="">Todas las frecuencias</option></select>
 <select id="filtroRuta" onchange="aplicarFiltros()"><option value="">Todas las rutas</option></select>
 <select id="filtroVendedor" onchange="aplicarFiltros()"><option value="">Todos los vendedores</option></select>
+<select id="filtroAsignaciones" onchange="aplicarFiltros()">
+<option value="">Todas las asignaciones</option>
+<option value="1">Una asignación</option>
+<option value="MULTIPLES">Múltiples asignaciones</option>
+<option value="0">Sin asignación</option>
+</select>
 </div>
 
 <div class="resumen-listado">
 <div class="dato-resumen">Total padrón: <strong id="totalPadron">0</strong></div>
 <div class="dato-resumen">Mostrando: <strong id="totalFiltrado">0</strong></div>
+<div class="dato-resumen">Con múltiples asignaciones: <strong id="multiplesAsignaciones">0</strong></div>
 <div class="dato-resumen">Con coordenadas: <strong id="conCoordenadas">0</strong></div>
 <div class="dato-resumen">Sin coordenadas: <strong id="sinCoordenadas">0</strong></div>
 </div>
 
 <div class="tabla-wrap">
 <table>
-<thead><tr><th>N° Cliente</th><th>Nombre</th><th>Dirección</th><th>Localidad</th><th>Canal</th><th>Frecuencia</th><th>Ruta</th><th>Vendedor</th><th>Coordenadas</th><th>Radio</th></tr></thead>
-<tbody id="tablaClientes"><tr><td colspan="10" class="cargando">Cargando padrón completo...</td></tr></tbody>
+<thead><tr><th>N° Cliente</th><th>Nombre</th><th>Dirección</th><th>Localidad</th><th>Canal</th><th>Asignaciones</th><th>Frecuencia</th><th>Ruta</th><th>Vendedor</th><th>Coordenadas</th><th>Radio</th></tr></thead>
+<tbody id="tablaClientes"><tr><td colspan="11" class="cargando">Cargando padrón completo...</td></tr></tbody>
 </table>
 </div>
+</div>
+
+<div id="modalAsignaciones" class="modal-fondo" onclick="cerrarModalAsignaciones(event)">
+  <div class="modal-caja" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <h3 id="tituloModalAsignaciones">Asignaciones</h3>
+      <button class="modal-cerrar" onclick="cerrarModalAsignaciones(null,true)">Cerrar</button>
+    </div>
+    <div class="modal-contenido">
+      <div class="tabla-wrap">
+        <table class="tabla-asignaciones">
+          <thead><tr><th>Modalidad</th><th>Ruta</th><th>Vendedor</th><th>Frecuencia</th></tr></thead>
+          <tbody id="tablaAsignacionesModal"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -72,11 +108,13 @@ let clientes=[],canales=[],frecuencias=[],rutas=[],vendedores=[];
 
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 function norm(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim()}
-function nomVend(c){if(c.vendedor_nombre||c.vendedor_apellido)return `${c.vendedor_nombre||""} ${c.vendedor_apellido||""}`.trim();const v=vendedores.find(x=>x.id===c.vendedor_id);return v?`${v.nombre||""} ${v.apellido||""}`.trim():""}
+function nomVend(c){if(c.vendedor_nombre||c.vendedor_apellido)return `${c.vendedor_nombre||""} ${c.vendedor_apellido||""}`.trim();if(c.vendedor)return c.vendedor;const v=vendedores.find(x=>x.id===c.vendedor_id);return v?`${v.nombre||""} ${v.apellido||""}`.trim():""}
 function nomCat(lista,id,alt){if(alt)return alt;const x=lista.find(i=>i.id===id);return x?x.nombre:""}
+function asignacionesDe(c){return Array.isArray(c.asignaciones)?c.asignaciones:[]}
+function cantidadAsignaciones(c){return Number(c.cantidad_asignaciones??asignacionesDe(c).length??0)}
 
 async function cargarTodos(){
-  const acum=[]; const bloque=500; let offset=0,total=null;
+  const acum=[]; const bloque=200; let offset=0,total=null;
   while(total===null||acum.length<total){
     const r=await fetch(`${API}/clientes?limit=${bloque}&offset=${offset}&buscar=`);
     if(!r.ok)throw new Error("No se pudo obtener el padrón de clientes.");
@@ -101,7 +139,7 @@ async function cargarDatos(){
     aplicarFiltros();
   }catch(e){
     console.error(e);
-    document.getElementById("tablaClientes").innerHTML=`<tr><td colspan="10" class="cargando">Error al cargar el padrón: ${esc(e.message)}</td></tr>`;
+    document.getElementById("tablaClientes").innerHTML=`<tr><td colspan="11" class="cargando">Error al cargar el padrón: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -113,27 +151,104 @@ function cargarFiltros(){
 }
 
 function aplicarFiltros(){
-  const q=norm(buscar.value),ca=filtroCanal.value,fr=filtroFrecuencia.value,ru=filtroRuta.value,ve=filtroVendedor.value;
+  const q=norm(buscar.value),ca=filtroCanal.value,fr=filtroFrecuencia.value,ru=filtroRuta.value,ve=filtroVendedor.value,fa=filtroAsignaciones.value;
+
   const lista=clientes.filter(c=>{
-    const texto=norm([c.codigo_cliente,c.nombre,c.direccion,c.localidad,c.canal,c.frecuencia,c.ruta,nomVend(c)].join(" "));
-    return (!q||texto.includes(q))&&(!ca||c.canal_id===ca)&&(!fr||c.frecuencia_id===fr)&&(!ru||c.ruta_id===ru)&&(!ve||c.vendedor_id===ve);
+    const asigs=asignacionesDe(c);
+    const textoAsignaciones=asigs.map(a=>[a.modalidad,a.ruta,a.vendedor,a.frecuencia].join(" ")).join(" ");
+    const texto=norm([c.codigo_cliente,c.nombre,c.direccion,c.localidad,c.canal,c.frecuencia,c.ruta,nomVend(c),textoAsignaciones].join(" "));
+
+    const coincideFrecuencia=!fr || c.frecuencia_id===fr || asigs.some(a=>a.frecuencia_id===fr);
+    const coincideRuta=!ru || c.ruta_id===ru || asigs.some(a=>a.ruta_id===ru);
+    const coincideVendedor=!ve || c.vendedor_id===ve || asigs.some(a=>a.vendedor_id===ve);
+
+    const cant=cantidadAsignaciones(c);
+    const coincideAsignaciones=
+      !fa ||
+      (fa==="1" && cant===1) ||
+      (fa==="MULTIPLES" && cant>1) ||
+      (fa==="0" && cant===0);
+
+    return (!q||texto.includes(q))
+      &&(!ca||c.canal_id===ca)
+      &&coincideFrecuencia
+      &&coincideRuta
+      &&coincideVendedor
+      &&coincideAsignaciones;
   });
+
   renderizar(lista);
 }
 
 function renderizar(lista){
   const cc=lista.filter(c=>c.latitud!==null&&c.latitud!==""&&c.longitud!==null&&c.longitud!=="").length;
-  totalFiltrado.textContent=lista.length; conCoordenadas.textContent=cc; sinCoordenadas.textContent=lista.length-cc;
-  if(!lista.length){tablaClientes.innerHTML='<tr><td colspan="10" class="cargando">No se encontraron clientes para los filtros seleccionados.</td></tr>';return}
+  const multi=lista.filter(c=>cantidadAsignaciones(c)>1).length;
+  totalFiltrado.textContent=lista.length;
+  multiplesAsignaciones.textContent=multi;
+  conCoordenadas.textContent=cc;
+  sinCoordenadas.textContent=lista.length-cc;
+
+  if(!lista.length){
+    tablaClientes.innerHTML='<tr><td colspan="11" class="cargando">No se encontraron clientes para los filtros seleccionados.</td></tr>';
+    return;
+  }
+
   tablaClientes.innerHTML=lista.map(c=>{
     const canal=nomCat(canales,c.canal_id,c.canal||c.canal_nombre);
     const frecuencia=nomCat(frecuencias,c.frecuencia_id,c.frecuencia||c.frecuencia_nombre);
     const ruta=nomCat(rutas,c.ruta_id,c.ruta||c.ruta_nombre);
     const vendedor=nomVend(c);
     const coords=c.latitud!==null&&c.latitud!==""&&c.longitud!==null&&c.longitud!=="";
-    return `<tr><td><strong>${esc(c.codigo_cliente)}</strong></td><td>${esc(c.nombre)}</td><td>${esc(c.direccion)}</td><td>${esc(c.localidad)}</td><td>${esc(canal||"Sin canal")}</td><td>${esc(frecuencia||"Sin frecuencia")}</td><td>${esc(ruta||"Sin ruta")}</td><td>${esc(vendedor||"Sin vendedor")}</td><td class="${coords?"estado-si":"estado-no"}">${coords?"Sí":"No"}</td><td>${esc(c.radio_geocerca||"")}</td></tr>`;
+    const cant=cantidadAsignaciones(c);
+
+    const asignacionHtml = cant>0
+      ? `<button class="btn-asignaciones ${cant>1?"multiple":""}" onclick="verAsignaciones('${esc(c.id)}')">${cant} ${cant===1?"asignación":"asignaciones"}</button>`
+      : `<span class="sin-asignacion">Sin asignación</span>`;
+
+    return `<tr>
+      <td><strong>${esc(c.codigo_cliente)}</strong></td>
+      <td>${esc(c.nombre)}</td>
+      <td>${esc(c.direccion)}</td>
+      <td>${esc(c.localidad)}</td>
+      <td>${esc(canal||"Sin canal")}</td>
+      <td>${asignacionHtml}</td>
+      <td>${esc(frecuencia||"Sin frecuencia")}</td>
+      <td>${esc(ruta||"Sin ruta")}</td>
+      <td>${esc(vendedor||"Sin vendedor")}</td>
+      <td class="${coords?"estado-si":"estado-no"}">${coords?"Sí":"No"}</td>
+      <td>${esc(c.radio_geocerca||"")}</td>
+    </tr>`;
   }).join("");
 }
+
+function verAsignaciones(clienteId){
+  const c=clientes.find(x=>String(x.id)===String(clienteId));
+  if(!c)return;
+
+  const asigs=asignacionesDe(c);
+  tituloModalAsignaciones.textContent=`Cliente ${c.codigo_cliente||""} - ${c.nombre||""}`;
+
+  if(!asigs.length){
+    tablaAsignacionesModal.innerHTML='<tr><td colspan="4" class="cargando">Este cliente no tiene asignaciones activas.</td></tr>';
+  }else{
+    tablaAsignacionesModal.innerHTML=asigs.map(a=>`
+      <tr>
+        <td><span class="badge-modalidad">${esc(a.modalidad||"-")}</span></td>
+        <td>${esc(a.ruta||"Sin ruta")}</td>
+        <td>${esc(a.vendedor||"Sin vendedor")}</td>
+        <td>${esc(a.frecuencia||"Sin frecuencia")}</td>
+      </tr>
+    `).join("");
+  }
+
+  modalAsignaciones.style.display="flex";
+}
+
+function cerrarModalAsignaciones(evento,forzar=false){
+  if(!forzar && evento && evento.target!==modalAsignaciones)return;
+  modalAsignaciones.style.display="none";
+}
+
 function exportarPadron(){window.location.href=`${API}/clientes/exportar/csv`}
 cargarDatos();
 </script>

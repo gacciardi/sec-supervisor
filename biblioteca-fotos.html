@@ -45,7 +45,7 @@
       padding: 16px;
       box-shadow: 0 3px 12px rgba(0,0,0,.10);
       display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
       gap: 12px;
       margin-bottom: 18px;
     }
@@ -167,6 +167,25 @@
       background: #b91c1c;
     }
 
+
+    .gestion-fotos{
+      background:white;border-radius:14px;padding:12px 14px;
+      box-shadow:0 3px 12px rgba(0,0,0,.08);
+      border:1px solid #e5e7eb;margin-bottom:14px;
+      display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    }
+    .contador-seleccion{font-weight:bold;color:#374151;margin-right:auto;}
+    .btn-gestion{background:#e5e7eb;color:#111827;}
+    .btn-descargar{background:#0b55c7;color:white;}
+    .btn-eliminar-seleccion{background:#dc2626;color:white;}
+    .foto-card{position:relative;}
+    .foto-card.seleccionada{outline:3px solid #0b55c7;outline-offset:1px;}
+    .selector-foto{
+      position:absolute;top:10px;left:10px;z-index:5;
+      width:24px;height:24px;cursor:pointer;accent-color:#0b55c7;
+      box-shadow:0 1px 5px rgba(0,0,0,.25);
+    }
+
     .sin-resultados {
       background: white;
       border-radius: 14px;
@@ -255,7 +274,7 @@
 
       <div class="campo">
         <label>Tipo</label>
-        <select id="filtroTipo">
+        <select id="filtroTipo" onchange="aplicarFiltrosLocales()">
           <option value="">Todos</option>
           <option value="VISITA">Visita</option>
           <option value="CLIENTE">Cliente</option>
@@ -263,10 +282,24 @@
         </select>
       </div>
 
+      <div class="campo">
+        <label>Cliente</label>
+        <input id="filtroCliente" type="text" placeholder="N° o nombre"
+               oninput="aplicarFiltrosLocales()">
+      </div>
+
       <div class="acciones">
         <button class="btn-buscar" onclick="cargarFotos()">Buscar</button>
         <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
       </div>
+    </div>
+
+    <div class="gestion-fotos">
+      <div id="contadorSeleccion" class="contador-seleccion">0 fotos seleccionadas</div>
+      <button class="btn-gestion" onclick="seleccionarTodasVisibles()">Seleccionar visibles</button>
+      <button class="btn-gestion" onclick="limpiarSeleccion()">Quitar selección</button>
+      <button class="btn-descargar" onclick="descargarSeleccionadas()">Descargar seleccionadas</button>
+      <button class="btn-eliminar-seleccion" onclick="eliminarSeleccionadas()">Eliminar seleccionadas</button>
     </div>
 
     <div id="resumen" class="resumen">Cargando...</div>
@@ -283,6 +316,9 @@ const API = "https://sec-backend-gg4j.onrender.com";
 
 let usuarios = [];
 let clientes = [];
+let fotosCargadas = [];
+let fotosVisibles = [];
+const seleccionadas = new Set();
 
 function escaparHtml(valor) {
   return String(valor ?? "")
@@ -330,247 +366,348 @@ function nombreVendedor(id) {
   ].filter(Boolean).join(" ");
 }
 
+function obtenerCliente(id) {
+  if (!id) return null;
+  return clientes.find(c => String(c.id) === String(id)) || null;
+}
+
 function nombreCliente(id) {
-  if (!id) {
-    return "Foto libre";
+  if (!id) return "Foto libre";
+
+  const cliente = obtenerCliente(id);
+  if (!cliente) return `Cliente ${String(id).slice(0, 8)}`;
+
+  const codigo = String(cliente.codigo_cliente || "").trim();
+  const nombre = String(cliente.nombre || cliente.direccion || "").trim();
+
+  if (codigo && nombre) return `Cliente ${codigo} - ${nombre}`;
+  if (codigo) return `Cliente ${codigo}`;
+  if (nombre) return nombre;
+
+  return `Cliente ${String(id).slice(0, 8)}`;
+}
+
+async function cargarTodosClientes() {
+  const acumulados = [];
+  const limit = 200;
+  let offset = 0;
+
+  while (true) {
+    const respuesta = await fetch(
+      `${API}/clientes?limit=${limit}&offset=${offset}&estado=todos`
+    );
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(datos.error || datos.detalle || "No se pudieron cargar los clientes");
+    }
+
+    if (Array.isArray(datos)) {
+      acumulados.push(...datos);
+      break;
+    }
+
+    const lote = Array.isArray(datos.clientes) ? datos.clientes : [];
+    acumulados.push(...lote);
+
+    const total = Number(datos.total || 0);
+    offset += lote.length;
+
+    if (lote.length === 0 || offset >= total) break;
   }
 
-  const cliente =
-    clientes.find(c =>
-      String(c.id) === String(id)
-    );
-
-  return cliente
-    ? (cliente.nombre || cliente.direccion || "Cliente")
-    : `Cliente ${String(id).slice(0, 8)}`;
+  return acumulados;
 }
 
 async function cargarCatalogos() {
-  const resultados =
-    await Promise.allSettled([
-      fetch(`${API}/usuarios`).then(r => r.json()),
-      fetch(`${API}/clientes`).then(r => r.json())
-    ]);
+  const resultados = await Promise.allSettled([
+    fetch(`${API}/usuarios`).then(r => r.json()),
+    cargarTodosClientes()
+  ]);
 
-  if (
-    resultados[0].status === "fulfilled" &&
-    Array.isArray(resultados[0].value)
-  ) {
+  if (resultados[0].status === "fulfilled" && Array.isArray(resultados[0].value)) {
     usuarios = resultados[0].value;
   }
 
-  if (
-    resultados[1].status === "fulfilled" &&
-    Array.isArray(resultados[1].value)
-  ) {
+  if (resultados[1].status === "fulfilled" && Array.isArray(resultados[1].value)) {
     clientes = resultados[1].value;
+  } else {
+    console.error("No se pudo cargar el padrón completo de clientes", resultados[1].reason || "");
+    clientes = [];
   }
 
-  const select =
-    document.getElementById(
-      "filtroVendedor"
-    );
+  const select = document.getElementById("filtroVendedor");
 
   usuarios
-    .filter(u =>
-      u.activo !== false &&
-      String(u.rol || "").toUpperCase() !== "ADMIN"
-    )
-    .sort((a, b) =>
-      `${a.apellido || ""} ${a.nombre || ""}`
-        .localeCompare(
-          `${b.apellido || ""} ${b.nombre || ""}`,
-          "es"
-        )
+    .filter(u => u.activo !== false && String(u.rol || "").toUpperCase() !== "ADMIN")
+    .sort((a,b) =>
+      `${a.apellido || ""} ${a.nombre || ""}`.localeCompare(
+        `${b.apellido || ""} ${b.nombre || ""}`, "es"
+      )
     )
     .forEach(u => {
-      const option =
-        document.createElement("option");
-
+      const option = document.createElement("option");
       option.value = u.id;
-
       option.textContent =
-        `${u.apellido || ""} ${u.nombre || ""}`.trim() ||
-        u.legajo ||
-        u.id;
-
+        `${u.apellido || ""} ${u.nombre || ""}`.trim() || u.legajo || u.id;
       select.appendChild(option);
     });
 }
 
 async function cargarFotos() {
-  const galeria =
-    document.getElementById(
-      "galeria"
-    );
-
-  const resumen =
-    document.getElementById(
-      "resumen"
-    );
+  const galeria = document.getElementById("galeria");
+  const resumen = document.getElementById("resumen");
 
   galeria.innerHTML =
     '<div class="sin-resultados">Cargando fotografías...</div>';
 
-  const params =
-    new URLSearchParams();
+  const params = new URLSearchParams();
+  params.set("estado", "SINCRONIZADA");
 
-  params.set(
-    "estado",
-    "SINCRONIZADA"
-  );
+  const vendedor = document.getElementById("filtroVendedor").value;
+  const desde = document.getElementById("fechaDesde").value;
+  const hasta = document.getElementById("fechaHasta").value;
 
-  const vendedor =
-    document.getElementById(
-      "filtroVendedor"
-    ).value;
-
-  const desde =
-    document.getElementById(
-      "fechaDesde"
-    ).value;
-
-  const hasta =
-    document.getElementById(
-      "fechaHasta"
-    ).value;
-
-  if (vendedor) {
-    params.set(
-      "vendedor_id",
-      vendedor
-    );
-  }
-
-  if (desde) {
-    params.set(
-      "fecha_desde",
-      desde
-    );
-  }
-
-  if (hasta) {
-    params.set(
-      "fecha_hasta",
-      hasta
-    );
-  }
+  if (vendedor) params.set("vendedor_id", vendedor);
+  if (desde) params.set("fecha_desde", desde);
+  if (hasta) params.set("fecha_hasta", hasta);
 
   try {
-    const respuesta =
-      await fetch(
-        `${API}/fotos/evidencias?${params.toString()}`
-      );
-
-    let fotos =
-      await respuesta.json();
+    const respuesta = await fetch(`${API}/fotos/evidencias?${params.toString()}`);
+    const fotos = await respuesta.json();
 
     if (!respuesta.ok) {
       throw new Error(
-        fotos.error ||
-        fotos.detalle ||
-        "No se pudieron cargar las fotografías"
+        fotos.error || fotos.detalle || "No se pudieron cargar las fotografías"
       );
     }
 
-    const tipo =
-      document.getElementById(
-        "filtroTipo"
-      ).value;
-
-    if (tipo) {
-      fotos =
-        fotos.filter(f =>
-          String(f.tipo_foto || "").toUpperCase() === tipo
-        );
-    }
-
-    resumen.textContent =
-      `${fotos.length} fotografía` +
-      (fotos.length === 1 ? "" : "s");
-
-    if (fotos.length === 0) {
-      galeria.innerHTML =
-        '<div class="sin-resultados">No hay fotografías para los filtros seleccionados.</div>';
-      return;
-    }
-
-    galeria.innerHTML =
-      fotos.map(foto => {
-        const url =
-          foto.url_segura ||
-          foto.url_imagen ||
-          "";
-
-        const urlSeguro =
-          escaparHtml(url);
-
-        const vendedorNombre =
-          nombreVendedor(
-            foto.vendedor_id
-          );
-
-        const clienteNombre =
-          nombreCliente(
-            foto.cliente_id
-          );
-
-        return `
-          <div class="foto-card">
-            ${
-              url
-                ? `
-                  <img
-                    src="${urlSeguro}"
-                    loading="lazy"
-                    alt="Evidencia SEC"
-                    onclick="abrirVisor('${urlSeguro}')"
-                  >
-                `
-                : `
-                  <div class="sin-resultados">
-                    Imagen no disponible
-                  </div>
-                `
-            }
-
-            <div class="foto-info">
-              <strong>${escaparHtml(vendedorNombre)}</strong>
-              <br>
-
-              ${escaparHtml(clienteNombre)}
-              <br>
-
-              ${escaparHtml(formatearFecha(foto.fecha_captura))}
-              <br>
-
-              <span class="badge">
-                ${escaparHtml(foto.tipo_foto || "LIBRE")}
-              </span>
-
-              <button
-                class="btn-eliminar-foto"
-                onclick="eliminarFoto('${escaparHtml(foto.id)}')"
-              >
-                Eliminar foto
-              </button>
-            </div>
-          </div>
-        `;
-      }).join("");
+    fotosCargadas = Array.isArray(fotos) ? fotos : [];
+    seleccionadas.clear();
+    actualizarContadorSeleccion();
+    aplicarFiltrosLocales();
 
   } catch (error) {
-    console.error(
-      "Error biblioteca fotos:",
-      error
-    );
-
-    resumen.textContent =
-      "Error";
-
+    console.error("Error biblioteca fotos:", error);
+    resumen.textContent = "Error";
     galeria.innerHTML =
       '<div class="sin-resultados">No se pudieron cargar las fotografías.</div>';
   }
+}
+
+function aplicarFiltrosLocales() {
+  const tipo = document.getElementById("filtroTipo").value;
+  const textoCliente = String(
+    document.getElementById("filtroCliente").value || ""
+  ).trim().toLowerCase();
+
+  fotosVisibles = fotosCargadas.filter(foto => {
+    if (tipo && String(foto.tipo_foto || "").toUpperCase() !== tipo) {
+      return false;
+    }
+
+    if (textoCliente) {
+      const etiqueta = nombreCliente(foto.cliente_id).toLowerCase();
+      if (!etiqueta.includes(textoCliente)) return false;
+    }
+
+    return true;
+  });
+
+  renderizarFotos();
+}
+
+function renderizarFotos() {
+  const galeria = document.getElementById("galeria");
+  const resumen = document.getElementById("resumen");
+
+  resumen.textContent =
+    `${fotosVisibles.length} fotografía` +
+    (fotosVisibles.length === 1 ? "" : "s");
+
+  if (fotosVisibles.length === 0) {
+    galeria.innerHTML =
+      '<div class="sin-resultados">No hay fotografías para los filtros seleccionados.</div>';
+    return;
+  }
+
+  galeria.innerHTML = fotosVisibles.map(foto => {
+    const url = foto.url_segura || foto.url_imagen || "";
+    const urlSeguro = escaparHtml(url);
+    const vendedorNombre = nombreVendedor(foto.vendedor_id);
+    const clienteNombre = nombreCliente(foto.cliente_id);
+    const marcada = seleccionadas.has(String(foto.id));
+
+    return `
+      <div class="foto-card ${marcada ? "seleccionada" : ""}"
+           data-foto-id="${escaparHtml(foto.id)}">
+
+        <input type="checkbox"
+               class="selector-foto"
+               ${marcada ? "checked" : ""}
+               onclick="event.stopPropagation()"
+               onchange="alternarSeleccion('${escaparHtml(foto.id)}', this.checked)"
+               title="Seleccionar fotografía">
+
+        ${
+          url
+            ? `<img src="${urlSeguro}"
+                    loading="lazy"
+                    alt="Evidencia SEC"
+                    onclick="abrirVisor('${urlSeguro}')">`
+            : `<div class="sin-resultados">Imagen no disponible</div>`
+        }
+
+        <div class="foto-info">
+          <strong>${escaparHtml(vendedorNombre)}</strong>
+          <br>
+          ${escaparHtml(clienteNombre)}
+          <br>
+          ${escaparHtml(formatearFecha(foto.fecha_captura))}
+          <br>
+          <span class="badge">${escaparHtml(foto.tipo_foto || "LIBRE")}</span>
+
+          <button class="btn-eliminar-foto"
+                  onclick="eliminarFoto('${escaparHtml(foto.id)}')">
+            Eliminar foto
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function alternarSeleccion(id, marcada) {
+  const clave = String(id);
+
+  if (marcada) seleccionadas.add(clave);
+  else seleccionadas.delete(clave);
+
+  actualizarContadorSeleccion();
+
+  const card = document.querySelector(`[data-foto-id="${CSS.escape(clave)}"]`);
+  if (card) card.classList.toggle("seleccionada", marcada);
+}
+
+function actualizarContadorSeleccion() {
+  const cantidad = seleccionadas.size;
+  document.getElementById("contadorSeleccion").textContent =
+    `${cantidad} foto${cantidad === 1 ? "" : "s"} seleccionada${cantidad === 1 ? "" : "s"}`;
+}
+
+function seleccionarTodasVisibles() {
+  fotosVisibles.forEach(foto => {
+    if (foto.id) seleccionadas.add(String(foto.id));
+  });
+
+  actualizarContadorSeleccion();
+  renderizarFotos();
+}
+
+function limpiarSeleccion() {
+  seleccionadas.clear();
+  actualizarContadorSeleccion();
+  renderizarFotos();
+}
+
+function obtenerFotosSeleccionadas() {
+  return fotosCargadas.filter(
+    foto => seleccionadas.has(String(foto.id))
+  );
+}
+
+function nombreArchivoFoto(foto, indice) {
+  const cliente = obtenerCliente(foto.cliente_id);
+  const codigo = String(cliente?.codigo_cliente || "sin-cliente")
+    .trim()
+    .replace(/[^\w.-]+/g, "_");
+
+  const fecha = String(foto.fecha_captura || "")
+    .slice(0,10)
+    .replaceAll("-", "");
+
+  return `${fecha || "foto"}_cliente-${codigo}_${indice + 1}.jpg`;
+}
+
+async function descargarSeleccionadas() {
+  const fotos = obtenerFotosSeleccionadas();
+
+  if (fotos.length === 0) {
+    alert("Seleccione al menos una fotografía.");
+    return;
+  }
+
+  if (fotos.length > 1) {
+    alert("El navegador puede pedir autorización para descargar varios archivos.");
+  }
+
+  for (let i = 0; i < fotos.length; i++) {
+    const foto = fotos[i];
+    const url = foto.url_segura || foto.url_imagen || "";
+    if (!url) continue;
+
+    try {
+      const respuesta = await fetch(url);
+      const blob = await respuesta.blob();
+      const temporal = URL.createObjectURL(blob);
+
+      const enlace = document.createElement("a");
+      enlace.href = temporal;
+      enlace.download = nombreArchivoFoto(foto, i);
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+
+      URL.revokeObjectURL(temporal);
+
+    } catch (error) {
+      console.error("No se pudo descargar una fotografía:", error);
+      window.open(url, "_blank");
+    }
+  }
+}
+
+async function eliminarSeleccionadas() {
+  const fotos = obtenerFotosSeleccionadas();
+
+  if (fotos.length === 0) {
+    alert("Seleccione al menos una fotografía.");
+    return;
+  }
+
+  const confirmar = window.confirm(
+    `¿Seguro que desea eliminar ${fotos.length} fotografía${fotos.length === 1 ? "" : "s"}?\n\n` +
+    "La eliminación es permanente."
+  );
+
+  if (!confirmar) return;
+
+  let eliminadas = 0;
+  let errores = 0;
+
+  for (const foto of fotos) {
+    try {
+      const respuesta = await fetch(
+        `${API}/fotos/evidencias/${encodeURIComponent(foto.id)}`,
+        { method: "DELETE" }
+      );
+
+      if (respuesta.ok) eliminadas++;
+      else errores++;
+
+    } catch (error) {
+      console.error("Error eliminando fotografía:", error);
+      errores++;
+    }
+  }
+
+  seleccionadas.clear();
+  await cargarFotos();
+
+  alert(
+    `Eliminadas: ${eliminadas}` +
+    (errores > 0 ? `\nCon error: ${errores}` : "")
+  );
 }
 
 async function eliminarFoto(id) {
@@ -640,6 +777,11 @@ function limpiarFiltros() {
     "filtroTipo"
   ).value = "";
 
+  document.getElementById(
+    "filtroCliente"
+  ).value = "";
+
+  limpiarSeleccion();
   cargarFotos();
 }
 

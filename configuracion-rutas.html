@@ -34,6 +34,30 @@
     .facecall{background:#fef3c7;color:#92400e}
     .sin-vendedor{color:#9ca3af}
     .acciones-fila{white-space:nowrap}
+
+    .pestanas{
+      display:flex;
+      gap:8px;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+    }
+    .pestana{
+      display:inline-block;
+      padding:11px 18px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:700;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      color:#1f2937;
+    }
+    .pestana:hover{background:#eef2ff}
+    .pestana.activa{
+      background:#0b55c7;
+      border-color:#0b55c7;
+      color:#fff;
+    }
+
     @media(max-width:800px){
       table,thead,tbody,th,td,tr{display:block}
       thead{display:none}
@@ -51,6 +75,11 @@
   </div>
 
   <div class="contenedor">
+    <nav class="pestanas" aria-label="Administración de rutas">
+      <a class="pestana" href="reemplazos-ruta.html">Reemplazos de Ruta</a>
+      <a class="pestana activa" href="configuracion-rutas.html">Configuración de Rutas</a>
+    </nav>
+
     <div class="panel">
       <p class="intro">
         Esta configuración identifica qué función cumple cada ruta.

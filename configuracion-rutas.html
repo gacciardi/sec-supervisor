@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEC - Configuración de Rutas</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{background:#f4f6f9;color:#1f2937}
+    .topbar{background:#071b3a;color:white;padding:22px 26px}
+    .topbar h1{margin:0 0 5px;font-size:28px}
+    .topbar p{margin:0;opacity:.86}
+    .contenedor{max-width:1200px;margin:24px auto;padding:0 18px}
+    .panel{background:#fff;border-radius:16px;padding:22px;box-shadow:0 4px 14px rgba(0,0,0,.10);margin-bottom:20px}
+    .intro{line-height:1.55;color:#4b5563;margin-top:0}
+    .barra{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0}
+    .barra input{min-width:260px;flex:1;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px}
+    button{border:none;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer;background:#071b3a;color:white}
+    button.secundario{background:#e5e7eb;color:#1f2937}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .mensaje{display:none;margin-top:14px;padding:11px 13px;border-radius:9px;font-weight:700}
+    .mensaje.ok{display:block;background:#dcfce7;color:#166534}
+    .mensaje.error{display:block;background:#fee2e2;color:#991b1b}
+    .resumen{display:flex;gap:12px;flex-wrap:wrap;margin:15px 0}
+    .chip{background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:middle}
+    th{background:#f8fafc;color:#334155;font-size:13px}
+    td{font-size:14px}
+    select{width:100%;min-width:170px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;background:white}
+    .estado{font-size:12px;font-weight:700;padding:5px 8px;border-radius:999px;display:inline-block}
+    .presencial{background:#dcfce7;color:#166534}
+    .televentas{background:#dbeafe;color:#1d4ed8}
+    .facecall{background:#fef3c7;color:#92400e}
+    .sin-vendedor{color:#9ca3af}
+    .acciones-fila{white-space:nowrap}
+    @media(max-width:800px){
+      table,thead,tbody,th,td,tr{display:block}
+      thead{display:none}
+      tr{border:1px solid #d1d5db;border-radius:12px;margin-bottom:12px;padding:10px}
+      td{border:none;padding:6px 0}
+      select{width:100%}
+      .acciones-fila button{width:100%;margin-top:5px}
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Configuración de Rutas</h1>
+    <p>Definí si cada ruta es Presencial o Televentas. Los cambios quedan guardados en SEC.</p>
+  </div>
+
+  <div class="contenedor">
+    <div class="panel">
+      <p class="intro">
+        Esta configuración identifica qué función cumple cada ruta.
+        La modalidad comercial del cliente (PR, TA, WA, FC, FW) continúa guardándose por separado
+        en sus asignaciones. Cambiar el tipo de una ruta no modifica clientes, vendedores, GPS ni la APK.
+      </p>
+
+      <div class="barra">
+        <input id="buscar" type="text" placeholder="Buscar por número de ruta o vendedor..." oninput="renderizar()">
+        <button class="secundario" onclick="cargarRutas()">Actualizar</button>
+        <button class="secundario" onclick="location.href='index.html'">Volver al inicio</button>
+      </div>
+
+      <div class="resumen">
+        <span class="chip">Rutas activas: <strong id="total">0</strong></span>
+        <span class="chip">Presencial: <strong id="cantPresencial">0</strong></span>
+        <span class="chip">Televentas: <strong id="cantTeleventas">0</strong></span>
+        <span class="chip">Face and Call: <strong id="cantFaceCall">0</strong></span>
+      </div>
+
+      <div id="mensaje" class="mensaje"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Ruta</th>
+            <th>Vendedor titular</th>
+            <th>Tipo actual</th>
+            <th>Nuevo tipo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = "https://sec-backend-gg4j.onrender.com";
+    let rutas = [];
+
+    function esc(valor){
+      return String(valor ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function etiquetaTipo(tipo){
+      const t = String(tipo || "PRESENCIAL").toUpperCase();
+      if(t === "TELEVENTAS") return '<span class="estado televentas">TELEVENTAS</span>';
+      if(t === "FACE_AND_CALL") return '<span class="estado facecall">FACE AND CALL</span>';
+      return '<span class="estado presencial">PRESENCIAL</span>';
+    }
+
+    function mostrarMensaje(texto,tipo){
+      const el = document.getElementById("mensaje");
+      el.textContent = texto;
+      el.className = `mensaje ${tipo}`;
+      setTimeout(()=>{ el.className = "mensaje"; },4000);
+    }
+
+    async function cargarRutas(){
+      try{
+        const resp = await fetch(`${API}/reemplazos-ruta/rutas`);
+        const datos = await resp.json();
+
+        if(!resp.ok){
+          throw new Error(datos.error || datos.detalle || "No se pudieron cargar las rutas");
+        }
+
+        rutas = Array.isArray(datos) ? datos : [];
+        actualizarResumen();
+        renderizar();
+      }catch(error){
+        mostrarMensaje(error.message,"error");
+      }
+    }
+
+    function actualizarResumen(){
+      document.getElementById("total").textContent = rutas.length;
+      document.getElementById("cantPresencial").textContent =
+        rutas.filter(r => String(r.tipo_atencion || "PRESENCIAL").toUpperCase() === "PRESENCIAL").length;
+      document.getElementById("cantTeleventas").textContent =
+        rutas.filter(r => String(r.tipo_atencion || "").toUpperCase() === "TELEVENTAS").length;
+      document.getElementById("cantFaceCall").textContent =
+        rutas.filter(r => String(r.tipo_atencion || "").toUpperCase() === "FACE_AND_CALL").length;
+    }
+
+    function renderizar(){
+      const filtro = document.getElementById("buscar").value.trim().toLowerCase();
+      const tabla = document.getElementById("tabla");
+
+      const visibles = rutas.filter(r => {
+        const texto = `${r.nombre || ""} ${r.vendedor_titular || ""} ${r.tipo_atencion || ""}`.toLowerCase();
+        return !filtro || texto.includes(filtro);
+      });
+
+      if(!visibles.length){
+        tabla.innerHTML = '<tr><td colspan="5">No hay rutas para mostrar.</td></tr>';
+        return;
+      }
+
+      tabla.innerHTML = visibles.map(r => {
+        const actual = String(r.tipo_atencion || "PRESENCIAL").toUpperCase();
+
+        return `
+          <tr>
+            <td><strong>Ruta ${esc(r.nombre)}</strong></td>
+            <td>${r.vendedor_titular ? esc(r.vendedor_titular) : '<span class="sin-vendedor">Sin vendedor titular</span>'}</td>
+            <td>${etiquetaTipo(actual)}</td>
+            <td>
+              <select id="tipo_${esc(r.id)}">
+                <option value="PRESENCIAL" ${actual === "PRESENCIAL" ? "selected" : ""}>PRESENCIAL</option>
+                <option value="TELEVENTAS" ${actual === "TELEVENTAS" ? "selected" : ""}>TELEVENTAS</option>
+                <option value="FACE_AND_CALL" ${actual === "FACE_AND_CALL" ? "selected" : ""}>FACE AND CALL</option>
+              </select>
+            </td>
+            <td class="acciones-fila">
+              <button id="btn_${esc(r.id)}" onclick="guardar('${esc(r.id)}')">Guardar</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function guardar(rutaId){
+      const select = document.getElementById(`tipo_${rutaId}`);
+      const boton = document.getElementById(`btn_${rutaId}`);
+      const tipo_atencion = select.value;
+
+      boton.disabled = true;
+      boton.textContent = "Guardando...";
+
+      try{
+        const resp = await fetch(
+          `${API}/reemplazos-ruta/rutas/${encodeURIComponent(rutaId)}/tipo-atencion`,
+          {
+            method:"PATCH",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({tipo_atencion})
+          }
+        );
+
+        const datos = await resp.json();
+
+        if(!resp.ok){
+          throw new Error(datos.error || datos.detalle || "No se pudo guardar");
+        }
+
+        const ruta = rutas.find(r => String(r.id) === String(rutaId));
+        if(ruta){
+          ruta.tipo_atencion = datos.ruta.tipo_atencion;
+        }
+
+        actualizarResumen();
+        renderizar();
+        mostrarMensaje(`Ruta ${datos.ruta.nombre}: ${datos.ruta.tipo_atencion}`,"ok");
+      }catch(error){
+        mostrarMensaje(error.message,"error");
+        boton.disabled = false;
+        boton.textContent = "Guardar";
+      }
+    }
+
+    cargarRutas();
+  </script>
+</body>
+</html>

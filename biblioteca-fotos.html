@@ -419,39 +419,55 @@ async function cargarTodosClientes() {
   return acumulados;
 }
 
-async function cargarCatalogos() {
-  const resultados = await Promise.allSettled([
-    fetch(`${API}/usuarios`).then(r => r.json()),
-    cargarTodosClientes()
-  ]);
+async function cargarUsuarios() {
+  try {
+    const respuesta = await fetch(`${API}/usuarios`);
+    const datos = await respuesta.json();
 
-  if (resultados[0].status === "fulfilled" && Array.isArray(resultados[0].value)) {
-    usuarios = resultados[0].value;
+    if (!respuesta.ok) {
+      throw new Error(datos.error || datos.detalle || "No se pudieron cargar los usuarios");
+    }
+
+    usuarios = Array.isArray(datos) ? datos : [];
+
+    const select = document.getElementById("filtroVendedor");
+    select.innerHTML = '<option value="">Todos</option>';
+
+    usuarios
+      .filter(u => u.activo !== false && String(u.rol || "").toUpperCase() !== "ADMIN")
+      .sort((a,b) =>
+        `${a.apellido || ""} ${a.nombre || ""}`.localeCompare(
+          `${b.apellido || ""} ${b.nombre || ""}`, "es"
+        )
+      )
+      .forEach(u => {
+        const option = document.createElement("option");
+        option.value = u.id;
+        option.textContent =
+          `${u.apellido || ""} ${u.nombre || ""}`.trim() || u.legajo || u.id;
+        select.appendChild(option);
+      });
+
+  } catch (error) {
+    console.error("No se pudieron cargar los usuarios", error);
+    usuarios = [];
   }
+}
 
-  if (resultados[1].status === "fulfilled" && Array.isArray(resultados[1].value)) {
-    clientes = resultados[1].value;
-  } else {
-    console.error("No se pudo cargar el padrón completo de clientes", resultados[1].reason || "");
+async function cargarClientesEnSegundoPlano() {
+  try {
+    clientes = await cargarTodosClientes();
+
+    // Las fotos ya se muestran sin esperar todo el padrón.
+    // Cuando termina de cargar el padrón, actualizamos los nombres de clientes.
+    if (fotosCargadas.length > 0) {
+      aplicarFiltrosLocales();
+    }
+
+  } catch (error) {
+    console.error("No se pudo cargar el padrón completo de clientes", error);
     clientes = [];
   }
-
-  const select = document.getElementById("filtroVendedor");
-
-  usuarios
-    .filter(u => u.activo !== false && String(u.rol || "").toUpperCase() !== "ADMIN")
-    .sort((a,b) =>
-      `${a.apellido || ""} ${a.nombre || ""}`.localeCompare(
-        `${b.apellido || ""} ${b.nombre || ""}`, "es"
-      )
-    )
-    .forEach(u => {
-      const option = document.createElement("option");
-      option.value = u.id;
-      option.textContent =
-        `${u.apellido || ""} ${u.nombre || ""}`.trim() || u.legajo || u.id;
-      select.appendChild(option);
-    });
 }
 
 async function cargarFotos() {
@@ -819,7 +835,10 @@ function cerrarVisor(evento, forzar = false) {
 }
 
 (async function iniciar() {
-  await cargarCatalogos();
+  // La biblioteca ya no espera a descargar todo el padrón de clientes
+  // antes de mostrar las fotografías.
+  cargarUsuarios();
+  cargarClientesEnSegundoPlano();
   await cargarFotos();
 })();
 </script>

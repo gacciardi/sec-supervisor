@@ -387,6 +387,24 @@ function nombreCliente(id) {
   return `Cliente ${String(id).slice(0, 8)}`;
 }
 
+function nombreClienteFoto(foto) {
+  if (!foto?.cliente_id) return "Foto libre";
+
+  const codigo = String(foto.cliente_codigo || "").trim();
+  const nombre = String(
+    foto.cliente_nombre ||
+    foto.cliente_direccion ||
+    ""
+  ).trim();
+
+  if (codigo && nombre) return `Cliente ${codigo} - ${nombre}`;
+  if (codigo) return `Cliente ${codigo}`;
+  if (nombre) return nombre;
+
+  // Compatibilidad con registros/respuestas anteriores.
+  return nombreCliente(foto.cliente_id);
+}
+
 async function cargarTodosClientes() {
   const acumulados = [];
   const limit = 200;
@@ -523,7 +541,7 @@ function aplicarFiltrosLocales() {
     }
 
     if (textoCliente) {
-      const etiqueta = nombreCliente(foto.cliente_id).toLowerCase();
+      const etiqueta = nombreClienteFoto(foto).toLowerCase();
       if (!etiqueta.includes(textoCliente)) return false;
     }
 
@@ -551,7 +569,7 @@ function renderizarFotos() {
     const url = foto.url_segura || foto.url_imagen || "";
     const urlSeguro = escaparHtml(url);
     const vendedorNombre = nombreVendedor(foto.vendedor_id);
-    const clienteNombre = nombreCliente(foto.cliente_id);
+    const clienteNombre = nombreClienteFoto(foto);
     const marcada = seleccionadas.has(String(foto.id));
 
     return `

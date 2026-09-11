@@ -366,6 +366,19 @@ function nombreVendedor(id) {
   ].filter(Boolean).join(" ");
 }
 
+function nombreVendedorFoto(foto) {
+  if (!foto?.vendedor_id) return "Sin vendedor";
+
+  const nombreDirecto = [
+    foto.vendedor_nombre,
+    foto.vendedor_apellido
+  ].filter(Boolean).join(" ").trim();
+
+  if (nombreDirecto) return nombreDirecto;
+
+  return nombreVendedorFoto(foto);
+}
+
 function obtenerCliente(id) {
   if (!id) return null;
   return clientes.find(c => String(c.id) === String(id)) || null;
@@ -568,7 +581,7 @@ function renderizarFotos() {
   galeria.innerHTML = fotosVisibles.map(foto => {
     const url = foto.url_segura || foto.url_imagen || "";
     const urlSeguro = escaparHtml(url);
-    const vendedorNombre = nombreVendedor(foto.vendedor_id);
+    const vendedorNombre = nombreVendedorFoto(foto);
     const clienteNombre = nombreClienteFoto(foto);
     const marcada = seleccionadas.has(String(foto.id));
 

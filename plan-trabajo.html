@@ -381,7 +381,7 @@
     </h1>
 
     <p>
-      Clientes programados por ruta y fecha
+      Clientes programados por vendedor y fecha
     </p>
   </div>
 
@@ -407,18 +407,18 @@
     border-left:5px solid #0284c7;
     padding:10px 14px;
     border-radius:8px;
-  ">Consultar plan diario por ruta</h2>
+  ">Consultar plan diario por vendedor</h2>
 
   <div class="filtros-plan">
 
     <div class="campo-plan">
-      <label for="rutaSelect">
-        Ruta
+      <label for="vendedorSelect">
+        Vendedor
       </label>
 
-      <select id="rutaSelect">
+      <select id="vendedorSelect">
         <option value="">
-          Seleccionar ruta
+          Seleccionar vendedor
         </option>
       </select>
     </div>
@@ -455,17 +455,17 @@
     <div class="datos-ruta">
 
       <div class="dato-ruta">
-        <span>Ruta</span>
+        <span>Vendedor</span>
         <strong id="datoRuta">-</strong>
       </div>
 
       <div class="dato-ruta">
-        <span>Vendedor titular</span>
+        <span>Ruta(s) del día</span>
         <strong id="datoTitular">-</strong>
       </div>
 
       <div class="dato-ruta">
-        <span>Vendedor efectivo</span>
+        <span>Fecha</span>
         <strong id="datoEfectivo">-</strong>
       </div>
 
@@ -670,14 +670,14 @@ function formatearDuracion(segundos) {
   return minutos + " min";
 }
 
-async function cargarRutas() {
+async function cargarVendedores() {
 
   try {
 
     const respuesta =
       await fetch(
         API +
-        "/reemplazos-ruta/rutas"
+          "/usuarios"
       );
 
     const datos =
@@ -687,45 +687,52 @@ async function cargarRutas() {
 
       throw new Error(
         datos.error ||
-        "No se pudieron cargar las rutas"
+        "No se pudieron cargar los vendedores"
       );
     }
 
-    const rutas =
-      Array.isArray(datos)
-        ? datos
-        : [];
+    const vendedores =
+      (Array.isArray(datos) ? datos : [])
+        .filter(function(usuario) {
+          return (
+            usuario.activo !== false &&
+            usuario.rol === "VENDEDOR"
+          );
+        })
+        .sort(function(a, b) {
+          const nombreA = ((a.apellido || "") + " " + (a.nombre || "")).trim();
+          const nombreB = ((b.apellido || "") + " " + (b.nombre || "")).trim();
+          return nombreA.localeCompare(nombreB, "es");
+        });
 
     const select =
       document.getElementById(
-        "rutaSelect"
+        "vendedorSelect"
       );
 
     select.innerHTML =
       '<option value="">' +
-      'Seleccionar ruta' +
+      'Seleccionar vendedor' +
       '</option>' +
 
-      rutas.map(function(ruta) {
+      vendedores.map(function(vendedor) {
 
-        let texto =
-          "Ruta " +
-          esc(ruta.nombre);
+        const nombreCompleto =
+          ((vendedor.nombre || "") +
+          " " +
+          (vendedor.apellido || "")).trim();
 
-        if (ruta.vendedor_titular) {
-
-          texto +=
-            " - " +
-            esc(
-              ruta.vendedor_titular
-            );
-        }
+        const texto =
+          nombreCompleto +
+          (vendedor.legajo
+            ? " - Legajo " + vendedor.legajo
+            : "");
 
         return (
           '<option value="' +
-          esc(ruta.id) +
+          esc(vendedor.id) +
           '">' +
-          texto +
+          esc(texto) +
           '</option>'
         );
 
@@ -740,11 +747,12 @@ async function cargarRutas() {
   }
 }
 
+
 async function cargarPlan() {
 
-  const rutaId =
+  const vendedorId =
     document.getElementById(
-      "rutaSelect"
+      "vendedorSelect"
     ).value;
 
   const fecha =
@@ -752,10 +760,10 @@ async function cargarPlan() {
       "fechaSelect"
     ).value;
 
-  if (!rutaId) {
+  if (!vendedorId) {
 
     mostrarMensaje(
-      "Seleccioná una ruta.",
+      "Seleccioná un vendedor.",
       "error"
     );
 
@@ -786,10 +794,10 @@ async function cargarPlan() {
     const respuesta =
       await fetch(
         API +
-        "/clientes/plan-trabajo/ruta/" +
-        encodeURIComponent(rutaId) +
-        "?fecha=" +
-        encodeURIComponent(fecha)
+          "/clientes/plan-trabajo/" +
+          encodeURIComponent(vendedorId) +
+          "?fecha=" +
+          encodeURIComponent(fecha)
       );
 
     const datos =
@@ -816,6 +824,7 @@ async function cargarPlan() {
     );
   }
 }
+
 
 
 function normalizarDetalleVisitas(valor) {
@@ -923,73 +932,68 @@ function renderizarPlan(datos) {
   const resumen =
     datos.resumen || {};
 
-  const ruta =
-    datos.ruta || {};
+  const vendedor =
+    datos.vendedor || {};
 
   const clientes =
     Array.isArray(datos.clientes)
       ? datos.clientes
       : [];
 
+  const nombreVendedor =
+    vendedor.vendedor ||
+    vendedor.nombre ||
+    "Vendedor";
+
+  const rutasDelDia =
+    Array.from(
+      new Set(
+        clientes
+          .map(function(cliente) {
+            return cliente.ruta;
+          })
+          .filter(function(ruta) {
+            return ruta !== null &&
+                   ruta !== undefined &&
+                   String(ruta).trim() !== "";
+          })
+      )
+    );
+
   document.getElementById(
     "tituloPlan"
   ).textContent =
-    "Ruta " +
-    (ruta.ruta || "") +
+    nombreVendedor +
     " - " +
     (datos.fecha || "");
 
   document.getElementById(
     "datoRuta"
   ).textContent =
-    ruta.ruta || "-";
+    nombreVendedor;
 
   document.getElementById(
     "datoTitular"
   ).textContent =
-    ruta.vendedor_titular ||
-    "Sin titular";
+    rutasDelDia.length > 0
+      ? rutasDelDia.join(", ")
+      : "Sin ruta programada";
 
   document.getElementById(
     "datoEfectivo"
   ).textContent =
-    ruta.vendedor_efectivo ||
-    "Sin vendedor";
+    datos.fecha || "-";
 
   const situacion =
     document.getElementById(
       "datoSituacion"
     );
 
-  if (
-    ruta.origen_vendedor ===
-    "REEMPLAZO"
-  ) {
+  situacion.textContent =
+    "PLAN EFECTIVO";
 
-    let texto =
-      "REEMPLAZO";
-
-    if (ruta.motivo) {
-
-      texto +=
-        " - " +
-        ruta.motivo;
-    }
-
-    situacion.textContent =
-      texto;
-
-    situacion.className =
-      "situacion-reemplazo";
-
-  } else {
-
-    situacion.textContent =
-      "TITULAR";
-
-    situacion.className =
-      "situacion-titular";
-  }
+  situacion.className =
+    "situacion-reemplazo";
 
   document.getElementById(
     "totalPlan"
@@ -1331,7 +1335,7 @@ async function iniciar() {
   ).value =
     fechaLocalISO();
 
-  await cargarRutas();
+  await cargarVendedores();
 }
 
 iniciar();

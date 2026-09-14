@@ -105,10 +105,28 @@ tbody tr:nth-child(even){background:#f8fafc}tbody tr:hover{background:#eef4ff}
 <script>
 const API="https://sec-backend-gg4j.onrender.com";
 let clientes=[],canales=[],frecuencias=[],rutas=[],vendedores=[];
+let totalPadronGeneral=0;
 
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 function norm(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim()}
-function nomVend(c){if(c.vendedor_nombre||c.vendedor_apellido)return `${c.vendedor_nombre||""} ${c.vendedor_apellido||""}`.trim();if(c.vendedor)return c.vendedor;const v=vendedores.find(x=>x.id===c.vendedor_id);return v?`${v.nombre||""} ${v.apellido||""}`.trim():""}
+function asignacionDelVendedorSeleccionado(c){
+  const vendedorId=filtroVendedor?.value||"";
+  if(!vendedorId)return null;
+  return asignacionesDe(c).find(a=>String(a.vendedor_efectivo_id||"")===String(vendedorId))||null;
+}
+function nomVend(c){
+  const asig=asignacionDelVendedorSeleccionado(c);
+  if(asig){
+    const nombre=asig.vendedor_efectivo||asig.vendedor||"";
+    return asig.origen_vendedor==="REEMPLAZO" && nombre
+      ? `${nombre} (reemplazo)`
+      : nombre;
+  }
+  if(c.vendedor_nombre||c.vendedor_apellido)return `${c.vendedor_nombre||""} ${c.vendedor_apellido||""}`.trim();
+  if(c.vendedor)return c.vendedor;
+  const v=vendedores.find(x=>x.id===c.vendedor_id);
+  return v?`${v.nombre||""} ${v.apellido||""}`.trim():"";
+}
 function nomCat(lista,id,alt){if(alt)return alt;const x=lista.find(i=>i.id===id);return x?x.nombre:""}
 function asignacionesDe(c){return Array.isArray(c.asignaciones)?c.asignaciones:[]}
 function cantidadAsignaciones(c){return Number(c.cantidad_asignaciones??asignacionesDe(c).length??0)}
@@ -127,7 +145,7 @@ async function cargarTodos(vendedorId=""){
     offset+=lote.length;
     if(offset>200000)break;
   }
-  return acum;
+  return { clientes:acum, total:Number(total||0) };
 }
 
 async function cargarDatos(){
@@ -136,9 +154,11 @@ async function cargarDatos(){
     canales=await a.json(); frecuencias=await b.json(); rutas=await c.json();
     const usuarios=await d.json(); vendedores=usuarios.filter(u=>u.rol==="VENDEDOR"&&u.activo);
     cargarFiltros();
-    clientes=await cargarTodos();
+    const padron=await cargarTodos();
+    clientes=padron.clientes;
+    totalPadronGeneral=padron.total;
     clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));
-    document.getElementById("totalPadron").textContent=clientes.length;
+    document.getElementById("totalPadron").textContent=totalPadronGeneral;
     aplicarFiltros();
   }catch(e){
     console.error(e);
@@ -156,8 +176,10 @@ function cargarFiltros(){
 async function cambiarFiltroVendedor(){
   try{
     tablaClientes.innerHTML='<tr><td colspan="11" class="cargando">Cargando clientes del vendedor...</td></tr>';
-    clientes=await cargarTodos(filtroVendedor.value);
+    const padronFiltrado=await cargarTodos(filtroVendedor.value);
+    clientes=padronFiltrado.clientes;
     clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));
+    document.getElementById("totalPadron").textContent=totalPadronGeneral;
     aplicarFiltros();
   }catch(e){
     console.error(e);
@@ -170,7 +192,13 @@ function aplicarFiltros(){
 
   const lista=clientes.filter(c=>{
     const asigs=asignacionesDe(c);
-    const textoAsignaciones=asigs.map(a=>[a.modalidad,a.ruta,a.vendedor,a.frecuencia].join(" ")).join(" ");
+    const textoAsignaciones=asigs.map(a=>[
+      a.modalidad,
+      a.ruta,
+      a.vendedor,
+      a.vendedor_efectivo,
+      a.frecuencia
+    ].join(" ")).join(" ");
     const texto=norm([c.codigo_cliente,c.nombre,c.direccion,c.localidad,c.canal,c.frecuencia,c.ruta,nomVend(c),textoAsignaciones].join(" "));
 
     const coincideFrecuencia=!fr || c.frecuencia_id===fr || asigs.some(a=>a.frecuencia_id===fr);
@@ -213,8 +241,13 @@ function renderizar(lista){
 
   tablaClientes.innerHTML=lista.map(c=>{
     const canal=nomCat(canales,c.canal_id,c.canal||c.canal_nombre);
-    const frecuencia=nomCat(frecuencias,c.frecuencia_id,c.frecuencia||c.frecuencia_nombre);
-    const ruta=nomCat(rutas,c.ruta_id,c.ruta||c.ruta_nombre);
+    const asigSeleccionada=asignacionDelVendedorSeleccionado(c);
+    const frecuencia=asigSeleccionada
+      ? (asigSeleccionada.frecuencia||nomCat(frecuencias,asigSeleccionada.frecuencia_id,""))
+      : nomCat(frecuencias,c.frecuencia_id,c.frecuencia||c.frecuencia_nombre);
+    const ruta=asigSeleccionada
+      ? (asigSeleccionada.ruta||nomCat(rutas,asigSeleccionada.ruta_id,""))
+      : nomCat(rutas,c.ruta_id,c.ruta||c.ruta_nombre);
     const vendedor=nomVend(c);
     const coords=c.latitud!==null&&c.latitud!==""&&c.longitud!==null&&c.longitud!=="";
     const cant=cantidadAsignaciones(c);
@@ -253,7 +286,10 @@ function verAsignaciones(clienteId){
       <tr>
         <td><span class="badge-modalidad">${esc(a.modalidad||"-")}</span></td>
         <td>${esc(a.ruta||"Sin ruta")}</td>
-        <td>${esc(a.vendedor||"Sin vendedor")}</td>
+        <td>${esc(
+          (a.vendedor_efectivo||a.vendedor||"Sin vendedor") +
+          (a.origen_vendedor==="REEMPLAZO" ? " (reemplazo)" : "")
+        )}</td>
         <td>${esc(a.frecuencia||"Sin frecuencia")}</td>
       </tr>
     `).join("");

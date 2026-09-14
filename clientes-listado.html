@@ -60,7 +60,7 @@ tbody tr:nth-child(even){background:#f8fafc}tbody tr:hover{background:#eef4ff}
 <select id="filtroCanal" onchange="aplicarFiltros()"><option value="">Todos los canales</option></select>
 <select id="filtroFrecuencia" onchange="aplicarFiltros()"><option value="">Todas las frecuencias</option></select>
 <select id="filtroRuta" onchange="aplicarFiltros()"><option value="">Todas las rutas</option></select>
-<select id="filtroVendedor" onchange="aplicarFiltros()"><option value="">Todos los vendedores</option></select>
+<select id="filtroVendedor" onchange="cambiarFiltroVendedor()"><option value="">Todos los vendedores</option></select>
 <select id="filtroAsignaciones" onchange="aplicarFiltros()">
 <option value="">Todas las asignaciones</option>
 <option value="1">Una asignación</option>
@@ -113,10 +113,13 @@ function nomCat(lista,id,alt){if(alt)return alt;const x=lista.find(i=>i.id===id)
 function asignacionesDe(c){return Array.isArray(c.asignaciones)?c.asignaciones:[]}
 function cantidadAsignaciones(c){return Number(c.cantidad_asignaciones??asignacionesDe(c).length??0)}
 
-async function cargarTodos(){
+async function cargarTodos(vendedorId=""){
   const acum=[]; const bloque=200; let offset=0,total=null;
   while(total===null||acum.length<total){
-    const r=await fetch(`${API}/clientes?limit=${bloque}&offset=${offset}&buscar=`);
+    const filtroVendedorServidor = vendedorId
+      ? `&vendedor_id=${encodeURIComponent(vendedorId)}`
+      : "";
+    const r=await fetch(`${API}/clientes?limit=${bloque}&offset=${offset}&buscar=${filtroVendedorServidor}`);
     if(!r.ok)throw new Error("No se pudo obtener el padrón de clientes.");
     const d=await r.json(); const lote=Array.isArray(d.clientes)?d.clientes:[];
     total=Number(d.total||0); acum.push(...lote);
@@ -150,6 +153,18 @@ function cargarFiltros(){
   filtroVendedor.innerHTML='<option value="">Todos los vendedores</option>'+vendedores.map(x=>`<option value="${x.id}">${esc(x.nombre)} ${esc(x.apellido)}</option>`).join("");
 }
 
+async function cambiarFiltroVendedor(){
+  try{
+    tablaClientes.innerHTML='<tr><td colspan="11" class="cargando">Cargando clientes del vendedor...</td></tr>';
+    clientes=await cargarTodos(filtroVendedor.value);
+    clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));
+    aplicarFiltros();
+  }catch(e){
+    console.error(e);
+    tablaClientes.innerHTML=`<tr><td colspan="11" class="cargando">Error al cargar el padrón: ${esc(e.message)}</td></tr>`;
+  }
+}
+
 function aplicarFiltros(){
   const q=norm(buscar.value),ca=filtroCanal.value,fr=filtroFrecuencia.value,ru=filtroRuta.value,ve=filtroVendedor.value,fa=filtroAsignaciones.value;
 
@@ -160,7 +175,10 @@ function aplicarFiltros(){
 
     const coincideFrecuencia=!fr || c.frecuencia_id===fr || asigs.some(a=>a.frecuencia_id===fr);
     const coincideRuta=!ru || c.ruta_id===ru || asigs.some(a=>a.ruta_id===ru);
-    const coincideVendedor=!ve || c.vendedor_id===ve || asigs.some(a=>a.vendedor_id===ve);
+    // Si hay vendedor seleccionado, el backend ya filtró por vendedor efectivo
+    // (incluyendo reemplazos vigentes). No volvemos a excluirlo por el titular
+    // guardado en la asignación.
+    const coincideVendedor=true;
 
     const cant=cantidadAsignaciones(c);
     const coincideAsignaciones=

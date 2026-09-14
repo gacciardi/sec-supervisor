@@ -131,6 +131,15 @@ function nomCat(lista,id,alt){if(alt)return alt;const x=lista.find(i=>i.id===id)
 function asignacionesDe(c){return Array.isArray(c.asignaciones)?c.asignaciones:[]}
 function cantidadAsignaciones(c){return Number(c.cantidad_asignaciones??asignacionesDe(c).length??0)}
 
+async function cargarTotalPadronGeneral(){
+  const r=await fetch(`${API}/clientes?limit=1&offset=0&buscar=`);
+  if(!r.ok)throw new Error("No se pudo obtener el total general del padrón.");
+  const d=await r.json();
+  totalPadronGeneral=Number(d.total||0);
+  document.getElementById("totalPadron").textContent=totalPadronGeneral;
+  return totalPadronGeneral;
+}
+
 async function cargarTodos(vendedorId=""){
   const acum=[]; const bloque=200; let offset=0,total=null;
   while(total===null||acum.length<total){
@@ -154,9 +163,13 @@ async function cargarDatos(){
     canales=await a.json(); frecuencias=await b.json(); rutas=await c.json();
     const usuarios=await d.json(); vendedores=usuarios.filter(u=>u.rol==="VENDEDOR"&&u.activo);
     cargarFiltros();
+
+    // El total general se obtiene por separado para que nunca dependa
+    // del filtro por vendedor ni de una carga simultánea del listado.
+    await cargarTotalPadronGeneral();
+
     const padron=await cargarTodos();
     clientes=padron.clientes;
-    totalPadronGeneral=padron.total;
     clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));
     document.getElementById("totalPadron").textContent=totalPadronGeneral;
     aplicarFiltros();
@@ -176,6 +189,13 @@ function cargarFiltros(){
 async function cambiarFiltroVendedor(){
   try{
     tablaClientes.innerHTML='<tr><td colspan="11" class="cargando">Cargando clientes del vendedor...</td></tr>';
+
+    // Protección adicional: si el usuario filtra antes de terminar
+    // la carga inicial, recuperamos igualmente el total general.
+    if(!totalPadronGeneral){
+      await cargarTotalPadronGeneral();
+    }
+
     const padronFiltrado=await cargarTodos(filtroVendedor.value);
     clientes=padronFiltrado.clientes;
     clientes.sort((x,y)=>String(x.codigo_cliente||"").localeCompare(String(y.codigo_cliente||""),"es",{numeric:true}));

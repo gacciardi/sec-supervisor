@@ -15,6 +15,8 @@
     href="style.css"
   >
 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
   <style>
     .panel-filtros {
       background: white;
@@ -160,6 +162,17 @@
       display: none;
     }
 
+    .btn-recorrido { background:#2563eb; color:white; border:none; padding:11px 18px; border-radius:9px; font-weight:bold; cursor:pointer; }
+    .btn-recorrido:disabled { opacity:.55; cursor:not-allowed; }
+    .panel-recorrido { display:none; background:white; border-radius:14px; padding:16px; margin:18px 0; box-shadow:0 3px 12px rgba(0,0,0,.10); }
+    .cabecera-recorrido { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .cabecera-recorrido h3 { margin:0; color:#071b3a; }
+    .detalle-recorrido { color:#4b5563; font-size:13px; margin-top:4px; }
+    .btn-cerrar-mapa { background:#e5e7eb; color:#111827; border:none; padding:9px 14px; border-radius:8px; font-weight:bold; cursor:pointer; }
+    #mapaRecorrido { width:100%; height:560px; border-radius:12px; overflow:hidden; background:#f3f4f6; }
+    .numero-visita { width:30px; height:30px; border-radius:50%; background:#071b3a; color:white; border:2px solid white; box-shadow:0 1px 5px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:13px; }
+    .marcador-extremo { width:34px; height:34px; border-radius:50%; background:white; border:3px solid #071b3a; box-shadow:0 1px 5px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; font-size:18px; }
+
     @media (max-width: 700px) {
       .campo-filtro {
         width: 100%;
@@ -302,6 +315,14 @@
           📊 Descargar Excel
         </button>
 
+        <button
+          id="btnRecorrido"
+          class="btn-recorrido"
+          onclick="verRecorridoHistorico()"
+        >
+          🗺️ Ver recorrido
+        </button>
+
       </div>
 
     </div>
@@ -392,6 +413,17 @@
 </div>
 
 
+  <div id="panelRecorrido" class="panel-recorrido">
+    <div class="cabecera-recorrido">
+      <div>
+        <h3>Recorrido histórico GPS</h3>
+        <div id="detalleRecorrido" class="detalle-recorrido"></div>
+      </div>
+      <button class="btn-cerrar-mapa" onclick="cerrarRecorrido()">✕ Cerrar mapa</button>
+    </div>
+    <div id="mapaRecorrido"></div>
+  </div>
+
   <div class="tabla-contenedor">
 
     <table>
@@ -420,6 +452,8 @@
 
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <script>
@@ -429,6 +463,8 @@ const API =
 let visitasGlobal = [];
 let resumenGlobal = [];
 let usuarios = [];
+let mapaRecorrido = null;
+let capasRecorrido = [];
 
 let coberturaGlobal = {
   programados: null,
@@ -695,6 +731,10 @@ function activarCargando(estado) {
 
   document.getElementById(
     "btnExcel"
+  ).disabled = estado;
+
+  document.getElementById(
+    "btnRecorrido"
   ).disabled = estado;
 }
 
@@ -1131,6 +1171,226 @@ function actualizarIndicadores() {
       : `${cobertura.toFixed(1)} %`;
 }
 
+
+
+function distanciaGpsMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function filtrarYSegmentarGps(puntos) {
+  const validos = (puntos || []).map(p => ({
+    ...p,
+    latitud: Number(p.latitud),
+    longitud: Number(p.longitud),
+    precision_metros: p.precision_metros == null ? null : Number(p.precision_metros),
+    fechaMs: new Date(p.fecha_hora).getTime()
+  })).filter(p =>
+    Number.isFinite(p.latitud) &&
+    Number.isFinite(p.longitud) &&
+    p.latitud !== 0 && p.longitud !== 0 &&
+    Number.isFinite(p.fechaMs) &&
+    (p.precision_metros === null || !Number.isFinite(p.precision_metros) || p.precision_metros <= 100)
+  );
+
+  const segmentos = [];
+  let actual = [];
+
+  for (const punto of validos) {
+    if (!actual.length) {
+      actual.push(punto);
+      continue;
+    }
+    const anterior = actual[actual.length - 1];
+    const segundos = Math.max(0, (punto.fechaMs - anterior.fechaMs) / 1000);
+
+    if (segundos > 600) {
+      segmentos.push(actual);
+      actual = [punto];
+      continue;
+    }
+
+    if (segundos > 0) {
+      const metros = distanciaGpsMetros(
+        anterior.latitud, anterior.longitud,
+        punto.latitud, punto.longitud
+      );
+      if ((metros / segundos) * 3.6 > 160) continue;
+    }
+    actual.push(punto);
+  }
+
+  if (actual.length) segmentos.push(actual);
+  return { segmentos, puntosValidos: segmentos.flat() };
+}
+
+function horaCorta(valor) {
+  if (!valor) return "—";
+  return new Date(valor).toLocaleTimeString("es-AR", {
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+}
+
+function crearIconoNumero(numero) {
+  return L.divIcon({
+    className: "",
+    html: `<div class="numero-visita">${numero}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+}
+
+function crearIconoExtremo(simbolo) {
+  return L.divIcon({
+    className: "",
+    html: `<div class="marcador-extremo">${simbolo}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
+}
+
+function limpiarMapaRecorrido() {
+  if (!mapaRecorrido) return;
+  capasRecorrido.forEach(capa => mapaRecorrido.removeLayer(capa));
+  capasRecorrido = [];
+}
+
+function cerrarRecorrido() {
+  const panel = document.getElementById("panelRecorrido");
+  if (panel) panel.style.display = "none";
+}
+
+async function verRecorridoHistorico() {
+  ocultarError();
+
+  const desde = document.getElementById("fechaDesde").value;
+  const hasta = document.getElementById("fechaHasta").value;
+  const vendedorId = document.getElementById("filtroVendedor").value;
+
+  if (!vendedorId) {
+    mostrarError("Para ver el recorrido seleccioná un vendedor.");
+    return;
+  }
+  if (!desde || !hasta) {
+    mostrarError("Seleccioná la fecha del recorrido.");
+    return;
+  }
+  if (desde !== hasta) {
+    mostrarError("El recorrido histórico se muestra de a un día. Seleccioná la misma fecha en Desde y Hasta.");
+    return;
+  }
+
+  const sel = document.getElementById("filtroVendedor");
+  const vendedorTexto = sel.options[sel.selectedIndex]?.text || "Vendedor";
+  const boton = document.getElementById("btnRecorrido");
+  boton.disabled = true;
+  boton.textContent = "🗺️ Cargando recorrido...";
+
+  try {
+    const respuesta = await fetch(
+      `${API}/gps-logs/vendedor/${encodeURIComponent(vendedorId)}/recorrido?fecha=${encodeURIComponent(desde)}`
+    );
+    const datos = await respuesta.json();
+    if (!respuesta.ok) {
+      throw new Error(datos.error || datos.detalle || "No se pudo cargar el recorrido");
+    }
+
+    const originales = Array.isArray(datos.puntos) ? datos.puntos : [];
+    const { segmentos, puntosValidos } = filtrarYSegmentarGps(originales);
+
+    if (!puntosValidos.length) {
+      throw new Error("No hay posiciones GPS válidas para ese vendedor y esa fecha.");
+    }
+
+    const panel = document.getElementById("panelRecorrido");
+    panel.style.display = "block";
+
+    if (!mapaRecorrido) {
+      mapaRecorrido = L.map("mapaRecorrido");
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(mapaRecorrido);
+    }
+
+    setTimeout(() => mapaRecorrido.invalidateSize(), 50);
+    limpiarMapaRecorrido();
+    const limites = [];
+
+    segmentos.forEach(segmento => {
+      const coords = segmento.map(p => [p.latitud, p.longitud]);
+      coords.forEach(c => limites.push(c));
+      if (coords.length >= 2) {
+        const linea = L.polyline(coords, { weight: 4, opacity: 0.8 }).addTo(mapaRecorrido);
+        capasRecorrido.push(linea);
+      }
+    });
+
+    const inicio = puntosValidos[0];
+    const fin = puntosValidos[puntosValidos.length - 1];
+
+    const mi = L.marker([inicio.latitud, inicio.longitud], {
+      icon: crearIconoExtremo("▶")
+    }).addTo(mapaRecorrido).bindPopup(
+      `<b>Inicio del recorrido</b><br>${horaCorta(inicio.fecha_hora)}`
+    );
+    capasRecorrido.push(mi);
+
+    const mf = L.marker([fin.latitud, fin.longitud], {
+      icon: crearIconoExtremo("■")
+    }).addTo(mapaRecorrido).bindPopup(
+      `<b>Fin del recorrido</b><br>${horaCorta(fin.fecha_hora)}`
+    );
+    capasRecorrido.push(mf);
+
+    const visitasDia = visitasGlobal
+      .filter(v => String(v.fecha).slice(0, 10) === desde)
+      .sort((a, b) => new Date(a.primera_llegada || 0) - new Date(b.primera_llegada || 0));
+
+    visitasDia.forEach((visita, indice) => {
+      const lat = Number(visita.latitud_llegada ?? visita.latitud);
+      const lng = Number(visita.longitud_llegada ?? visita.longitud);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return;
+
+      const marcador = L.marker([lat, lng], {
+        icon: crearIconoNumero(indice + 1)
+      }).addTo(mapaRecorrido).bindPopup(
+        `<b>${indice + 1}. ${visita.cliente || ""}</b><br>` +
+        `Código: ${visita.codigo_cliente || "—"}<br>` +
+        `Llegada: ${horaCorta(visita.primera_llegada)}<br>` +
+        `Salida: ${visita.ultima_salida ? horaCorta(visita.ultima_salida) : "En curso"}<br>` +
+        `Permanencia: ${formatearDuracion(visita.permanencia_minutos)}`
+      );
+      capasRecorrido.push(marcador);
+      limites.push([lat, lng]);
+    });
+
+    if (limites.length === 1) {
+      mapaRecorrido.setView(limites[0], 16);
+    } else {
+      mapaRecorrido.fitBounds(limites, { padding: [30, 30] });
+    }
+
+    document.getElementById("detalleRecorrido").textContent =
+      `${formatearFecha(desde)} — ${vendedorTexto} — ` +
+      `${originales.length} GPS registrados, ${puntosValidos.length} utilizados, ` +
+      `${segmentos.length} tramo(s)`;
+
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    console.error(error);
+    mostrarError(error.message || "Error cargando el recorrido histórico");
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "🗺️ Ver recorrido";
+  }
+}
 
 function crearDatosHojaVisitas() {
   return visitasGlobal.map(visita => ({

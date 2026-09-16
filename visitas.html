@@ -468,6 +468,7 @@ let capasRecorrido = [];
 
 let coberturaGlobal = {
   programados: null,
+  visitados: null,
   pendientes: null,
   cobertura: null
 };
@@ -807,23 +808,31 @@ async function cargarCoberturaHoy() {
       "filtroVendedor"
     ).value;
 
-  const hoy = fechaLocal(new Date());
-
   coberturaGlobal = {
     programados: null,
+    visitados: null,
     pendientes: null,
     cobertura: null
   };
 
+  /*
+  Para que Programados / Visitados / Pendientes /
+  Cobertura sean comparables, el resumen histórico
+  se calcula para un vendedor y un día usando el
+  mismo Plan de Trabajo que respeta asignaciones,
+  modalidades, rutas presenciales y reemplazos.
+  */
   if (
-    desde !== hoy ||
-    hasta !== hoy
+    !vendedorId ||
+    !desde ||
+    desde !== hasta
   ) {
     return;
   }
 
   const respuesta = await fetch(
-    `${API}/dashboard/vendedores`
+    `${API}/clientes/plan-trabajo/${encodeURIComponent(vendedorId)}` +
+    `?fecha=${encodeURIComponent(desde)}`
   );
 
   if (!respuesta.ok) {
@@ -831,67 +840,31 @@ async function cargarCoberturaHoy() {
   }
 
   const datos = await respuesta.json();
+  const resumen = datos.resumen || {};
 
-  const vendedoresDashboard =
-    Array.isArray(datos)
-      ? datos
-      : datos.vendedores || [];
+  const programados = Number(
+    resumen.total ?? resumen.programados ?? 0
+  );
 
-  let seleccionados =
-    vendedoresDashboard;
+  const visitados = Number(
+    resumen.visitados || 0
+  );
 
-  if (vendedorId) {
-    seleccionados =
-      vendedoresDashboard.filter(
-        vendedor =>
-          vendedor.vendedor_id ===
-          vendedorId
-      );
-  }
-
-  const programados =
-    seleccionados.reduce(
-      (total, vendedor) =>
-        total +
-        Number(
-          vendedor.programados || 0
-        ),
-      0
-    );
-
-  const pendientes =
-    seleccionados.reduce(
-      (total, vendedor) =>
-        total +
-        Number(
-          vendedor.pendientes || 0
-        ),
-      0
-    );
-
-  const visitados =
-    seleccionados.reduce(
-      (total, vendedor) =>
-        total +
-        Number(
-          vendedor.visitados || 0
-        ),
-      0
-    );
+  const pendientes = Number(
+    resumen.pendientes || 0
+  );
 
   const cobertura =
     programados > 0
       ? Math.min(
           100,
-          (
-            visitados /
-            programados
-          ) * 100
+          (visitados / programados) * 100
         )
       : 0;
 
   coberturaGlobal = {
     programados,
+    visitados,
     pendientes,
     cobertura
   };
@@ -1128,7 +1101,9 @@ function actualizarIndicadores() {
   document.getElementById(
     "indicadorVisitas"
   ).textContent =
-    cantidadClientes;
+    coberturaGlobal.visitados === null
+      ? cantidadClientes
+      : coberturaGlobal.visitados;
 
   document.getElementById(
     "indicadorPermanencia"
@@ -1353,20 +1328,49 @@ async function verRecorridoHistorico() {
       .filter(v => String(v.fecha).slice(0, 10) === desde)
       .sort((a, b) => new Date(a.primera_llegada || 0) - new Date(b.primera_llegada || 0));
 
-    visitasDia.forEach((visita, indice) => {
-      const lat = Number(visita.latitud_llegada ?? visita.latitud);
-      const lng = Number(visita.longitud_llegada ?? visita.longitud);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return;
+    let clientesUbicados = 0;
+
+    visitasDia.forEach(visita => {
+      /*
+      Para mostrar la posición del cliente usamos primero
+      la georreferencia vigente del maestro. Si no existe,
+      usamos como respaldo la coordenada real de llegada.
+      */
+      let lat = Number(visita.cliente_latitud);
+      let lng = Number(visita.cliente_longitud);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat === 0 ||
+        lng === 0
+      ) {
+        lat = Number(visita.latitud_llegada);
+        lng = Number(visita.longitud_llegada);
+      }
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat === 0 ||
+        lng === 0
+      ) {
+        return;
+      }
+
+      clientesUbicados += 1;
 
       const marcador = L.marker([lat, lng], {
-        icon: crearIconoNumero(indice + 1)
+        icon: crearIconoNumero(clientesUbicados)
       }).addTo(mapaRecorrido).bindPopup(
-        `<b>${indice + 1}. ${visita.cliente || ""}</b><br>` +
+        `<b>${clientesUbicados}. ${visita.cliente || ""}</b><br>` +
         `Código: ${visita.codigo_cliente || "—"}<br>` +
+        `Ruta: ${visita.ruta || "—"}<br>` +
         `Llegada: ${horaCorta(visita.primera_llegada)}<br>` +
         `Salida: ${visita.ultima_salida ? horaCorta(visita.ultima_salida) : "En curso"}<br>` +
         `Permanencia: ${formatearDuracion(visita.permanencia_minutos)}`
       );
+
       capasRecorrido.push(marcador);
       limites.push([lat, lng]);
     });
@@ -1380,7 +1384,7 @@ async function verRecorridoHistorico() {
     document.getElementById("detalleRecorrido").textContent =
       `${formatearFecha(desde)} — ${vendedorTexto} — ` +
       `${originales.length} GPS registrados, ${puntosValidos.length} utilizados, ` +
-      `${segmentos.length} tramo(s)`;
+      `${segmentos.length} tramo(s), ${clientesUbicados} cliente(s) ubicados`;
 
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {

@@ -54,19 +54,64 @@
 <script>
 const API = "https://sec-backend-gg4j.onrender.com";
 
-async function cargarAlertas() {
-  const alertas = await fetch(`${API}/alertas`)
-    .then(r => r.json());
+/*
+=================================
+FORMATEAR FECHA SIN CAMBIAR HORA
+=================================
 
-  document.getElementById("tablaAlertas").innerHTML =
-    alertas.map(a => `
-      <tr>
-        <td>${a.tipo || ""}</td>
-        <td>${a.prioridad || ""}</td>
-        <td>${a.descripcion || ""}</td>
-        <td>${a.fecha_hora ? new Date(a.fecha_hora).toLocaleString() : ""}</td>
-      </tr>
-    `).join("");
+La columna fecha_hora de PostgreSQL contiene la hora operativa
+correcta de SEC.
+
+No usamos new Date().toLocaleString() porque puede aplicar una
+conversión de zona horaria y restar 3 horas.
+*/
+function formatearFechaSEC(valor) {
+  if (!valor) return "";
+
+  const texto = String(valor);
+
+  // Formato esperado:
+  // 2026-09-17T08:48:29.393Z
+  // o
+  // 2026-09-17 08:48:29.393649
+
+  const match = texto.match(
+    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/
+  );
+
+  if (match) {
+    const [, anio, mes, dia, hora, minuto, segundo] = match;
+
+    return `${dia}/${mes}/${anio}, ${hora}:${minuto}:${segundo}`;
+  }
+
+  // Respaldo en caso de recibir otro formato.
+  return texto;
+}
+
+async function cargarAlertas() {
+  try {
+    const respuesta = await fetch(`${API}/alertas`);
+
+    if (!respuesta.ok) {
+      throw new Error(`Error HTTP ${respuesta.status}`);
+    }
+
+    const alertas = await respuesta.json();
+
+    document.getElementById("tablaAlertas").innerHTML =
+      alertas.map(a => `
+        <tr>
+          <td>${a.tipo || ""}</td>
+          <td>${a.prioridad || ""}</td>
+          <td>${a.descripcion || ""}</td>
+          <td>${formatearFechaSEC(a.fecha_hora)}</td>
+        </tr>
+      `).join("");
+
+  } catch (error) {
+    console.error("Error al cargar alertas:", error);
+  }
 }
 
 cargarAlertas();

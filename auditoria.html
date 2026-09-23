@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>SEC - Auditoría</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    .auditoria-container {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .auditoria-header {
+      margin-bottom: 20px;
+    }
+
+    .auditoria-header h1 {
+      margin-bottom: 6px;
+    }
+
+    .auditoria-header p {
+      color: #666;
+      margin: 0;
+    }
+
+    .panel-filtros {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+
+    .filtros-grid {
+      display: grid;
+      grid-template-columns:
+        minmax(150px, 0.8fr)
+        minmax(220px, 1.2fr)
+        minmax(260px, 1.6fr)
+        auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .campo label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .campo input,
+    .campo select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .boton-analizar {
+      border: 0;
+      border-radius: 7px;
+      padding: 11px 20px;
+      cursor: pointer;
+      background: #111827;
+      color: #fff;
+      font-weight: bold;
+      min-width: 120px;
+    }
+
+    .boton-analizar:hover {
+      background: #374151;
+    }
+
+    .boton-analizar:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .mensaje {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 7px;
+      display: none;
+    }
+
+    .mensaje.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    .mensaje.info {
+      display: block;
+      background: #e0f2fe;
+      color: #075985;
+      border: 1px solid #bae6fd;
+    }
+
+    .resultado {
+      display: none;
+    }
+
+    .diagnostico {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-left: 6px solid #111827;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .diagnostico h2 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    .diagnostico-codigo {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: bold;
+      background: #f3f4f6;
+      padding: 5px 8px;
+      border-radius: 5px;
+      margin-bottom: 8px;
+    }
+
+    .diagnostico p {
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .audit-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      min-height: 180px;
+    }
+
+    .audit-card h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+
+    .dato {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+
+    .dato .etiqueta {
+      color: #666;
+    }
+
+    .dato .valor {
+      font-weight: bold;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .estado-si {
+      color: #166534;
+    }
+
+    .estado-no {
+      color: #991b1b;
+    }
+
+    .estado-neutro {
+      color: #92400e;
+    }
+
+    .seccion-mapa {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+
+    .seccion-mapa h3 {
+      margin: 0 0 12px 0;
+    }
+
+    #mapaAuditoria {
+      height: 520px;
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .leyenda {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .tabla-contenedor {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .tabla-contenedor h3 {
+      margin: 0 0 12px 0;
+    }
+
+    .tabla-auditoria {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .tabla-auditoria th,
+    .tabla-auditoria td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .tabla-auditoria th {
+      background: #f8fafc;
+    }
+
+    .fila-dentro {
+      background: #ecfdf5;
+    }
+
+    .nota-permanencia {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1100px) {
+      .cards {
+        grid-template-columns:
+          repeat(2, minmax(220px, 1fr));
+      }
+
+      .filtros-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .cards,
+      .filtros-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #mapaAuditoria {
+        height: 400px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="auditoria-container">
+
+    <div class="auditoria-header">
+      <h1>Auditoría</h1>
+
+      <p>
+        Diagnóstico de recorridos, geocercas,
+        permanencia GPS y visitas registradas.
+      </p>
+    </div>
+
+    <div class="panel-filtros">
+
+      <div class="filtros-grid">
+
+        <div class="campo">
+          <label for="fecha">Fecha</label>
+          <input type="date" id="fecha">
+        </div>
+
+        <div class="campo">
+          <label for="vendedor">Vendedor</label>
+
+          <select id="vendedor">
+            <option value="">
+              Seleccionar vendedor
+            </option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="cliente">Cliente</label>
+
+          <select id="cliente" disabled>
+            <option value="">
+              Seleccionar cliente
+            </option>
+          </select>
+        </div>
+
+        <button
+          id="btnAnalizar"
+          class="boton-analizar"
+          type="button"
+        >
+          Analizar
+        </button>
+
+      </div>
+
+      <div id="mensaje" class="mensaje"></div>
+
+    </div>
+
+    <div id="resultado" class="resultado">
+
+      <div class="diagnostico">
+
+        <div
+          id="diagnosticoCodigo"
+          class="diagnostico-codigo"
+        >
+        </div>
+
+        <h2 id="diagnosticoTitulo">
+          Resultado de la auditoría
+        </h2>
+
+        <p id="diagnosticoMensaje"></p>
+
+      </div>
+
+      <div class="cards">
+
+        <div class="audit-card">
+          <h3>Cliente</h3>
+          <div id="datosCliente"></div>
+        </div>
+
+        <div class="audit-card">
+          <h3>Asignación y programación</h3>
+          <div id="datosProgramacion"></div>
+        </div>
+
+        <div class="audit-card">
+          <h3>GPS</h3>
+          <div id="datosGps"></div>
+        </div>
+
+        <div class="audit-card">
+          <h3>Visita SEC</h3>
+          <div id="datosVisita"></div>
+        </div>
+
+      </div>
+
+      <div class="seccion-mapa">
+
+        <h3>Recorrido y geocerca</h3>
+
+        <div id="mapaAuditoria"></div>
+
+        <div class="leyenda">
+          El círculo representa la geocerca configurada
+          para el cliente. El recorrido corresponde a las
+          posiciones GPS disponibles para el vendedor en
+          la fecha seleccionada.
+        </div>
+
+      </div>
+
+      <div class="tabla-contenedor">
+
+        <h3>Detalle GPS dentro de la geocerca</h3>
+
+        <table class="tabla-auditoria">
+
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Distancia</th>
+              <th>Precisión</th>
+              <th>Velocidad</th>
+              <th>Latitud</th>
+              <th>Longitud</th>
+            </tr>
+          </thead>
+
+          <tbody id="tablaGps"></tbody>
+
+        </table>
+
+        <div class="nota-permanencia">
+          La permanencia GPS es una estimación basada
+          exclusivamente en posiciones consecutivas
+          registradas dentro de la geocerca. Una única
+          posición permite confirmar el ingreso, pero no
+          permite determinar cuánto tiempo permaneció
+          el vendedor en el lugar.
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  ></script>
+
+  <script src="config-sec.js"></script>
+
+  <script>
+    const API =
+      "https://sec-backend-gg4j.onrender.com";
+
+    let mapa = null;
+    let capaRecorrido = null;
+    let capaCliente = null;
+    let capaGeocerca = null;
+    let capaPuntoCercano = null;
+    let capaPuntosDentro = null;
+
+    const fechaInput =
+      document.getElementById("fecha");
+
+    const vendedorSelect =
+      document.getElementById("vendedor");
+
+    const clienteSelect =
+      document.getElementById("cliente");
+
+    const btnAnalizar =
+      document.getElementById("btnAnalizar");
+
+    const mensaje =
+      document.getElementById("mensaje");
+
+    const resultado =
+      document.getElementById("resultado");
+
+    function fechaLocalHoy() {
+      const ahora = new Date();
+
+      const anio =
+        ahora.getFullYear();
+
+      const mes =
+        String(
+          ahora.getMonth() + 1
+        ).padStart(2, "0");
+
+      const dia =
+        String(
+          ahora.getDate()
+        ).padStart(2, "0");
+
+      return `${anio}-${mes}-${dia}`;
+    }
+
+    function texto(valor, reemplazo = "-") {
+      if (
+        valor === null ||
+        valor === undefined ||
+        valor === ""
+      ) {
+        return reemplazo;
+      }
+
+      return String(valor);
+    }
+
+    function numero(valor, decimales = 1) {
+      const n = Number(valor);
+
+      if (!Number.isFinite(n)) {
+        return "-";
+      }
+
+      return n.toLocaleString(
+        "es-AR",
+        {
+          minimumFractionDigits: decimales,
+          maximumFractionDigits: decimales
+        }
+      );
+    }
+
+    function siNo(valor) {
+      return valor ? "Sí" : "No";
+    }
+
+    function claseSiNo(valor) {
+      return valor
+        ? "estado-si"
+        : "estado-no";
+    }
+
+    function formatoFechaHora(valor) {
+      if (!valor) {
+        return "-";
+      }
+
+      const fecha = new Date(valor);
+
+      if (
+        Number.isNaN(
+          fecha.getTime()
+        )
+      ) {
+        return texto(valor);
+      }
+
+      return fecha.toLocaleString(
+        "es-AR",
+        {
+          dateStyle: "short",
+          timeStyle: "medium"
+        }
+      );
+    }
+
+    function formatoHora(valor) {
+      if (!valor) {
+        return "-";
+      }
+
+      const fecha = new Date(valor);
+
+      if (
+        Number.isNaN(
+          fecha.getTime()
+        )
+      ) {
+        return texto(valor);
+      }
+
+      return fecha.toLocaleTimeString(
+        "es-AR",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      );
+    }
+
+    function formatoSegundos(valor) {
+      const segundos =
+        Number(valor || 0);
+
+      if (
+        !Number.isFinite(segundos) ||
+        segundos <= 0
+      ) {
+        return "0 s";
+      }
+
+      const horas =
+        Math.floor(
+          segundos / 3600
+        );
+
+      const minutos =
+        Math.floor(
+          (segundos % 3600) / 60
+        );
+
+      const resto =
+        Math.round(
+          segundos % 60
+        );
+
+      const partes = [];
+
+      if (horas > 0) {
+        partes.push(`${horas} h`);
+      }
+
+      if (minutos > 0) {
+        partes.push(`${minutos} min`);
+      }
+
+      if (
+        resto > 0 ||
+        partes.length === 0
+      ) {
+        partes.push(`${resto} s`);
+      }
+
+      return partes.join(" ");
+    }
+
+    function dato(
+      etiqueta,
+      valor,
+      clase = ""
+    ) {
+      return `
+        <div class="dato">
+          <div class="etiqueta">
+            ${etiqueta}
+          </div>
+
+          <div class="valor ${clase}">
+            ${texto(valor)}
+          </div>
+        </div>
+      `;
+    }
+
+    function mostrarMensaje(
+      textoMensaje,
+      tipo = "info"
+    ) {
+      mensaje.className =
+        `mensaje ${tipo}`;
+
+      mensaje.textContent =
+        textoMensaje;
+    }
+
+    function ocultarMensaje() {
+      mensaje.className =
+        "mensaje";
+
+      mensaje.textContent = "";
+    }
+
+    async function cargarVendedores() {
+      try {
+        const respuesta =
+          await fetch(
+            `${API}/usuarios`
+          );
+
+        if (!respuesta.ok) {
+          throw new Error(
+            "No se pudieron cargar los vendedores."
+          );
+        }
+
+        const usuarios =
+          await respuesta.json();
+
+        const vendedores =
+          usuarios
+            .filter(
+              (usuario) =>
+                usuario.activo !== false &&
+                (
+                  usuario.rol === "VENDEDOR" ||
+                  usuario.rol === "vendedor"
+                )
+            )
+            .sort(
+              (a, b) =>
+                (
+                  `${a.apellido || ""} ${a.nombre || ""}`
+                ).localeCompare(
+                  `${b.apellido || ""} ${b.nombre || ""}`,
+                  "es"
+                )
+            );
+
+        vendedorSelect.innerHTML =
+          `
+            <option value="">
+              Seleccionar vendedor
+            </option>
+          `;
+
+        for (
+          const vendedor of vendedores
+        ) {
+          const opcion =
+            document.createElement(
+              "option"
+            );
+
+          opcion.value =
+            vendedor.id;
+
+          opcion.textContent =
+            [
+              vendedor.apellido,
+              vendedor.nombre
+            ]
+              .filter(Boolean)
+              .join(" ") ||
+            vendedor.legajo ||
+            vendedor.id;
+
+          vendedorSelect.appendChild(
+            opcion
+          );
+        }
+
+      } catch (error) {
+        mostrarMensaje(
+          error.message,
+          "error"
+        );
+      }
+    }
+
+    async function cargarClientes() {
+      const vendedorId =
+        vendedorSelect.value;
+
+      const fecha =
+        fechaInput.value;
+
+      clienteSelect.disabled = true;
+
+      clienteSelect.innerHTML =
+        `
+          <option value="">
+            Cargando clientes...
+          </option>
+        `;
+
+      if (
+        !vendedorId ||
+        !fecha
+      ) {
+        clienteSelect.innerHTML =
+          `
+            <option value="">
+              Seleccionar cliente
+            </option>
+          `;
+
+        return;
+      }
+
+      try {
+        const respuesta =
+          await fetch(
+            `${API}/clientes/plan-trabajo/${vendedorId}?fecha=${encodeURIComponent(fecha)}`
+          );
+
+        if (!respuesta.ok) {
+          throw new Error(
+            "No se pudieron cargar los clientes."
+          );
+        }
+
+        const datos =
+          await respuesta.json();
+
+        const clientes =
+          Array.isArray(datos)
+            ? datos
+            : (
+                datos.clientes ||
+                datos.data ||
+                []
+              );
+
+        clienteSelect.innerHTML =
+          `
+            <option value="">
+              Seleccionar cliente
+            </option>
+          `;
+
+        clientes
+          .slice()
+          .sort(
+            (a, b) =>
+              (
+                a.nombre ||
+                a.razon_social ||
+                ""
+              ).localeCompare(
+                b.nombre ||
+                b.razon_social ||
+                "",
+                "es"
+              )
+          )
+          .forEach(
+            (cliente) => {
+              const opcion =
+                document.createElement(
+                  "option"
+                );
+
+              opcion.value =
+                cliente.id ||
+                cliente.cliente_id;
+
+              const codigo =
+                cliente.codigo_cliente ||
+                cliente.codigo ||
+                "";
+
+              const nombre =
+                cliente.nombre ||
+                cliente.razon_social ||
+                "Cliente";
+
+              opcion.textContent =
+                codigo
+                  ? `${codigo} - ${nombre}`
+                  : nombre;
+
+              clienteSelect.appendChild(
+                opcion
+              );
+            }
+          );
+
+        clienteSelect.disabled = false;
+
+      } catch (error) {
+        clienteSelect.innerHTML =
+          `
+            <option value="">
+              Error al cargar
+            </option>
+          `;
+
+        mostrarMensaje(
+          error.message,
+          "error"
+        );
+      }
+    }
+
+    function inicializarMapa() {
+      if (mapa) {
+        return;
+      }
+
+      mapa =
+        L.map(
+          "mapaAuditoria"
+        ).setView(
+          [-34.65, -58.65],
+          11
+        );
+
+      L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 19,
+          attribution:
+            "&copy; OpenStreetMap"
+        }
+      ).addTo(mapa);
+    }
+
+    function limpiarMapa() {
+      const capas = [
+        capaRecorrido,
+        capaCliente,
+        capaGeocerca,
+        capaPuntoCercano,
+        capaPuntosDentro
+      ];
+
+      for (const capa of capas) {
+        if (capa && mapa) {
+          mapa.removeLayer(capa);
+        }
+      }
+
+      capaRecorrido = null;
+      capaCliente = null;
+      capaGeocerca = null;
+      capaPuntoCercano = null;
+      capaPuntosDentro = null;
+    }
+
+    function dibujarMapa(datos) {
+      inicializarMapa();
+      limpiarMapa();
+
+      const cliente =
+        datos.cliente || {};
+
+      const gps =
+        datos.gps || {};
+
+      const latCliente =
+        Number(cliente.latitud);
+
+      const lonCliente =
+        Number(cliente.longitud);
+
+      const radio =
+        Number(
+          cliente.radio_geocerca ||
+          30
+        );
+
+      const limites = [];
+
+      if (
+        Number.isFinite(latCliente) &&
+        Number.isFinite(lonCliente)
+      ) {
+        capaCliente =
+          L.marker(
+            [
+              latCliente,
+              lonCliente
+            ]
+          )
+            .addTo(mapa)
+            .bindPopup(
+              `
+                <b>${texto(cliente.nombre)}</b><br>
+                ${texto(cliente.direccion)}
+              `
+            );
+
+        capaGeocerca =
+          L.circle(
+            [
+              latCliente,
+              lonCliente
+            ],
+            {
+              radius:
+                Number.isFinite(radio)
+                  ? radio
+                  : 30
+            }
+          ).addTo(mapa);
+
+        limites.push(
+          [
+            latCliente,
+            lonCliente
+          ]
+        );
+      }
+
+      const puntos =
+        Array.isArray(gps.puntos)
+          ? gps.puntos
+          : [];
+
+      const recorrido = [];
+
+      const puntosDentro = [];
+
+      for (const punto of puntos) {
+        const lat =
+          Number(punto.latitud);
+
+        const lon =
+          Number(punto.longitud);
+
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lon)
+        ) {
+          continue;
+        }
+
+        recorrido.push(
+          [lat, lon]
+        );
+
+        limites.push(
+          [lat, lon]
+        );
+
+        if (
+          punto.dentro_geocerca === true
+        ) {
+          puntosDentro.push(
+            [lat, lon]
+          );
+        }
+      }
+
+      if (
+        recorrido.length > 1
+      ) {
+        capaRecorrido =
+          L.polyline(
+            recorrido
+          ).addTo(mapa);
+      }
+
+      if (
+        puntosDentro.length > 0
+      ) {
+        capaPuntosDentro =
+          L.layerGroup(
+            puntosDentro.map(
+              (coordenada) =>
+                L.circleMarker(
+                  coordenada,
+                  {
+                    radius: 6
+                  }
+                )
+            )
+          ).addTo(mapa);
+      }
+
+      const cercano =
+        gps.punto_mas_cercano;
+
+      if (cercano) {
+        const lat =
+          Number(cercano.latitud);
+
+        const lon =
+          Number(cercano.longitud);
+
+        if (
+          Number.isFinite(lat) &&
+          Number.isFinite(lon)
+        ) {
+          capaPuntoCercano =
+            L.circleMarker(
+              [lat, lon],
+              {
+                radius: 8
+              }
+            )
+              .addTo(mapa)
+              .bindPopup(
+                `
+                  <b>Punto GPS más cercano</b><br>
+                  Distancia:
+                  ${numero(
+                    cercano.distancia_metros,
+                    1
+                  )} m<br>
+                  Precisión:
+                  ${numero(
+                    cercano.precision_metros,
+                    1
+                  )} m<br>
+                  Hora:
+                  ${formatoHora(
+                    cercano.fecha_hora
+                  )}
+                `
+              );
+        }
+      }
+
+      setTimeout(
+        () => {
+          mapa.invalidateSize();
+
+          if (
+            limites.length > 1
+          ) {
+            mapa.fitBounds(
+              limites,
+              {
+                padding: [25, 25]
+              }
+            );
+          } else if (
+            limites.length === 1
+          ) {
+            mapa.setView(
+              limites[0],
+              17
+            );
+          }
+        },
+        100
+      );
+    }
+
+    function mostrarCliente(datos) {
+      const cliente =
+        datos.cliente || {};
+
+      document.getElementById(
+        "datosCliente"
+      ).innerHTML =
+        dato(
+          "Código",
+          cliente.codigo_cliente
+        ) +
+        dato(
+          "Cliente",
+          cliente.nombre
+        ) +
+        dato(
+          "Dirección",
+          cliente.direccion
+        ) +
+        dato(
+          "Geocerca",
+          `${numero(
+            cliente.radio_geocerca || 30,
+            0
+          )} m`
+        ) +
+        dato(
+          "Ejecución",
+          siNo(
+            cliente.es_ejecucion
+          ),
+          claseSiNo(
+            cliente.es_ejecucion
+          )
+        ) +
+        dato(
+          "Semana ejecución",
+          cliente.semana_ejecucion
+        );
+    }
+
+       function mostrarProgramacion(datos) {
+      const p =
+        datos.programacion || {};
+
+      const asignaciones =
+        Array.isArray(p.asignaciones)
+          ? p.asignaciones
+          : [];
+
+      const asignacion =
+        asignaciones.length > 0
+          ? asignaciones[0]
+          : {};
+
+      const asignado =
+        p.asignado_al_vendedor === true;
+
+      document.getElementById(
+        "datosProgramacion"
+      ).innerHTML =
+        dato(
+          "Asignado",
+          siNo(asignado),
+          claseSiNo(asignado)
+        ) +
+        dato(
+          "Programado",
+          siNo(p.programado),
+          claseSiNo(p.programado)
+        ) +
+        dato(
+          "Modalidad",
+          asignacion.modalidad_nombre
+            ? `${asignacion.modalidad} - ${asignacion.modalidad_nombre}`
+            : asignacion.modalidad
+        ) +
+        dato(
+          "Frecuencia",
+          asignacion.frecuencia
+        ) +
+        dato(
+          "Ruta",
+          asignacion.ruta
+        ) +
+        dato(
+          "Tipo atención",
+          asignacion.tipo_atencion
+        );
+    }
+    function mostrarGps(datos) {
+      const gps =
+        datos.gps || {};
+
+      const cercano =
+        gps.punto_mas_cercano ||
+        {};
+
+      let permanencia =
+        formatoSegundos(
+          gps.permanencia_estimada_segundos
+        );
+
+      if (
+        gps.entro_geocerca === true &&
+        Number(
+          gps.cantidad_puntos_dentro
+        ) === 1
+      ) {
+        permanencia =
+          "No determinable (1 punto)";
+      }
+
+      document.getElementById(
+        "datosGps"
+      ).innerHTML =
+        dato(
+          "Puntos del día",
+          gps.cantidad_puntos
+        ) +
+        dato(
+          "Entró a geocerca",
+          siNo(
+            gps.entro_geocerca
+          ),
+          claseSiNo(
+            gps.entro_geocerca
+          )
+        ) +
+        dato(
+          "Puntos dentro",
+          gps.cantidad_puntos_dentro
+        ) +
+        dato(
+          "Tramos dentro",
+          gps.cantidad_tramos
+        ) +
+        dato(
+          "Distancia mínima",
+          cercano.distancia_metros !==
+            undefined
+            ? `${numero(
+                cercano.distancia_metros,
+                1
+              )} m`
+            : "-"
+        ) +
+        dato(
+          "Precisión punto cercano",
+          cercano.precision_metros !==
+            undefined
+            ? `${numero(
+                cercano.precision_metros,
+                1
+              )} m`
+            : "-"
+        ) +
+        dato(
+          "Hora punto cercano",
+          formatoHora(
+            cercano.fecha_hora
+          )
+        ) +
+        dato(
+          "Permanencia GPS",
+          permanencia,
+          "estado-neutro"
+        );
+    }
+
+    function mostrarVisita(datos) {
+      const visita =
+        datos.visita_sec || {};
+
+      document.getElementById(
+        "datosVisita"
+      ).innerHTML =
+        dato(
+          "Visita registrada",
+          siNo(visita.existe),
+          claseSiNo(visita.existe)
+        ) +
+        dato(
+          "Registros",
+          visita.cantidad_registros
+        ) +
+        dato(
+          "Primera llegada",
+          formatoFechaHora(
+            visita.primera_llegada
+          )
+        ) +
+        dato(
+          "Última salida",
+          formatoFechaHora(
+            visita.ultima_salida
+          )
+        ) +
+        dato(
+          "Permanencia SEC",
+          formatoSegundos(
+            visita.permanencia_registrada_segundos
+          )
+        ) +
+        dato(
+          "Dentro geocerca",
+          siNo(
+            visita.dentro_geocerca
+          ),
+          claseSiNo(
+            visita.dentro_geocerca
+          )
+        ) +
+        dato(
+          "Visita abierta",
+          siNo(
+            visita.visita_abierta
+          ),
+          claseSiNo(
+            visita.visita_abierta
+          )
+        );
+    }
+
+    function mostrarTablaGps(datos) {
+      const cuerpo =
+        document.getElementById(
+          "tablaGps"
+        );
+
+      const gps =
+        datos.gps || {};
+
+      const puntos =
+        Array.isArray(gps.puntos)
+          ? gps.puntos.filter(
+              (punto) =>
+                punto.dentro_geocerca ===
+                true
+            )
+          : [];
+
+      cuerpo.innerHTML = "";
+
+      if (
+        puntos.length === 0
+      ) {
+        cuerpo.innerHTML =
+          `
+            <tr>
+              <td colspan="6">
+                No se registraron posiciones GPS
+                dentro de la geocerca.
+              </td>
+            </tr>
+          `;
+
+        return;
+      }
+
+      for (const punto of puntos) {
+        const fila =
+          document.createElement(
+            "tr"
+          );
+
+        fila.className =
+          "fila-dentro";
+
+        fila.innerHTML =
+          `
+            <td>
+              ${formatoHora(
+                punto.fecha_hora
+              )}
+            </td>
+
+            <td>
+              ${numero(
+                punto.distancia_metros,
+                1
+              )} m
+            </td>
+
+            <td>
+              ${numero(
+                punto.precision_metros,
+                1
+              )} m
+            </td>
+
+            <td>
+              ${numero(
+                punto.velocidad,
+                2
+              )}
+            </td>
+
+            <td>
+              ${numero(
+                punto.latitud,
+                6
+              )}
+            </td>
+
+            <td>
+              ${numero(
+                punto.longitud,
+                6
+              )}
+            </td>
+          `;
+
+        cuerpo.appendChild(
+          fila
+        );
+      }
+    }
+
+    function mostrarResultado(datos) {
+      const diagnostico =
+        datos.diagnostico || {};
+
+      document.getElementById(
+        "diagnosticoCodigo"
+      ).textContent =
+        texto(
+          diagnostico.codigo,
+          "SIN_DIAGNOSTICO"
+        );
+
+      document.getElementById(
+        "diagnosticoMensaje"
+      ).textContent =
+        texto(
+          diagnostico.mensaje,
+          "Sin observaciones."
+        );
+
+      mostrarCliente(datos);
+      mostrarProgramacion(datos);
+      mostrarGps(datos);
+      mostrarVisita(datos);
+      mostrarTablaGps(datos);
+
+      resultado.style.display =
+        "block";
+
+      dibujarMapa(datos);
+    }
+
+    async function analizar() {
+      ocultarMensaje();
+
+      const fecha =
+        fechaInput.value;
+
+      const vendedorId =
+        vendedorSelect.value;
+
+      const clienteId =
+        clienteSelect.value;
+
+      if (
+        !fecha ||
+        !vendedorId ||
+        !clienteId
+      ) {
+        mostrarMensaje(
+          "Seleccioná fecha, vendedor y cliente.",
+          "error"
+        );
+
+        return;
+      }
+
+      btnAnalizar.disabled = true;
+      btnAnalizar.textContent =
+        "Analizando...";
+
+      try {
+        const url =
+          `${API}/auditoria/analizar` +
+          `?vendedor_id=${encodeURIComponent(vendedorId)}` +
+          `&cliente_id=${encodeURIComponent(clienteId)}` +
+          `&fecha=${encodeURIComponent(fecha)}`;
+
+        const respuesta =
+          await fetch(url);
+
+        const datos =
+          await respuesta.json();
+
+        if (!respuesta.ok) {
+          throw new Error(
+            datos.detalle ||
+            datos.error ||
+            "No se pudo realizar la auditoría."
+          );
+        }
+
+        mostrarResultado(datos);
+
+      } catch (error) {
+        resultado.style.display =
+          "none";
+
+        mostrarMensaje(
+          error.message,
+          "error"
+        );
+
+      } finally {
+        btnAnalizar.disabled = false;
+        btnAnalizar.textContent =
+          "Analizar";
+      }
+    }
+
+    vendedorSelect.addEventListener(
+      "change",
+      cargarClientes
+    );
+
+    fechaInput.addEventListener(
+      "change",
+      () => {
+        if (
+          vendedorSelect.value
+        ) {
+          cargarClientes();
+        }
+      }
+    );
+
+    btnAnalizar.addEventListener(
+      "click",
+      analizar
+    );
+
+    fechaInput.value =
+      fechaLocalHoy();
+
+    cargarVendedores();
+  </script>
+
+</body>
+</html>

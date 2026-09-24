@@ -702,13 +702,21 @@ function renderAlertas(alertas) {
             <span class="mini">
               🕒
               ${
-                alerta.fecha_hora
-                  ? new Date(
-                      alerta.fecha_hora
-                    ).toLocaleString(
-                      "es-AR"
-                    )
-                  : ""
+  alerta.fecha_hora
+  ? alerta.fecha_hora
+      .replace("T", " ")
+      .substring(0, 19)
+      .split(" ")
+      .map((parte, i) => {
+        if (i === 0) {
+          const [anio, mes, dia] =
+            parte.split("-");
+          return `${dia}/${mes}/${anio}`;
+        }
+        return parte;
+      })
+      .join(" ")
+  : ""
               }
             </span>
 

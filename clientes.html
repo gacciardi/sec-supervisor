@@ -212,6 +212,25 @@
 .modal-ejecucion-botones button {
   padding: 10px 16px;
 }
+  
+    .modal-asignaciones{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:20px}.modal-asignaciones-contenido{background:white;width:min(1050px,96vw);max-height:90vh;overflow:auto;border-radius:16px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,.30)}.modal-asignaciones-cabecera{display:flex;justify-content:space-between;gap:15px;margin-bottom:16px}.modal-asignaciones-cabecera h2{margin:0;color:#071b3a}.tabla-asignaciones{width:100%;border-collapse:collapse;font-size:13px}.tabla-asignaciones th,.tabla-asignaciones td{border-bottom:1px solid #e2e8f0;padding:8px 5px;text-align:left}.tabla-asignaciones th{background:#f1f5f9}.tabla-asignaciones select{width:100%;padding:7px 5px}.asignacion-inactiva{opacity:.65;background:#f8fafc}.asignaciones-vacio{padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}.nueva-asignacion{margin-top:20px;padding-top:16px;border-top:2px solid #e2e8f0}.nueva-asignacion-grid{display:grid;grid-template-columns:1fr 1.4fr 1fr 1fr auto;gap:8px;align-items:end}.nueva-asignacion-grid label{display:block;font-size:12px;font-weight:bold;margin-bottom:4px}.nueva-asignacion-grid select{width:100%;padding:8px 6px}.modal-asignaciones-pie{display:flex;justify-content:flex-end;margin-top:18px}@media(max-width:850px){.tabla-asignaciones-wrap{overflow-x:auto}.tabla-asignaciones{min-width:850px}.nueva-asignacion-grid{grid-template-columns:1fr}}
+
+    .cliente-suspendido {
+      background: #f1f5f9;
+      opacity: .78;
+    }
+
+    .estado-suspendido {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: #475569;
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
   </style>
 </head>
 
@@ -712,7 +731,7 @@ function renderizarClientes() {
     clientes.map(
       c => `
 
-      <tr>
+      <tr class="${c.activo === false ? "cliente-suspendido" : ""}">
 
         <td>
           <input
@@ -726,6 +745,9 @@ function renderizarClientes() {
             id="nombre-${c.id}"
             value="${esc(c.nombre)}"
           >
+          ${c.activo === false
+            ? '<span class="estado-suspendido">SUSPENDIDO</span>'
+            : ""}
         </td>
 
         <td>
@@ -815,6 +837,22 @@ function renderizarClientes() {
               onclick="abrirEjecucion('${c.id}')"
             >
               🚨 Ejecución
+            </button>
+
+            <button
+              style="background:#2563eb;color:white"
+              onclick="abrirAsignaciones('${c.id}')"
+            >
+              👥 Asignaciones
+            </button>
+
+            <button
+              style="${c.activo === false
+                ? "background:#166534;color:white"
+                : "background:#64748b;color:white"}"
+              onclick="cambiarEstadoCliente('${c.id}')"
+            >
+              ${c.activo === false ? "▶ Reactivar" : "⏸ Suspender"}
             </button>
 
           </div>
@@ -1357,6 +1395,151 @@ function exportarCambiosCoordenadas() {
     `${API}/clientes/exportar/coordenadas`;
 }
 
+
+let clienteAsignacionesId=null;
+const modalidadesAsignaciones=[{codigo:"PR",descripcion:"Presencial"},{codigo:"TA",descripcion:"Televentas"},{codigo:"WA",descripcion:"WhatsApp"},{codigo:"FC",descripcion:"Face y Call"},{codigo:"FW",descripcion:"Face y WhatsApp"}];
+function opcionesModalidadesAsignaciones(codigo){return modalidadesAsignaciones.map(m=>`<option value="${m.codigo}" ${m.codigo===codigo?"selected":""}>${m.codigo} - ${m.descripcion}</option>`).join("");}
+async function abrirAsignaciones(clienteId){clienteAsignacionesId=clienteId;const c=clientesGlobal.find(x=>x.id===clienteId);document.getElementById("nombreClienteAsignaciones").textContent=c?`${c.codigo_cliente||""} - ${c.nombre||""}`:"Cliente";document.getElementById("modalAsignaciones").style.display="flex";prepararNuevaAsignacion();await cargarAsignacionesCliente();}
+function cerrarAsignaciones(){document.getElementById("modalAsignaciones").style.display="none";clienteAsignacionesId=null;}
+async function cargarAsignacionesCliente(){const r=await fetch(`${API}/clientes/${clienteAsignacionesId}/asignaciones`);const d=await r.json();if(!r.ok){alert(d.error||d.detalle||"Error al obtener asignaciones");return;}renderizarAsignaciones(d);}
+function renderizarAsignaciones(a){const e=document.getElementById("contenidoAsignaciones");if(!a.length){e.innerHTML='<div class="asignaciones-vacio">Este cliente no tiene asignaciones comerciales cargadas.</div>';return;}e.innerHTML=`<div class="tabla-asignaciones-wrap"><table class="tabla-asignaciones"><thead><tr><th>Modalidad</th><th>Vendedor</th><th>Ruta</th><th>Frecuencia</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${a.map(x=>`<tr class="${x.activo?"":"asignacion-inactiva"}"><td><select id="asig-modalidad-${x.id}">${opcionesModalidadesAsignaciones(x.modalidad)}</select></td><td><select id="asig-vendedor-${x.id}">${opcionesVendedores(x.vendedor_id)}</select></td><td><select id="asig-ruta-${x.id}">${opcionesRutas(x.ruta_id)}</select></td><td><select id="asig-frecuencia-${x.id}">${opcionesFrecuencias(x.frecuencia_id)}</select></td><td><select id="asig-activo-${x.id}"><option value="true" ${x.activo?"selected":""}>Activa</option><option value="false" ${!x.activo?"selected":""}>Inactiva</option></select></td><td><button type="button" onclick="guardarAsignacion('${x.id}')">Guardar</button></td></tr>`).join("")}</tbody></table></div>`;}
+function prepararNuevaAsignacion(){document.getElementById("nuevaModalidad").innerHTML='<option value="">Modalidad</option>'+modalidadesAsignaciones.map(m=>`<option value="${m.codigo}">${m.codigo} - ${m.descripcion}</option>`).join("");document.getElementById("nuevoVendedorAsignacion").innerHTML='<option value="">Sin vendedor</option>'+vendedores.map(v=>`<option value="${v.id}">${esc(v.nombre)} ${esc(v.apellido)}</option>`).join("");document.getElementById("nuevaRutaAsignacion").innerHTML='<option value="">Sin ruta</option>'+rutas.map(r=>`<option value="${r.id}">${esc(r.nombre)}</option>`).join("");document.getElementById("nuevaFrecuenciaAsignacion").innerHTML='<option value="">Sin frecuencia</option>'+frecuencias.map(f=>`<option value="${f.id}">${esc(f.nombre)}</option>`).join("");}
+async function guardarAsignacion(id){const body={modalidad:document.getElementById(`asig-modalidad-${id}`).value,vendedor_id:document.getElementById(`asig-vendedor-${id}`).value||null,ruta_id:document.getElementById(`asig-ruta-${id}`).value||null,frecuencia_id:document.getElementById(`asig-frecuencia-${id}`).value||null,activo:document.getElementById(`asig-activo-${id}`).value==="true"};const r=await fetch(`${API}/clientes/${clienteAsignacionesId}/asignaciones/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){alert(d.error||d.detalle||"Error al guardar asignación");return;}alert("Asignación actualizada correctamente");await cargarAsignacionesCliente();}
+async function crearAsignacion(){const modalidad=document.getElementById("nuevaModalidad").value;if(!modalidad){alert("Seleccioná una modalidad.");return;}const body={modalidad,vendedor_id:document.getElementById("nuevoVendedorAsignacion").value||null,ruta_id:document.getElementById("nuevaRutaAsignacion").value||null,frecuencia_id:document.getElementById("nuevaFrecuenciaAsignacion").value||null};const r=await fetch(`${API}/clientes/${clienteAsignacionesId}/asignaciones`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok){alert(d.error||d.detalle||"Error al crear asignación");return;}alert("Asignación creada correctamente");prepararNuevaAsignacion();await cargarAsignacionesCliente();}
+
+
+
+async function cambiarEstadoCliente(id) {
+
+  const cliente =
+    clientesGlobal.find(
+      c => c.id === id
+    );
+
+  if (!cliente) {
+    return;
+  }
+
+  const nuevoEstado =
+    cliente.activo === false;
+
+  const accion =
+    nuevoEstado
+      ? "reactivar"
+      : "suspender";
+
+  if (
+    !confirm(
+      `¿Seguro que querés ${accion} al cliente ${cliente.codigo_cliente} - ${cliente.nombre}?`
+    )
+  ) {
+    return;
+  }
+
+  const body = {
+
+    codigo_cliente:
+      document.getElementById(
+        `codigo-${id}`
+      ).value,
+
+    nombre:
+      document.getElementById(
+        `nombre-${id}`
+      ).value,
+
+    direccion:
+      document.getElementById(
+        `direccion-${id}`
+      ).value,
+
+    localidad:
+      document.getElementById(
+        `localidad-${id}`
+      ).value,
+
+    latitud:
+      document.getElementById(
+        `latitud-${id}`
+      ).value || null,
+
+    longitud:
+      document.getElementById(
+        `longitud-${id}`
+      ).value || null,
+
+    radio_geocerca:
+      document.getElementById(
+        `radio-${id}`
+      ).value || 15,
+
+    canal_id:
+      document.getElementById(
+        `canal-${id}`
+      ).value || null,
+
+    frecuencia_id:
+      document.getElementById(
+        `frecuencia-${id}`
+      ).value || null,
+
+    ruta_id:
+      document.getElementById(
+        `ruta-${id}`
+      ).value || null,
+
+    vendedor_id:
+      document.getElementById(
+        `vendedor-${id}`
+      ).value || null,
+
+    categoria:
+      cliente.categoria || null,
+
+    activo:
+      nuevoEstado
+  };
+
+  const respuesta =
+    await fetch(
+      `${API}/clientes/${id}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(body)
+      }
+    );
+
+  const datos =
+    await respuesta.json();
+
+  if (!respuesta.ok) {
+
+    alert(
+      datos.error ||
+      datos.detalle ||
+      `Error al ${accion} cliente`
+    );
+
+    return;
+  }
+
+  alert(
+    nuevoEstado
+      ? "Cliente reactivado correctamente"
+      : "Cliente suspendido correctamente"
+  );
+
+  await cargarClientes();
+}
+
+
 cargarDatos();
 
 </script>
@@ -1382,7 +1565,5 @@ cargarDatos();
 
 </div>
 
-<script src="config-sec.js"></script>
 
-</body>
-</html>
+<div id="modalAsignaciones" class="modal-asignaciones"><div class="modal-asignaciones-contenido"><div class="modal-asignaciones-cabecera"><div><h2>Asignaciones comerciales</h2><p id="nombreClienteAsignaciones">Cliente</p></div><button type="button" onclick="cerrarAsignaciones()">✕ Cerrar</button></div><div id="contenidoAsignaciones"></div><div class="nueva-asignacion"><h3>Nueva asignación</h3><div class="nueva-asignacion-grid"><div><label>Modalidad</label><select id="nuevaModalidad"></select></div><div><label>Vendedor</label><select id="nuevoVendedorAsignacion"></select></div><div><label>Ruta</label><select id="nuevaRutaAsignacion"></select></div><div><label>Frecuencia</label><select id="nuevaFrecuenciaAsignacion"></select></div><div><button type="button" style="background:#166534;color:white" onclick="crearAsignacion()">+ Agregar</button></div></div></div><div class="modal-asignaciones-pie"><button type="button" onclick="cerrarAsignaciones()">Cerrar</button></div></div></div>

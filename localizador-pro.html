@@ -28,6 +28,16 @@
     .stat strong{display:block;color:#071b3a;font-size:22px}.stat span{font-size:11px;color:#64748b}
     .etiqueta{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:bold;background:#dbeafe;color:#1d4ed8;margin-bottom:10px}
     .cliente-nombre{font-size:26px;font-weight:800;color:#071b3a;line-height:1.12;margin:4px 0 12px}
+    .buscador-cliente{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0}
+    .buscador-fila{display:flex;gap:8px;align-items:center}
+    .buscador-fila input{flex:1;width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;font-size:15px}
+    .btn-limpiar-busqueda{border:none;border-radius:11px;padding:12px 14px;background:#e2e8f0;color:#1e293b;font-weight:bold;cursor:pointer}
+    .resultados-busqueda{display:none;margin-top:8px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;max-height:260px;overflow:auto}
+    .resultado-cliente{padding:11px 12px;border-bottom:1px solid #e2e8f0;cursor:pointer}
+    .resultado-cliente:last-child{border-bottom:none}
+    .resultado-cliente strong{display:block;color:#071b3a;font-size:15px;margin-bottom:3px}
+    .resultado-cliente span{display:block;color:#64748b;font-size:12px;line-height:1.35}
+    .sin-resultados{padding:12px;color:#64748b;font-size:13px;text-align:center}
     .dato{font-size:15px;line-height:1.5;margin:7px 0;color:#374151}.distancia{display:inline-block;margin-top:8px;padding:7px 10px;border-radius:999px;background:#ecfeff;color:#155e75;font-weight:bold;font-size:13px}
     .precision{margin-top:12px;padding:12px;border-radius:12px;background:#f1f5f9;line-height:1.55}.precision-buena{color:#15803d;font-weight:bold}.precision-media{color:#d97706;font-weight:bold}.precision-baja{color:#dc2626;font-weight:bold}
     .mensaje{display:none;padding:12px;border-radius:12px;margin-bottom:14px;font-weight:bold;line-height:1.4}.mensaje.info{display:block;background:#e0f2fe;color:#075985}.mensaje.ok{display:block;background:#dcfce7;color:#166534}.mensaje.error{display:block;background:#fee2e2;color:#991b1b}
@@ -71,7 +81,31 @@
   </section>
 
   <section id="pantallaCliente" class="card oculto">
-    <span class="etiqueta">CLIENTE PENDIENTE MÁS CERCANO</span>
+    <div class="buscador-cliente">
+      <div class="campo" style="margin-bottom:0">
+        <label for="buscarCliente">🔎 Buscar cliente por código, nombre o dirección</label>
+        <div class="buscador-fila">
+          <input
+            id="buscarCliente"
+            type="search"
+            placeholder="Ej.: 55986, GIMENEZ o SPIRO"
+            autocomplete="off"
+            oninput="filtrarClientes()"
+          >
+          <button
+            type="button"
+            class="btn-limpiar-busqueda"
+            onclick="limpiarBusquedaCliente()"
+            aria-label="Limpiar búsqueda"
+          >
+            ✕
+          </button>
+        </div>
+        <div id="resultadosBusqueda" class="resultados-busqueda"></div>
+      </div>
+    </div>
+
+    <span id="etiquetaCliente" class="etiqueta">CLIENTE PENDIENTE MÁS CERCANO</span>
     <div id="clienteNombre" class="cliente-nombre"></div>
     <div id="clienteCodigo" class="dato"></div>
     <div id="clienteDireccion" class="dato"></div>
@@ -120,7 +154,7 @@
 
 <script>
 const API = "https://sec-backend-gg4j.onrender.com";
-let vendedores = [], clientesPendientes = [], clienteActual = null, ubicacionActual = null, vendedorIdActual = null;
+let vendedores = [], clientesPendientes = [], clientesBuscador = [], clienteActual = null, ubicacionActual = null, vendedorIdActual = null;
 let totalInicial = 0, localizadosSesion = 0, saltadosSesion = [], revisionSesion = [];
 const KEY_SESION = "sec_localizador_pro_sesion";
 
@@ -128,44 +162,23 @@ function mostrarMensaje(texto,tipo="info"){const el=document.getElementById("men
 function ocultarMensaje(){const el=document.getElementById("mensaje");el.textContent="";el.className="mensaje"}
 function cambiarPantalla(nombre){["pantallaInicio","panelProgreso","pantallaCliente","pantallaFinal"].forEach(id=>document.getElementById(id).classList.add("oculto"));if(nombre==="inicio")document.getElementById("pantallaInicio").classList.remove("oculto");if(nombre==="cliente"){document.getElementById("panelProgreso").classList.remove("oculto");document.getElementById("pantallaCliente").classList.remove("oculto")}if(nombre==="final"){document.getElementById("panelProgreso").classList.remove("oculto");document.getElementById("pantallaFinal").classList.remove("oculto")}}
 
-async function cargarVendedores(){
-  try{
-    const r=await fetch(`${API}/usuarios`);
-    const d=await r.json();
-
-    if(!r.ok)
-      throw new Error(
-        d.error||"No se pudieron cargar vendedores"
-      );
-
-    vendedores=(Array.isArray(d)?d:d.usuarios||[])
-      .filter(u=>{
-        const rol=String(u.rol||"").toUpperCase();
-
-        return (
-          rol==="VENDEDOR" ||
-          rol==="TRADE_MARKETING"
-        ) && u.activo!==false;
-      });
-
-    document.getElementById("vendedorSelect").innerHTML=
-      `<option value="">Seleccionar vendedor</option>`+
-      vendedores.map(v=>
-        `<option value="${v.id}">${v.nombre||""} ${v.apellido||""}</option>`
-      ).join("");
-
-  }catch(e){
-    mostrarMensaje(e.message,"error");
-  }
-}
+async function cargarVendedores(){try{const r=await fetch(`${API}/usuarios`);const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudieron cargar vendedores");vendedores=(Array.isArray(d)?d:d.usuarios||[]).filter(u=>String(u.rol||"").toUpperCase()==="VENDEDOR"&&u.activo!==false);document.getElementById("vendedorSelect").innerHTML=`<option value="">Seleccionar vendedor</option>`+vendedores.map(v=>`<option value="${v.id}">${v.nombre||""} ${v.apellido||""}</option>`).join("")}catch(e){mostrarMensaje(e.message,"error")}}
 
 async function comenzarRelevamiento(){const id=document.getElementById("vendedorSelect").value;if(!id){mostrarMensaje("Seleccioná un vendedor.","error");return}ocultarMensaje();vendedorIdActual=id;saltadosSesion=[];revisionSesion=[];localizadosSesion=0;await cargarPendientes();totalInicial=clientesPendientes.length;guardarSesion();if(clientesPendientes.length===0){mostrarFinal();return}cambiarPantalla("cliente");await actualizarGps();seleccionarClienteMasCercano()}
 
 async function continuarRelevamiento(){try{const s=JSON.parse(localStorage.getItem(KEY_SESION)||"null");if(!s||!s.vendedorId){mostrarMensaje("No hay un relevamiento anterior para continuar.","error");return}vendedorIdActual=s.vendedorId;saltadosSesion=s.saltados||[];revisionSesion=s.revision||[];localizadosSesion=Number(s.localizados||0);await cargarPendientes();totalInicial=Number(s.totalInicial||clientesPendientes.length);cambiarPantalla("cliente");await actualizarGps();seleccionarClienteMasCercano()}catch{mostrarMensaje("No se pudo recuperar el relevamiento anterior.","error")}}
 
-async function cargarPendientes(){const p=new URLSearchParams({estado:"pendientes",vendedor_id:vendedorIdActual});const r=await fetch(`${API}/localizador/clientes?${p.toString()}`);const d=await r.json();if(!r.ok)throw new Error(d.error||d.detalle||"No se pudieron cargar los clientes pendientes");const excluidos=new Set([...saltadosSesion,...revisionSesion]);clientesPendientes=(Array.isArray(d)?d:[]).filter(c=>!excluidos.has(c.id))}
+async function cargarPendientes(){const pPendientes=new URLSearchParams({estado:"pendientes",vendedor_id:vendedorIdActual});const pTodos=new URLSearchParams({estado:"todos",vendedor_id:vendedorIdActual});const [rPendientes,rTodos]=await Promise.all([fetch(`${API}/localizador/clientes?${pPendientes.toString()}`),fetch(`${API}/localizador/clientes?${pTodos.toString()}`)]);const [dPendientes,dTodos]=await Promise.all([rPendientes.json(),rTodos.json()]);if(!rPendientes.ok)throw new Error(dPendientes.error||dPendientes.detalle||"No se pudieron cargar los clientes pendientes");if(!rTodos.ok)throw new Error(dTodos.error||dTodos.detalle||"No se pudieron cargar los clientes para búsqueda");const excluidos=new Set([...saltadosSesion,...revisionSesion]);clientesPendientes=(Array.isArray(dPendientes)?dPendientes:[]).filter(c=>!excluidos.has(c.id));clientesBuscador=Array.isArray(dTodos)?dTodos:[]}
 
-function seleccionarClienteMasCercano(){if(clientesPendientes.length===0){mostrarFinal();return}let mejor=clientesPendientes[0],menor=Infinity;if(ubicacionActual){for(const c of clientesPendientes){const lat=Number(c.latitud),lng=Number(c.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;const dist=distanciaMetros(ubicacionActual.latitud,ubicacionActual.longitud,lat,lng);if(dist<menor){menor=dist;mejor=c}}}clienteActual=mejor;renderizarCliente(menor);actualizarProgreso();guardarSesion()}
+function seleccionarClienteMasCercano(){if(clientesPendientes.length===0){mostrarFinal();return}let mejor=clientesPendientes[0],menor=Infinity;if(ubicacionActual){for(const c of clientesPendientes){const lat=Number(c.latitud),lng=Number(c.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;const dist=distanciaMetros(ubicacionActual.latitud,ubicacionActual.longitud,lat,lng);if(dist<menor){menor=dist;mejor=c}}}clienteActual=mejor;const etiqueta=document.getElementById("etiquetaCliente");if(etiqueta)etiqueta.textContent="CLIENTE PENDIENTE MÁS CERCANO";renderizarCliente(menor);actualizarProgreso();guardarSesion()}
+
+function normalizarBusqueda(valor){return String(valor||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}
+
+function filtrarClientes(){const input=document.getElementById("buscarCliente"),contenedor=document.getElementById("resultadosBusqueda");if(!input||!contenedor)return;const termino=normalizarBusqueda(input.value);if(!termino){contenedor.innerHTML="";contenedor.style.display="none";return}const coincidencias=clientesBuscador.filter(c=>{const texto=normalizarBusqueda(`${c.codigo_cliente||""} ${c.nombre||""} ${c.direccion||""} ${c.localidad||""}`);return texto.includes(termino)}).slice(0,30);if(coincidencias.length===0){contenedor.innerHTML=`<div class="sin-resultados">No se encontraron clientes activos de este vendedor.</div>`;contenedor.style.display="block";return}contenedor.innerHTML=coincidencias.map(c=>{const estado=c.localizado===true||c.localizado==="true"?"YA LOCALIZADO":"PENDIENTE";return `<div class="resultado-cliente" onclick="seleccionarClienteBuscado('${c.id}')"><strong>${c.codigo_cliente||"Sin código"} - ${c.nombre||"Cliente"}</strong><span>${c.direccion||"Sin dirección"}${c.localidad?` · ${c.localidad}`:""} · ${estado}</span></div>`}).join("");contenedor.style.display="block"}
+
+function seleccionarClienteBuscado(clienteId){const encontrado=clientesBuscador.find(c=>String(c.id)===String(clienteId));if(!encontrado)return;clienteActual=encontrado;let distancia=Infinity;if(ubicacionActual){const lat=Number(encontrado.latitud),lng=Number(encontrado.longitud);if(Number.isFinite(lat)&&Number.isFinite(lng))distancia=distanciaMetros(ubicacionActual.latitud,ubicacionActual.longitud,lat,lng)}const input=document.getElementById("buscarCliente"),contenedor=document.getElementById("resultadosBusqueda"),etiqueta=document.getElementById("etiquetaCliente");if(input)input.value="";if(contenedor){contenedor.innerHTML="";contenedor.style.display="none"}const yaLocalizado=encontrado.localizado===true||encontrado.localizado==="true";if(etiqueta)etiqueta.textContent=yaLocalizado?"CLIENTE YA LOCALIZADO — RELOCALIZACIÓN":"CLIENTE SELECCIONADO";renderizarCliente(distancia);actualizarProgreso();guardarSesion()}
+
+function limpiarBusquedaCliente(){const input=document.getElementById("buscarCliente"),contenedor=document.getElementById("resultadosBusqueda");if(input){input.value="";input.focus()}if(contenedor){contenedor.innerHTML="";contenedor.style.display="none"}}
 
 function renderizarCliente(distancia){document.getElementById("clienteNombre").textContent=clienteActual.nombre||"Cliente";document.getElementById("clienteCodigo").textContent=`Código: ${clienteActual.codigo_cliente||""}`;document.getElementById("clienteDireccion").textContent=`📍 ${clienteActual.direccion||"Sin dirección"}`;document.getElementById("clienteLocalidad").textContent=`🏙️ ${clienteActual.localidad||""}`;document.getElementById("clienteVendedor").textContent=`👤 ${clienteActual.vendedor||"Sin vendedor"}`;document.getElementById("clienteDistancia").textContent=Number.isFinite(distancia)?`A ${Math.round(distancia)} metros`:"Distancia no disponible"}
 
@@ -180,7 +193,7 @@ function mostrarModal(){const latA=Number(clienteActual.latitud),lngA=Number(cli
 function cerrarModal(){document.getElementById("modalConfirmacion").style.display="none"}
 async function volverATomarGps(){cerrarModal();await actualizarGps();if(ubicacionActual)mostrarModal()}
 
-async function guardarLocalizacion(confirmarBaja=false){if(!clienteActual||!ubicacionActual)return;const boton=document.getElementById("btnGuardar");boton.disabled=true;boton.textContent="Guardando...";try{const r=await fetch(`${API}/localizador/clientes/${clienteActual.id}/localizar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vendedor_id:vendedorIdActual,latitud:ubicacionActual.latitud,longitud:ubicacionActual.longitud,precision_metros:ubicacionActual.precision,confirmar_precision_baja:confirmarBaja})});const d=await r.json();if(r.status===409&&d.requiere_confirmacion){const aceptar=confirm(`${d.error}\n\n${d.mensaje}\n\n¿Guardar igualmente?`);boton.disabled=false;boton.textContent="✅ GUARDAR UBICACIÓN";if(aceptar)await guardarLocalizacion(true);return}if(!r.ok)throw new Error(d.error||d.detalle||"No se pudo guardar la ubicación");cerrarModal();localizadosSesion++;clientesPendientes=clientesPendientes.filter(c=>c.id!==clienteActual.id);mostrarMensaje(
+async function guardarLocalizacion(confirmarBaja=false){if(!clienteActual||!ubicacionActual)return;const boton=document.getElementById("btnGuardar");boton.disabled=true;boton.textContent="Guardando...";try{const r=await fetch(`${API}/localizador/clientes/${clienteActual.id}/localizar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vendedor_id:vendedorIdActual,latitud:ubicacionActual.latitud,longitud:ubicacionActual.longitud,precision_metros:ubicacionActual.precision,confirmar_precision_baja:confirmarBaja})});const d=await r.json();if(r.status===409&&d.requiere_confirmacion){const aceptar=confirm(`${d.error}\n\n${d.mensaje}\n\n¿Guardar igualmente?`);boton.disabled=false;boton.textContent="✅ GUARDAR UBICACIÓN";if(aceptar)await guardarLocalizacion(true);return}if(!r.ok)throw new Error(d.error||d.detalle||"No se pudo guardar la ubicación");cerrarModal();const eraPendiente=clientesPendientes.some(c=>c.id===clienteActual.id);if(eraPendiente)localizadosSesion++;clientesPendientes=clientesPendientes.filter(c=>c.id!==clienteActual.id);const indiceBuscador=clientesBuscador.findIndex(c=>c.id===clienteActual.id);if(indiceBuscador>=0)clientesBuscador[indiceBuscador]={...clientesBuscador[indiceBuscador],latitud:ubicacionActual.latitud,longitud:ubicacionActual.longitud,localizado:true};mostrarMensaje(
   `✅ ${clienteActual.nombre} localizado y marcado como visitado.`,
   "ok"
 );guardarSesion();setTimeout(()=>{ocultarMensaje();seleccionarClienteMasCercano()},900)}catch(e){mostrarMensaje(e.message,"error")}finally{boton.disabled=false;boton.textContent="✅ GUARDAR UBICACIÓN"}}
@@ -190,7 +203,7 @@ function marcarRevision(){if(!clienteActual)return;if(!revisionSesion.includes(c
 function abrirComoLlegar(){if(!clienteActual)return;const lat=Number(clienteActual.latitud),lng=Number(clienteActual.longitud);if(Number.isFinite(lat)&&Number.isFinite(lng)){window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,"_blank");return}const destino=encodeURIComponent(`${clienteActual.direccion||""}, ${clienteActual.localidad||""}`);window.open(`https://www.google.com/maps/search/?api=1&query=${destino}`,"_blank")}
 function mostrarFinal(){cambiarPantalla("final");document.getElementById("finalLocalizados").textContent=localizadosSesion;document.getElementById("finalSaltados").textContent=saltadosSesion.length;document.getElementById("finalRevision").textContent=revisionSesion.length;actualizarProgreso();guardarSesion()}
 function guardarSesion(){localStorage.setItem(KEY_SESION,JSON.stringify({vendedorId:vendedorIdActual,totalInicial,localizados:localizadosSesion,saltados:saltadosSesion,revision:revisionSesion}))}
-function reiniciarRelevamiento(){localStorage.removeItem(KEY_SESION);vendedorIdActual=null;clienteActual=null;ubicacionActual=null;clientesPendientes=[];saltadosSesion=[];revisionSesion=[];localizadosSesion=0;totalInicial=0;cambiarPantalla("inicio")}
+function reiniciarRelevamiento(){localStorage.removeItem(KEY_SESION);vendedorIdActual=null;clienteActual=null;ubicacionActual=null;clientesPendientes=[];clientesBuscador=[];saltadosSesion=[];revisionSesion=[];localizadosSesion=0;totalInicial=0;cambiarPantalla("inicio")}
 function volverInicio(){guardarSesion();cambiarPantalla("inicio")}
 function distanciaMetros(lat1,lon1,lat2,lon2){const R=6371000,rad=Math.PI/180,dLat=(lat2-lat1)*rad,dLon=(lon2-lon1)*rad,a=Math.sin(dLat/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
 async function iniciar(){await cargarVendedores();cambiarPantalla("inicio")}

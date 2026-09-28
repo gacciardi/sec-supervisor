@@ -358,12 +358,44 @@
     .bottom-nav .principal {
       background: #0b55c7;
       color: white;
-      width: 70px;
-      height: 70px;
+      width: 58px;
+      height: 58px;
       border-radius: 50%;
-      margin-top: -34px;
+      margin-top: -26px;
       box-shadow: 0 4px 12px rgba(0,0,0,.25);
       justify-content: center;
+    }
+
+    /*
+    En Android angosto, compacta la barra para que todos los
+    accesos permanezcan visibles sin cambiar su funcionamiento.
+    */
+    @media (max-width: 420px) {
+      .bottom-nav {
+        justify-content: space-evenly;
+        gap: 0;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+
+      .bottom-nav button {
+        min-width: 0;
+        flex: 1 1 0;
+        padding: 0 1px;
+        font-size: 10px;
+      }
+
+      .bottom-nav button span {
+        font-size: 8px;
+        white-space: nowrap;
+      }
+
+      .bottom-nav .principal {
+        flex: 0 0 52px;
+        width: 52px;
+        height: 52px;
+        margin-top: -22px;
+      }
     }
 
     .numero-marker {

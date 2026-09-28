@@ -1141,6 +1141,44 @@ async function guardarCliente(id) {
         : true
   };
 
+  /*
+  La ruta determina el vendedor. Evitamos confirmar un cambio
+  que luego parecería revertirse al volver a cargar la grilla.
+  */
+  if (body.ruta_id) {
+
+    const rutaSeleccionada =
+      rutas.find(
+        r => r.id === body.ruta_id
+      );
+
+    if (
+      rutaSeleccionada &&
+      rutaSeleccionada.vendedor_id &&
+      body.vendedor_id !==
+        rutaSeleccionada.vendedor_id
+    ) {
+
+      const vendedorRuta =
+        vendedores.find(
+          v =>
+            v.id ===
+            rutaSeleccionada.vendedor_id
+        );
+
+      const nombreVendedorRuta =
+        vendedorRuta
+          ? `${vendedorRuta.nombre} ${vendedorRuta.apellido}`.trim()
+          : "otro vendedor";
+
+      alert(
+        `La ruta ${rutaSeleccionada.nombre} pertenece a ${nombreVendedorRuta}. Seleccioná una ruta correspondiente al vendedor elegido.`
+      );
+
+      return;
+    }
+  }
+
   const r =
     await fetch(
       `${API}/clientes/${id}`,

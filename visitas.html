@@ -2,21 +2,16 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
-
-  <title>SEC - Visitas</title>
-
+  <title>SEC - Visitas y recorridos</title>
   <link
     rel="stylesheet"
     href="style.css"
   >
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
   <style>
     .panel-filtros {
       background: white;
@@ -25,27 +20,23 @@
       margin-bottom: 18px;
       box-shadow: 0 3px 12px rgba(0,0,0,.10);
     }
-
     .grupo-filtros {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
       align-items: end;
     }
-
     .campo-filtro {
       display: flex;
       flex-direction: column;
       gap: 5px;
       min-width: 170px;
     }
-
     .campo-filtro label {
       font-size: 13px;
       font-weight: bold;
       color: #374151;
     }
-
     .campo-filtro select,
     .campo-filtro input {
       padding: 10px;
@@ -53,13 +44,11 @@
       border-radius: 8px;
       background: white;
     }
-
     .acciones-filtro {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
-
     .btn-consultar {
       background: #071b3a;
       color: white;
@@ -69,7 +58,6 @@
       font-weight: bold;
       cursor: pointer;
     }
-
     .btn-excel {
       background: #15803d;
       color: white;
@@ -79,13 +67,11 @@
       font-weight: bold;
       cursor: pointer;
     }
-
     .btn-consultar:disabled,
     .btn-excel:disabled {
       opacity: .55;
       cursor: not-allowed;
     }
-
     .resumen-periodo {
       margin-top: 15px;
       padding: 12px;
@@ -94,7 +80,6 @@
       color: #1e3a8a;
       font-weight: bold;
     }
-
     .indicadores {
       display: grid;
       grid-template-columns:
@@ -102,7 +87,6 @@
       gap: 12px;
       margin: 18px 0;
     }
-
     .indicador {
       background: white;
       padding: 15px;
@@ -110,41 +94,34 @@
       box-shadow: 0 3px 10px rgba(0,0,0,.09);
       text-align: center;
     }
-
     .indicador strong {
       display: block;
       font-size: 25px;
       color: #071b3a;
       margin-bottom: 4px;
     }
-
     .indicador span {
       color: #4b5563;
       font-size: 13px;
     }
-
     .tabla-contenedor {
       overflow-x: auto;
       background: white;
       border-radius: 12px;
     }
-
     table {
       min-width: 1100px;
       width: 100%;
     }
-
     .visita-abierta {
       color: #d97706;
       font-weight: bold;
     }
-
     .sin-resultados {
       text-align: center;
       padding: 25px;
       color: #6b7280;
     }
-
     .error {
       background: #fee2e2;
       color: #991b1b;
@@ -153,7 +130,6 @@
       margin: 12px 0;
       display: none;
     }
-
     .cargando {
       padding: 20px;
       text-align: center;
@@ -161,13 +137,21 @@
       font-weight: bold;
       display: none;
     }
-
     .btn-recorrido { background:#2563eb; color:white; border:none; padding:11px 18px; border-radius:9px; font-weight:bold; cursor:pointer; }
     .btn-recorrido:disabled { opacity:.55; cursor:not-allowed; }
     .panel-recorrido { display:none; background:white; border-radius:14px; padding:16px; margin:18px 0; box-shadow:0 3px 12px rgba(0,0,0,.10); }
     .cabecera-recorrido { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
     .cabecera-recorrido h3 { margin:0; color:#071b3a; }
     .detalle-recorrido { color:#4b5563; font-size:13px; margin-top:4px; }
+    .resumen-recorrido { display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:10px; margin:12px 0; }
+    .dato-recorrido { background:#f8fafc; border:1px solid #e2e8f0; border-radius:11px; padding:11px; text-align:center; }
+    .dato-recorrido span { display:block; color:#64748b; font-size:12px; font-weight:bold; }
+    .dato-recorrido strong { display:block; color:#071b3a; font-size:20px; margin-top:5px; }
+    .leyenda-recorrido { display:flex; gap:13px; flex-wrap:wrap; margin:10px 0; font-size:13px; font-weight:bold; }
+    .leyenda-recorrido i { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; }
+    .tabla-cortes { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+    .tabla-cortes th,.tabla-cortes td { padding:8px; border-bottom:1px solid #e5e7eb; text-align:left; }
+    .aviso-gps { color:#64748b; font-size:12px; margin-top:8px; }
     .btn-cerrar-mapa { background:#e5e7eb; color:#111827; border:none; padding:9px 14px; border-radius:8px; font-weight:bold; cursor:pointer; }
     #mapaRecorrido { width:100%; height:560px; border-radius:12px; overflow:hidden; background:#f3f4f6; }
     .numero-visita { width:32px; height:32px; border-radius:50%; background:#071b3a; color:white; border:2px solid white; box-shadow:0 2px 7px rgba(0,0,0,.50); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:13px; }
@@ -190,16 +174,14 @@
          0 3px 5px rgba(0,0,0,.45);
       pointer-events:none;
     }
-
     @media (max-width: 700px) {
+      .resumen-recorrido { grid-template-columns:repeat(2,1fr); }
       .campo-filtro {
         width: 100%;
       }
-
       .acciones-filtro {
         width: 100%;
       }
-
       .btn-consultar,
       .btn-excel {
         flex: 1;
@@ -207,22 +189,18 @@
     }
   </style>
 </head>
-
 <body>
-
 <header class="header-sec">
   <img
     src="assets/logo-rebesa.jpg"
     alt="Rebesa"
     class="logo-rebesa"
   >
-
   <div>
-    <h1>SEC - Visitas</h1>
+    <h1>SEC - Visitas y recorridos</h1>
     <p>Sistema de Ejecución Comercial</p>
   </div>
 </header>
-
 <nav>
   <a href="index.html">📊 Dashboard</a>
   <a href="mapa.html">🗺️ Mapa</a>
@@ -231,20 +209,14 @@
   <a href="alertas.html">⚠️ Alertas</a>
   <a href="dashboard-vendedores.html">Vendedores</a>
 </nav>
-
 <div class="container">
-
-  <h2>Historial de Visitas</h2>
-
+  <h2>Historial de visitas y recreación de recorridos</h2>
   <div class="panel-filtros">
-
     <div class="grupo-filtros">
-
       <div class="campo-filtro">
         <label for="periodoRapido">
           Período
         </label>
-
         <select
           id="periodoRapido"
           onchange="cambiarPeriodo()"
@@ -252,71 +224,80 @@
           <option value="hoy">
             Hoy
           </option>
-
           <option value="ayer">
             Ayer
           </option>
-
           <option value="estaSemana">
             Esta semana
           </option>
-
           <option value="semanaPasada">
             Semana pasada
           </option>
-
           <option value="esteMes">
             Este mes
           </option>
-
           <option value="mesAnterior">
             Mes anterior
           </option>
-
           <option value="personalizado">
             Personalizado
           </option>
         </select>
       </div>
-
       <div class="campo-filtro">
         <label for="fechaDesde">
           Desde
         </label>
-
         <input
           type="date"
           id="fechaDesde"
           onchange="seleccionarPersonalizado()"
         >
       </div>
-
       <div class="campo-filtro">
         <label for="fechaHasta">
           Hasta
         </label>
-
         <input
           type="date"
           id="fechaHasta"
           onchange="seleccionarPersonalizado()"
         >
       </div>
-
       <div class="campo-filtro">
         <label for="filtroVendedor">
           Vendedor
         </label>
-
         <select id="filtroVendedor">
           <option value="">
             Todos los vendedores
           </option>
         </select>
       </div>
-
+      <div class="campo-filtro">
+        <label for="filtroRuta">Ruta del recorrido</label>
+        <select id="filtroRuta">
+          <option value="">Todas las rutas</option>
+        </select>
+      </div>
+      <div class="campo-filtro">
+        <label for="filtroEstadoMapa">Clientes en el mapa</label>
+        <select id="filtroEstadoMapa">
+          <option value="todos">Todos</option>
+          <option value="visitados">Visitados</option>
+          <option value="pendientes">Pendientes</option>
+        </select>
+      </div>
+      <div class="campo-filtro">
+        <label for="filtroModalidadMapa">Modalidad del mapa</label>
+        <select id="filtroModalidadMapa">
+          <option value="todas">Todas</option>
+          <option value="tradicional">Tradicional</option>
+          <option value="ejecucion">Ejecución</option>
+          <option value="trade">Trade</option>
+        </select>
+      </div>
       <div class="acciones-filtro">
-
         <button
           id="btnConsultar"
           class="btn-consultar"
@@ -324,7 +305,6 @@
         >
           🔍 Consultar
         </button>
-
         <button
           id="btnExcel"
           class="btn-excel"
@@ -332,7 +312,6 @@
         >
           📊 Descargar Excel
         </button>
-
         <button
           id="btnRecorrido"
           class="btn-recorrido"
@@ -340,97 +319,75 @@
         >
           🗺️ Ver recorrido
         </button>
-
       </div>
-
     </div>
-
     <div
       id="resumenPeriodo"
       class="resumen-periodo"
     >
       Preparando período...
     </div>
-
   </div>
-
   <div
     id="mensajeError"
     class="error"
   ></div>
-
   <div
     id="cargando"
     class="cargando"
   >
     Cargando historial...
   </div>
-
   <div class="indicadores">
-
   <div class="indicador">
     <strong id="indicadorProgramados">
       0
     </strong>
-
     <span>
       Clientes programados
     </span>
   </div>
-
   <div class="indicador">
     <strong id="indicadorVisitas">
       0
     </strong>
-
     <span>
       Clientes visitados
     </span>
   </div>
-
   <div class="indicador">
     <strong id="indicadorPendientes">
       0
     </strong>
-
     <span>
       Clientes pendientes
     </span>
   </div>
-
   <div class="indicador">
     <strong id="indicadorCobertura">
       0 %
     </strong>
-
     <span>
       Cobertura
     </span>
   </div>
-
   <div class="indicador">
     <strong id="indicadorPermanencia">
       0 min
     </strong>
-
     <span>
       Permanencia total
     </span>
   </div>
-
   <div class="indicador">
     <strong id="indicadorPromedio">
       0 min
     </strong>
-
     <span>
       Promedio por cliente
     </span>
   </div>
-
 </div>
-
-
   <div id="panelRecorrido" class="panel-recorrido">
     <div class="cabecera-recorrido">
       <div>
@@ -439,13 +396,31 @@
       </div>
       <button class="btn-cerrar-mapa" onclick="cerrarRecorrido()">✕ Cerrar mapa</button>
     </div>
+    <div id="resumenRecorrido" class="resumen-recorrido">
+      <div class="dato-recorrido"><span>Programados</span><strong id="rrProgramados">0</strong></div>
+      <div class="dato-recorrido"><span>Visitados</span><strong id="rrVisitados">0</strong></div>
+      <div class="dato-recorrido"><span>Pendientes</span><strong id="rrPendientes">0</strong></div>
+      <div class="dato-recorrido"><span>Distancia GPS</span><strong id="rrDistancia">0 km</strong></div>
+      <div class="dato-recorrido"><span>Interrupciones</span><strong id="rrCortes">0</strong></div>
+      <div class="dato-recorrido"><span>Sin reporte</span><strong id="rrSinReporte">0 min</strong></div>
+    </div>
+    <div class="leyenda-recorrido">
+      <span><i style="background:#2563eb"></i>Recorrido</span>
+      <span><i style="background:#dc2626"></i>Interrupción GPS</span>
+      <span><i style="background:#16a34a"></i>Visitado</span>
+      <span><i style="background:#f59e0b"></i>Pendiente</span>
+      <span><i style="background:#7c3aed"></i>Ejecución</span>
+      <span><i style="background:#e91e63"></i>Trade</span>
+    </div>
     <div id="mapaRecorrido"></div>
+    <div class="aviso-gps">Una interrupción indica que SEC dejó de recibir posiciones durante más de 10 minutos; por sí sola no demuestra que la aplicación haya sido cerrada.</div>
+    <table class="tabla-cortes">
+      <thead><tr><th>Interrupción desde</th><th>Hasta</th><th>Duración</th><th>Salto</th></tr></thead>
+      <tbody id="tablaInterrupciones"><tr><td colspan="4">Sin consulta.</td></tr></tbody>
+    </table>
   </div>
-
   <div class="tabla-contenedor">
-
     <table>
-
       <thead>
         <tr>
           <th>Fecha</th>
@@ -461,191 +436,146 @@
           <th>Estado</th>
         </tr>
       </thead>
-
       <tbody id="tablaVisitas"></tbody>
-
     </table>
-
   </div>
-
 </div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <script>
 const API =
   "https://sec-backend-gg4j.onrender.com";
-
 let visitasGlobal = [];
 let resumenGlobal = [];
 let usuarios = [];
+let rutas = [];
 let mapaRecorrido = null;
 let capasRecorrido = [];
-
+let ultimoPlanRecorrido = null;
+let ultimoGpsRecorrido = null;
 let coberturaGlobal = {
   programados: null,
   visitados: null,
   pendientes: null,
   cobertura: null
 };
-
 function fechaLocal(fecha) {
   const anio = fecha.getFullYear();
-
   const mes = String(
     fecha.getMonth() + 1
   ).padStart(2, "0");
-
   const dia = String(
     fecha.getDate()
   ).padStart(2, "0");
-
   return `${anio}-${mes}-${dia}`;
 }
-
 function inicioSemana(fecha) {
   const copia = new Date(fecha);
-
   const diaSemana =
     copia.getDay() === 0
       ? 7
       : copia.getDay();
-
   copia.setDate(
     copia.getDate() - diaSemana + 1
   );
-
   copia.setHours(0, 0, 0, 0);
-
   return copia;
 }
-
 function finSemana(fecha) {
   const inicio = inicioSemana(fecha);
-
   const fin = new Date(inicio);
-
   fin.setDate(
     fin.getDate() + 6
   );
-
   return fin;
 }
-
 function cambiarPeriodo() {
   const periodo =
     document.getElementById(
       "periodoRapido"
     ).value;
-
   const hoy = new Date();
-
   let desde = new Date(hoy);
   let hasta = new Date(hoy);
-
   if (periodo === "ayer") {
     desde.setDate(
       desde.getDate() - 1
     );
-
     hasta = new Date(desde);
   }
-
   if (periodo === "estaSemana") {
     desde = inicioSemana(hoy);
     hasta = finSemana(hoy);
-
     if (hasta > hoy) {
       hasta = new Date(hoy);
     }
   }
-
   if (periodo === "semanaPasada") {
     const referencia =
       new Date(hoy);
-
     referencia.setDate(
       referencia.getDate() - 7
     );
-
     desde =
       inicioSemana(referencia);
-
     hasta =
       finSemana(referencia);
   }
-
   if (periodo === "esteMes") {
     desde = new Date(
       hoy.getFullYear(),
       hoy.getMonth(),
       1
     );
-
     hasta = new Date(hoy);
   }
-
   if (periodo === "mesAnterior") {
     desde = new Date(
       hoy.getFullYear(),
       hoy.getMonth() - 1,
       1
     );
-
     hasta = new Date(
       hoy.getFullYear(),
       hoy.getMonth(),
       0
     );
   }
-
   if (periodo === "personalizado") {
     actualizarResumenPeriodo();
     return;
   }
-
   document.getElementById(
     "fechaDesde"
   ).value = fechaLocal(desde);
-
   document.getElementById(
     "fechaHasta"
   ).value = fechaLocal(hasta);
-
   actualizarResumenPeriodo();
 }
-
 function seleccionarPersonalizado() {
   document.getElementById(
     "periodoRapido"
   ).value = "personalizado";
-
   actualizarResumenPeriodo();
 }
-
 function actualizarResumenPeriodo() {
   const desde =
     document.getElementById(
       "fechaDesde"
     ).value;
-
   const hasta =
     document.getElementById(
       "fechaHasta"
     ).value;
-
   const vendedorSelect =
     document.getElementById(
       "filtroVendedor"
     );
-
   const vendedorTexto =
     vendedorSelect.options[
       vendedorSelect.selectedIndex
     ]?.text || "Todos los vendedores";
-
   document.getElementById(
     "resumenPeriodo"
   ).textContent =
@@ -653,29 +583,23 @@ function actualizarResumenPeriodo() {
     `${formatearFecha(hasta)} — ` +
     `${vendedorTexto}`;
 }
-
 function formatearFecha(fecha) {
   if (!fecha) return "";
-
   const partes =
     String(fecha)
       .slice(0, 10)
       .split("-");
-
   if (partes.length !== 3) {
     return fecha;
   }
-
   return (
     `${partes[2]}/` +
     `${partes[1]}/` +
     `${partes[0]}`
   );
 }
-
 function formatearFechaHora(valor) {
   if (!valor) return "";
-
   return new Date(valor)
     .toLocaleString(
       "es-AR",
@@ -688,10 +612,8 @@ function formatearFechaHora(valor) {
       }
     );
 }
-
 function formatearHora(valor) {
   if (!valor) return "";
-
   return new Date(valor)
     .toLocaleTimeString(
       "es-AR",
@@ -701,95 +623,74 @@ function formatearHora(valor) {
       }
     );
 }
-
 function formatearDuracion(minutos) {
   const total =
     Number(minutos || 0);
-
   if (total < 60) {
     return `${total.toFixed(1)} min`;
   }
-
   const horas =
     Math.floor(total / 60);
-
   const minutosRestantes =
     Math.round(total % 60);
-
   return (
     `${horas} h ` +
     `${minutosRestantes} min`
   );
 }
-
 function mostrarError(mensaje) {
   const elemento =
     document.getElementById(
       "mensajeError"
     );
-
   elemento.textContent = mensaje;
   elemento.style.display = "block";
 }
-
 function ocultarError() {
   document.getElementById(
     "mensajeError"
   ).style.display = "none";
 }
-
 function activarCargando(estado) {
   document.getElementById(
     "cargando"
   ).style.display =
     estado ? "block" : "none";
-
   document.getElementById(
     "btnConsultar"
   ).disabled = estado;
-
   document.getElementById(
     "btnExcel"
   ).disabled = estado;
-
   document.getElementById(
     "btnRecorrido"
   ).disabled = estado;
 }
-
 async function cargarUsuarios() {
   const respuesta = await fetch(`${API}/usuarios`);
-
   if (!respuesta.ok) {
     throw new Error(
       "No se pudieron cargar los vendedores"
     );
   }
-
   const datos = await respuesta.json();
-
   usuarios = Array.isArray(datos)
     ? datos
     : datos.usuarios || [];
-
   const vendedores = usuarios.filter(usuario => {
     const rol = String(
       usuario.rol || ""
     ).toUpperCase();
-
     return rol === "VENDEDOR";
   });
-
   const select = document.getElementById(
     "filtroVendedor"
   );
-
   select.innerHTML = `
     <option value="">
       Todos los vendedores
     </option>
   `;
-
   select.innerHTML += vendedores
     .map(usuario => `
       <option value="${usuario.id}">
@@ -803,36 +704,42 @@ async function cargarUsuarios() {
       </option>
     `)
     .join("");
-
   select.addEventListener(
     "change",
     actualizarResumenPeriodo
   );
 }
-
+async function cargarRutas() {
+  const respuesta = await fetch(`${API}/rutas`);
+  if (!respuesta.ok) return;
+  const datos = await respuesta.json();
+  rutas = Array.isArray(datos) ? datos : (datos.rutas || datos.data || []);
+  const select = document.getElementById("filtroRuta");
+  select.innerHTML = '<option value="">Todas las rutas</option>' + rutas
+    .filter(ruta => ruta.activo !== false)
+    .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), undefined, { numeric:true }))
+    .map(ruta => `<option value="${ruta.id}">${ruta.nombre || ruta.codigo || ruta.id}</option>`)
+    .join("");
+}
 async function cargarCoberturaHoy() {
   const desde =
     document.getElementById(
       "fechaDesde"
     ).value;
-
   const hasta =
     document.getElementById(
       "fechaHasta"
     ).value;
-
   const vendedorId =
     document.getElementById(
       "filtroVendedor"
     ).value;
-
   coberturaGlobal = {
     programados: null,
     visitados: null,
     pendientes: null,
     cobertura: null
   };
-
   /*
   Para que Programados / Visitados / Pendientes /
   Cobertura sean comparables, el resumen histórico
@@ -847,31 +754,24 @@ async function cargarCoberturaHoy() {
   ) {
     return;
   }
-
   const respuesta = await fetch(
     `${API}/clientes/plan-trabajo/${encodeURIComponent(vendedorId)}` +
     `?fecha=${encodeURIComponent(desde)}`
   );
-
   if (!respuesta.ok) {
     return;
   }
-
   const datos = await respuesta.json();
   const resumen = datos.resumen || {};
-
   const programados = Number(
     resumen.total ?? resumen.programados ?? 0
   );
-
   const visitados = Number(
     resumen.visitados || 0
   );
-
   const pendientes = Number(
     resumen.pendientes || 0
   );
-
   const cobertura =
     programados > 0
       ? Math.min(
@@ -879,7 +779,6 @@ async function cargarCoberturaHoy() {
           (visitados / programados) * 100
         )
       : 0;
-
   coberturaGlobal = {
     programados,
     visitados,
@@ -887,55 +786,45 @@ async function cargarCoberturaHoy() {
     cobertura
   };
 }
-
 async function cargarVisitas() {
   ocultarError();
-
   const desde =
     document.getElementById(
       "fechaDesde"
     ).value;
-
   const hasta =
     document.getElementById(
       "fechaHasta"
     ).value;
-
   const vendedorId =
     document.getElementById(
       "filtroVendedor"
     ).value;
-
   if (!desde || !hasta) {
     mostrarError(
       "Seleccioná las fechas desde y hasta."
     );
     return;
   }
-
   if (desde > hasta) {
     mostrarError(
       "La fecha desde no puede ser posterior a la fecha hasta."
     );
     return;
   }
-
   activarCargando(true);
-
   try {
     const parametros =
       new URLSearchParams({
         desde,
         hasta
       });
-
     if (vendedorId) {
       parametros.set(
         "vendedor_id",
         vendedorId
       );
     }
-
     const [
       respuestaVisitas,
       respuestaResumen
@@ -943,20 +832,15 @@ async function cargarVisitas() {
       fetch(
         `${API}/visitas?${parametros.toString()}`
       ),
-
       fetch(
         `${API}/visitas/resumen?${parametros.toString()}`
       ),
-
       cargarCoberturaHoy()
     ]);
-
     const datosVisitas =
       await respuestaVisitas.json();
-
     const datosResumen =
       await respuestaResumen.json();
-
     if (!respuestaVisitas.ok) {
       throw new Error(
         datosVisitas.error ||
@@ -964,7 +848,6 @@ async function cargarVisitas() {
         "No se pudo cargar el historial"
       );
     }
-
     if (!respuestaResumen.ok) {
       throw new Error(
         datosResumen.error ||
@@ -972,42 +855,32 @@ async function cargarVisitas() {
         "No se pudo cargar el resumen"
       );
     }
-
     visitasGlobal =
       datosVisitas.visitas || [];
-
     resumenGlobal =
       datosResumen.resumen || [];
-
     renderizar();
     actualizarIndicadores();
     actualizarResumenPeriodo();
-
   } catch (error) {
     console.error(error);
-
     visitasGlobal = [];
     resumenGlobal = [];
-
     renderizar();
     actualizarIndicadores();
-
     mostrarError(
       error.message ||
       "Error cargando las visitas"
     );
-
   } finally {
     activarCargando(false);
   }
 }
-
 function renderizar() {
   const cuerpo =
     document.getElementById(
       "tablaVisitas"
     );
-
   if (visitasGlobal.length === 0) {
     cuerpo.innerHTML = `
       <tr>
@@ -1019,10 +892,8 @@ function renderizar() {
         </td>
       </tr>
     `;
-
     return;
   }
-
   cuerpo.innerHTML =
     visitasGlobal
       .map(visita => `
@@ -1030,33 +901,26 @@ function renderizar() {
           <td>
             ${formatearFecha(visita.fecha)}
           </td>
-
           <td>
             ${visita.codigo_cliente || ""}
           </td>
-
           <td>
             ${visita.cliente || ""}
           </td>
-
           <td>
             ${visita.vendedor || ""}
           </td>
-
           <td>
             ${visita.ruta || ""}
           </td>
-
           <td>
             ${visita.canal || ""}
           </td>
-
           <td>
             ${formatearFechaHora(
               visita.primera_llegada
             )}
           </td>
-
           <td>
             ${
               visita.ultima_salida
@@ -1070,17 +934,14 @@ function renderizar() {
                 `
             }
           </td>
-
           <td>
             ${formatearDuracion(
               visita.permanencia_minutos
             )}
           </td>
-
           <td>
             ${visita.registros || 0}
           </td>
-
           <td>
             ${
               visita.visita_abierta
@@ -1096,11 +957,9 @@ function renderizar() {
       `)
       .join("");
 }
-
 function actualizarIndicadores() {
   const cantidadClientes =
     visitasGlobal.length;
-
   const minutos =
     visitasGlobal.reduce(
       (total, visita) =>
@@ -1110,52 +969,42 @@ function actualizarIndicadores() {
         ),
       0
     );
-
   const promedio =
     cantidadClientes > 0
       ? minutos / cantidadClientes
       : 0;
-
   document.getElementById(
     "indicadorVisitas"
   ).textContent =
     coberturaGlobal.visitados === null
       ? cantidadClientes
       : coberturaGlobal.visitados;
-
   document.getElementById(
     "indicadorPermanencia"
   ).textContent =
     formatearDuracion(minutos);
-
   document.getElementById(
     "indicadorPromedio"
   ).textContent =
     formatearDuracion(promedio);
-
   const programados =
     coberturaGlobal.programados;
-
   const pendientes =
     coberturaGlobal.pendientes;
-
   const cobertura =
     coberturaGlobal.cobertura;
-
   document.getElementById(
     "indicadorProgramados"
   ).textContent =
     programados === null
       ? "—"
       : programados;
-
   document.getElementById(
     "indicadorPendientes"
   ).textContent =
     pendientes === null
       ? "—"
       : pendientes;
-
   document.getElementById(
     "indicadorCobertura"
   ).textContent =
@@ -1163,9 +1012,6 @@ function actualizarIndicadores() {
       ? "—"
       : `${cobertura.toFixed(1)} %`;
 }
-
-
-
 function distanciaGpsMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const rad = Math.PI / 180;
@@ -1176,7 +1022,6 @@ function distanciaGpsMetros(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
 function filtrarYSegmentarGps(puntos) {
   const validos = (puntos || []).map(p => ({
     ...p,
@@ -1191,10 +1036,11 @@ function filtrarYSegmentarGps(puntos) {
     Number.isFinite(p.fechaMs) &&
     (p.precision_metros === null || !Number.isFinite(p.precision_metros) || p.precision_metros <= 100)
   );
-
+  validos.sort((a, b) => a.fechaMs - b.fechaMs);
   const segmentos = [];
+  const interrupciones = [];
+  let distanciaTotal = 0;
   let actual = [];
-
   for (const punto of validos) {
     if (!actual.length) {
       actual.push(punto);
@@ -1202,34 +1048,44 @@ function filtrarYSegmentarGps(puntos) {
     }
     const anterior = actual[actual.length - 1];
     const segundos = Math.max(0, (punto.fechaMs - anterior.fechaMs) / 1000);
-
     if (segundos > 600) {
       segmentos.push(actual);
+      interrupciones.push({
+        desde: anterior,
+        hasta: punto,
+        minutos: segundos / 60,
+        metros: distanciaGpsMetros(
+          anterior.latitud, anterior.longitud,
+          punto.latitud, punto.longitud
+        )
+      });
       actual = [punto];
       continue;
     }
-
     if (segundos > 0) {
       const metros = distanciaGpsMetros(
         anterior.latitud, anterior.longitud,
         punto.latitud, punto.longitud
       );
       if ((metros / segundos) * 3.6 > 160) continue;
+      distanciaTotal += metros;
     }
     actual.push(punto);
   }
-
   if (actual.length) segmentos.push(actual);
-  return { segmentos, puntosValidos: segmentos.flat() };
+  return {
+    segmentos,
+    puntosValidos: segmentos.flat(),
+    interrupciones,
+    distanciaTotal
+  };
 }
-
 function horaCorta(valor) {
   if (!valor) return "—";
   return new Date(valor).toLocaleTimeString("es-AR", {
     hour: "2-digit", minute: "2-digit", second: "2-digit"
   });
 }
-
 function crearIconoNumero(numero) {
   return L.divIcon({
     className: "",
@@ -1238,7 +1094,6 @@ function crearIconoNumero(numero) {
     iconAnchor: [15, 15]
   });
 }
-
 function crearIconoExtremo(simbolo) {
   return L.divIcon({
     className: "",
@@ -1247,8 +1102,6 @@ function crearIconoExtremo(simbolo) {
     iconAnchor: [17, 17]
   });
 }
-
-
 function distanciaMetrosGps(a, b) {
   const R = 6371000;
   const rad = Math.PI / 180;
@@ -1256,30 +1109,24 @@ function distanciaMetrosGps(a, b) {
   const lat2 = Number(b.latitud) * rad;
   const dLat = (Number(b.latitud) - Number(a.latitud)) * rad;
   const dLng = (Number(b.longitud) - Number(a.longitud)) * rad;
-
   const h =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1) * Math.cos(lat2) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
-
 function rumboGps(a, b) {
   const rad = Math.PI / 180;
   const deg = 180 / Math.PI;
   const lat1 = Number(a.latitud) * rad;
   const lat2 = Number(b.latitud) * rad;
   const dLng = (Number(b.longitud) - Number(a.longitud)) * rad;
-
   const y = Math.sin(dLng) * Math.cos(lat2);
   const x =
     Math.cos(lat1) * Math.sin(lat2) -
     Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-
   return (Math.atan2(y, x) * deg + 360) % 360;
 }
-
 function interpolarGps(a, b, proporcion) {
   return {
     latitud:
@@ -1290,7 +1137,6 @@ function interpolarGps(a, b, proporcion) {
       (Number(b.longitud) - Number(a.longitud)) * proporcion
   };
 }
-
 function crearIconoFlecha(angulo) {
   return L.divIcon({
     className: "",
@@ -1301,26 +1147,20 @@ function crearIconoFlecha(angulo) {
     iconAnchor: [17, 17]
   });
 }
-
 function agregarFlechasSegmento(segmento, separacionMetros = 450) {
   if (!Array.isArray(segmento) || segmento.length < 2) return;
-
   let acumulado = 0;
   let proximaFlecha = separacionMetros;
-
   for (let i = 1; i < segmento.length; i++) {
     const a = segmento[i - 1];
     const b = segmento[i];
     const tramo = distanciaMetrosGps(a, b);
-
     if (!Number.isFinite(tramo) || tramo < 2) continue;
-
     while (acumulado + tramo >= proximaFlecha) {
       const dentroDelTramo = proximaFlecha - acumulado;
       const proporcion = Math.max(0, Math.min(1, dentroDelTramo / tramo));
       const punto = interpolarGps(a, b, proporcion);
       const angulo = rumboGps(a, b);
-
       const flecha = L.marker(
         [punto.latitud, punto.longitud],
         {
@@ -1330,31 +1170,24 @@ function agregarFlechasSegmento(segmento, separacionMetros = 450) {
           zIndexOffset: -1000
         }
       ).addTo(mapaRecorrido);
-
       capasRecorrido.push(flecha);
       proximaFlecha += separacionMetros;
     }
-
     acumulado += tramo;
   }
-
   // Si el tramo es corto, igualmente mostramos una flecha en el centro.
   if (acumulado > 25 && acumulado < separacionMetros) {
     let objetivo = acumulado / 2;
     let recorrido = 0;
-
     for (let i = 1; i < segmento.length; i++) {
       const a = segmento[i - 1];
       const b = segmento[i];
       const tramo = distanciaMetrosGps(a, b);
-
       if (!Number.isFinite(tramo) || tramo < 2) continue;
-
       if (recorrido + tramo >= objetivo) {
         const proporcion = (objetivo - recorrido) / tramo;
         const punto = interpolarGps(a, b, proporcion);
         const angulo = rumboGps(a, b);
-
         const flecha = L.marker(
           [punto.latitud, punto.longitud],
           {
@@ -1364,34 +1197,81 @@ function agregarFlechasSegmento(segmento, separacionMetros = 450) {
             zIndexOffset: -1000
           }
         ).addTo(mapaRecorrido);
-
         capasRecorrido.push(flecha);
         break;
       }
-
       recorrido += tramo;
     }
   }
 }
-
 function limpiarMapaRecorrido() {
   if (!mapaRecorrido) return;
   capasRecorrido.forEach(capa => mapaRecorrido.removeLayer(capa));
   capasRecorrido = [];
 }
-
 function cerrarRecorrido() {
   const panel = document.getElementById("panelRecorrido");
   if (panel) panel.style.display = "none";
 }
-
+function escaparHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, caracter => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[caracter]);
+}
+function esClienteTrade(cliente) {
+  return Boolean(
+    cliente.es_trade || cliente.programa_trade ||
+    String(cliente.modalidad || "").toUpperCase().includes("TRADE") ||
+    String(cliente.motivo_ejecucion || "").toUpperCase().includes("TRADE")
+  );
+}
+function esClienteEjecucion(cliente) {
+  return !esClienteTrade(cliente) && Boolean(
+    cliente.es_ejecucion || cliente.programa_ejecucion ||
+    ["TA", "WA"].includes(String(cliente.modalidad || "").toUpperCase())
+  );
+}
+function filtrarClientesMapa(clientes) {
+  const estado = document.getElementById("filtroEstadoMapa").value;
+  const modalidad = document.getElementById("filtroModalidadMapa").value;
+  return (clientes || []).filter(cliente => {
+    if (estado === "visitados" && !cliente.visitado) return false;
+    if (estado === "pendientes" && (!cliente.programado || cliente.visitado)) return false;
+    if (modalidad === "trade" && !esClienteTrade(cliente)) return false;
+    if (modalidad === "ejecucion" && !esClienteEjecucion(cliente)) return false;
+    if (modalidad === "tradicional" && (esClienteTrade(cliente) || esClienteEjecucion(cliente))) return false;
+    return true;
+  });
+}
+function crearIconoCliente(color) {
+  return L.divIcon({
+    className:"",
+    html:`<div style="width:17px;height:17px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 5px #111"></div>`,
+    iconSize:[17,17], iconAnchor:[8,8]
+  });
+}
+function actualizarResumenRecorrido(plan, gps) {
+  const clientes = plan.clientes || [];
+  const programados = clientes.filter(c => c.programado !== false).length;
+  const visitados = clientes.filter(c => c.visitado).length;
+  const pendientes = clientes.filter(c => c.programado !== false && !c.visitado).length;
+  document.getElementById("rrProgramados").textContent = programados;
+  document.getElementById("rrVisitados").textContent = visitados;
+  document.getElementById("rrPendientes").textContent = pendientes;
+  document.getElementById("rrDistancia").textContent = `${(gps.distanciaTotal / 1000).toFixed(1)} km`;
+  document.getElementById("rrCortes").textContent = gps.interrupciones.length;
+  document.getElementById("rrSinReporte").textContent = `${Math.round(gps.interrupciones.reduce((s,c) => s + c.minutos, 0))} min`;
+  const cuerpo = document.getElementById("tablaInterrupciones");
+  cuerpo.innerHTML = gps.interrupciones.length
+    ? gps.interrupciones.map(c => `<tr><td>${horaCorta(c.desde.fecha_hora)}</td><td>${horaCorta(c.hasta.fecha_hora)}</td><td>${Math.round(c.minutos)} min</td><td>${(c.metros/1000).toFixed(2)} km</td></tr>`).join("")
+    : '<tr><td colspan="4">No se detectaron interrupciones mayores a 10 minutos.</td></tr>';
+}
 async function verRecorridoHistorico() {
   ocultarError();
-
   const desde = document.getElementById("fechaDesde").value;
   const hasta = document.getElementById("fechaHasta").value;
   const vendedorId = document.getElementById("filtroVendedor").value;
-
+  const rutaId = document.getElementById("filtroRuta").value;
   if (!vendedorId) {
     mostrarError("Para ver el recorrido seleccioná un vendedor.");
     return;
@@ -1404,32 +1284,31 @@ async function verRecorridoHistorico() {
     mostrarError("El recorrido histórico se muestra de a un día. Seleccioná la misma fecha en Desde y Hasta.");
     return;
   }
-
   const sel = document.getElementById("filtroVendedor");
   const vendedorTexto = sel.options[sel.selectedIndex]?.text || "Vendedor";
   const boton = document.getElementById("btnRecorrido");
   boton.disabled = true;
   boton.textContent = "🗺️ Cargando recorrido...";
-
   try {
-    const respuesta = await fetch(
-      `${API}/gps-logs/vendedor/${encodeURIComponent(vendedorId)}/recorrido?fecha=${encodeURIComponent(desde)}`
-    );
-    const datos = await respuesta.json();
-    if (!respuesta.ok) {
-      throw new Error(datos.error || datos.detalle || "No se pudo cargar el recorrido");
-    }
-
-    const originales = Array.isArray(datos.puntos) ? datos.puntos : [];
-    const { segmentos, puntosValidos } = filtrarYSegmentarGps(originales);
-
-    if (!puntosValidos.length) {
-      throw new Error("No hay posiciones GPS válidas para ese vendedor y esa fecha.");
-    }
-
+    const planUrl = rutaId
+      ? `${API}/clientes/plan-trabajo/ruta/${encodeURIComponent(rutaId)}?fecha=${encodeURIComponent(desde)}`
+      : `${API}/clientes/plan-trabajo/${encodeURIComponent(vendedorId)}?fecha=${encodeURIComponent(desde)}`;
+    const [respuestaGps, respuestaPlan] = await Promise.all([
+      fetch(`${API}/gps-logs/vendedor/${encodeURIComponent(vendedorId)}/recorrido?fecha=${encodeURIComponent(desde)}`),
+      fetch(planUrl)
+    ]);
+    const datosGps = await respuestaGps.json();
+    const datosPlan = await respuestaPlan.json();
+    if (!respuestaGps.ok) throw new Error(datosGps.error || datosGps.detalle || "No se pudo cargar el recorrido");
+    if (!respuestaPlan.ok) throw new Error(datosPlan.error || datosPlan.detalle || "No se pudo cargar el plan de trabajo");
+    const originales = Array.isArray(datosGps.puntos) ? datosGps.puntos : [];
+    const gps = filtrarYSegmentarGps(originales);
+    const { segmentos, puntosValidos, interrupciones } = gps;
+    const plan = { ...datosPlan, clientes:Array.isArray(datosPlan.clientes) ? datosPlan.clientes : [] };
+    ultimoPlanRecorrido = plan;
+    ultimoGpsRecorrido = gps;
     const panel = document.getElementById("panelRecorrido");
     panel.style.display = "block";
-
     if (!mapaRecorrido) {
       mapaRecorrido = L.map("mapaRecorrido");
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -1437,47 +1316,54 @@ async function verRecorridoHistorico() {
         attribution: "&copy; OpenStreetMap"
       }).addTo(mapaRecorrido);
     }
-
     setTimeout(() => mapaRecorrido.invalidateSize(), 50);
     limpiarMapaRecorrido();
     const limites = [];
-
     segmentos.forEach(segmento => {
       const coords = segmento.map(p => [p.latitud, p.longitud]);
       coords.forEach(c => limites.push(c));
       if (coords.length >= 2) {
         const linea = L.polyline(coords, { weight: 4, opacity: 0.8 }).addTo(mapaRecorrido);
         capasRecorrido.push(linea);
-
         // Flechas de sentido calculadas con el orden cronológico de los GPS.
         // Sirven igual para desplazamiento a pie, auto o camión.
         agregarFlechasSegmento(segmento, 450);
       }
     });
-
-    const inicio = puntosValidos[0];
-    const fin = puntosValidos[puntosValidos.length - 1];
-
-    const mi = L.marker([inicio.latitud, inicio.longitud], {
-      icon: crearIconoExtremo("▶")
-    }).addTo(mapaRecorrido).bindPopup(
-      `<b>Inicio del recorrido</b><br>${horaCorta(inicio.fecha_hora)}`
-    );
-    capasRecorrido.push(mi);
-
-    const mf = L.marker([fin.latitud, fin.longitud], {
-      icon: crearIconoExtremo("■")
-    }).addTo(mapaRecorrido).bindPopup(
-      `<b>Fin del recorrido</b><br>${horaCorta(fin.fecha_hora)}`
-    );
-    capasRecorrido.push(mf);
-
+    interrupciones.forEach(corte => {
+      const linea = L.polyline(
+        [[corte.desde.latitud,corte.desde.longitud],[corte.hasta.latitud,corte.hasta.longitud]],
+        { color:"#dc2626", weight:3, dashArray:"8 8" }
+      ).addTo(mapaRecorrido).bindPopup(
+        `<b>Interrupción del reporte GPS</b><br>${horaCorta(corte.desde.fecha_hora)} a ${horaCorta(corte.hasta.fecha_hora)}<br>${Math.round(corte.minutos)} minutos<br>Salto: ${(corte.metros/1000).toFixed(2)} km`
+      );
+      capasRecorrido.push(linea);
+    });
+    if (puntosValidos.length) {
+      const inicio = puntosValidos[0];
+      const fin = puntosValidos[puntosValidos.length - 1];
+      const mi = L.marker([inicio.latitud, inicio.longitud], { icon: crearIconoExtremo("▶") }).addTo(mapaRecorrido).bindPopup(`<b>Inicio del recorrido</b><br>${horaCorta(inicio.fecha_hora)}`);
+      const mf = L.marker([fin.latitud, fin.longitud], { icon: crearIconoExtremo("■") }).addTo(mapaRecorrido).bindPopup(`<b>Fin del recorrido</b><br>${horaCorta(fin.fecha_hora)}`);
+      capasRecorrido.push(mi, mf);
+    }
+    filtrarClientesMapa(plan.clientes).forEach(cliente => {
+      const lat = Number(cliente.latitud), lng = Number(cliente.longitud);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !lat || !lng) return;
+      let color = cliente.visitado ? "#16a34a" : "#f59e0b";
+      if (esClienteEjecucion(cliente)) color = "#7c3aed";
+      if (esClienteTrade(cliente)) color = "#e91e63";
+      const marcador = L.marker([lat,lng], {icon:crearIconoCliente(color)}).addTo(mapaRecorrido).bindPopup(
+        `<b>${escaparHtml(cliente.codigo_cliente || "")} - ${escaparHtml(cliente.nombre || "")}</b><br>` +
+        `${escaparHtml(cliente.direccion || "")}<br>Ruta: ${escaparHtml(cliente.ruta || cliente.ruta_nombre || "—")}<br>` +
+        `Estado: <b>${cliente.visitado ? "Visitado" : "Pendiente"}</b><br>` +
+        `Llegada: ${horaCorta(cliente.hora_llegada)} · Salida: ${horaCorta(cliente.hora_salida)}`
+      );
+      capasRecorrido.push(marcador); limites.push([lat,lng]);
+    });
     const visitasDia = visitasGlobal
       .filter(v => String(v.fecha).slice(0, 10) === desde)
       .sort((a, b) => new Date(a.primera_llegada || 0) - new Date(b.primera_llegada || 0));
-
     let clientesUbicados = 0;
-
     visitasDia.forEach(visita => {
       /*
       Para mostrar la posición del cliente usamos primero
@@ -1486,7 +1372,6 @@ async function verRecorridoHistorico() {
       */
       let lat = Number(visita.cliente_latitud);
       let lng = Number(visita.cliente_longitud);
-
       if (
         !Number.isFinite(lat) ||
         !Number.isFinite(lng) ||
@@ -1496,7 +1381,6 @@ async function verRecorridoHistorico() {
         lat = Number(visita.latitud_llegada);
         lng = Number(visita.longitud_llegada);
       }
-
       if (
         !Number.isFinite(lat) ||
         !Number.isFinite(lng) ||
@@ -1505,9 +1389,7 @@ async function verRecorridoHistorico() {
       ) {
         return;
       }
-
       clientesUbicados += 1;
-
       const marcador = L.marker([lat, lng], {
         icon: crearIconoNumero(clientesUbicados)
       }).addTo(mapaRecorrido).bindPopup(
@@ -1518,22 +1400,19 @@ async function verRecorridoHistorico() {
         `Salida: ${visita.ultima_salida ? horaCorta(visita.ultima_salida) : "En curso"}<br>` +
         `Permanencia: ${formatearDuracion(visita.permanencia_minutos)}`
       );
-
       capasRecorrido.push(marcador);
       limites.push([lat, lng]);
     });
-
     if (limites.length === 1) {
       mapaRecorrido.setView(limites[0], 16);
     } else {
       mapaRecorrido.fitBounds(limites, { padding: [30, 30] });
     }
-
     document.getElementById("detalleRecorrido").textContent =
       `${formatearFecha(desde)} — ${vendedorTexto} — ` +
       `${originales.length} GPS registrados, ${puntosValidos.length} utilizados, ` +
       `${segmentos.length} tramo(s), ${clientesUbicados} cliente(s) ubicados`;
-
+    actualizarResumenRecorrido(plan, gps);
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     console.error(error);
@@ -1543,102 +1422,79 @@ async function verRecorridoHistorico() {
     boton.textContent = "🗺️ Ver recorrido";
   }
 }
-
 function crearDatosHojaVisitas() {
   return visitasGlobal.map(visita => ({
     "Fecha":
       formatearFecha(visita.fecha),
-
     "Código cliente":
       visita.codigo_cliente || "",
-
     "Cliente":
       visita.cliente || "",
-
     "Dirección":
       visita.direccion || "",
-
     "Localidad":
       visita.localidad || "",
-
     "Vendedor":
       visita.vendedor || "",
-
     "Ruta":
       visita.ruta || "",
-
     "Canal":
       visita.canal || "",
-
     "Categoría":
       visita.categoria || "",
-
     "Primera llegada":
       formatearFechaHora(
         visita.primera_llegada
       ),
-
     "Última salida":
       visita.ultima_salida
         ? formatearFechaHora(
             visita.ultima_salida
           )
         : "En curso",
-
     "Permanencia minutos":
       Number(
         visita.permanencia_minutos || 0
       ),
-
     "Registros":
       Number(visita.registros || 0),
-
     "Estado":
       visita.visita_abierta
         ? "ABIERTA"
         : "CERRADA"
   }));
 }
-
 function crearDatosHojaResumen() {
   return resumenGlobal.map(
     (resumen, indice) => ({
       "Puesto":
         indice + 1,
-
       "Vendedor":
         resumen.vendedor || "",
-
       "Clientes visitados":
         Number(
           resumen.clientes_visitados || 0
         ),
-
       "Registros":
         Number(
           resumen.registros || 0
         ),
-
       "Permanencia total minutos":
         Number(
           resumen.permanencia_total_minutos || 0
         ),
-
       "Promedio minutos por cliente":
         Number(
           resumen.promedio_minutos_cliente || 0
         ),
-
       "Días con actividad":
         Number(
           resumen.dias_con_actividad || 0
         ),
-
       "Primera visita":
         formatearFechaHora(
           resumen.primera_visita
         ),
-
       "Última actividad":
         formatearFechaHora(
           resumen.ultima_actividad
@@ -1646,7 +1502,6 @@ function crearDatosHojaResumen() {
     })
   );
 }
-
 function ajustarAnchosHoja(
   hoja,
   anchos
@@ -1656,7 +1511,6 @@ function ajustarAnchosHoja(
       wch: ancho
     }));
 }
-
 function exportarExcel() {
   if (
     typeof XLSX === "undefined"
@@ -1664,34 +1518,26 @@ function exportarExcel() {
     alert(
       "No se pudo cargar el generador de Excel."
     );
-
     return;
   }
-
   if (visitasGlobal.length === 0) {
     alert(
       "No hay visitas para exportar."
     );
-
     return;
   }
-
   const datosVisitas =
     crearDatosHojaVisitas();
-
   const datosResumen =
     crearDatosHojaResumen();
-
   const hojaVisitas =
     XLSX.utils.json_to_sheet(
       datosVisitas
     );
-
   const hojaResumen =
     XLSX.utils.json_to_sheet(
       datosResumen
     );
-
   ajustarAnchosHoja(
     hojaVisitas,
     [
@@ -1711,7 +1557,6 @@ function exportarExcel() {
       12
     ]
   );
-
   ajustarAnchosHoja(
     hojaResumen,
     [
@@ -1726,80 +1571,71 @@ function exportarExcel() {
       22
     ]
   );
-
   hojaVisitas["!autofilter"] = {
     ref: hojaVisitas["!ref"]
   };
-
   hojaResumen["!autofilter"] = {
     ref: hojaResumen["!ref"]
   };
-
   hojaVisitas["!freeze"] = {
     xSplit: 0,
     ySplit: 1
   };
-
   hojaResumen["!freeze"] = {
     xSplit: 0,
     ySplit: 1
   };
-
   const libro =
     XLSX.utils.book_new();
-
   XLSX.utils.book_append_sheet(
     libro,
     hojaVisitas,
     "Visitas"
   );
-
   XLSX.utils.book_append_sheet(
     libro,
     hojaResumen,
     "Resumen vendedores"
   );
-
   const desde =
     document.getElementById(
       "fechaDesde"
     ).value;
-
   const hasta =
     document.getElementById(
       "fechaHasta"
     ).value;
-
   const nombreArchivo =
     desde === hasta
       ? `SEC_Visitas_${desde}.xlsx`
       : `SEC_Visitas_${desde}_al_${hasta}.xlsx`;
-
   XLSX.writeFile(
     libro,
     nombreArchivo
   );
 }
-
 async function iniciar() {
   try {
     cambiarPeriodo();
-    await cargarUsuarios();
+    await Promise.all([cargarUsuarios(), cargarRutas()]);
+    ["filtroEstadoMapa", "filtroModalidadMapa"].forEach(id => {
+      document.getElementById(id).addEventListener("change", () => {
+        if (document.getElementById("panelRecorrido").style.display === "block") {
+          verRecorridoHistorico();
+        }
+      });
+    });
     actualizarResumenPeriodo();
     await cargarVisitas();
-
   } catch (error) {
     console.error(error);
-
     mostrarError(
       error.message ||
       "No se pudo iniciar la pantalla de visitas"
     );
   }
 }
-
 iniciar();
-
 /*
 Actualiza los datos cada 3 minutos.
 No descarga ningún Excel automáticamente.
@@ -1809,8 +1645,6 @@ setInterval(
   180000
 );
 </script>
-
 <script src="config-sec.js"></script>
-
 </body>
 </html>

@@ -74,3 +74,30 @@ async function inicio(){
  const titulo=$('#vista h2');
  if(titulo)titulo.textContent='Mis entregas de hoy';
 }
+
+// Botón dentro de cada pantalla administrativa.
+function agregarVolverAdmin(){
+ const vista=document.querySelector('#vista');
+ if(!vista || !usuario ||
+    !['ADMIN','SUPERVISOR'].includes(usuario.rol) ||
+    vista.querySelector('.menu-principal') ||
+    vista.querySelector('#volverMenuAdmin'))return;
+
+ const titulo=vista.querySelector('h2');
+ if(!titulo)return;
+
+ const boton=document.createElement('button');
+ boton.id='volverMenuAdmin';
+ boton.type='button';
+ boton.textContent='Volver al menú principal';
+ boton.style.display='block';
+ boton.style.margin='0 0 16px';
+ boton.onclick=run(inicio);
+ titulo.insertAdjacentElement('afterend',boton);
+}
+
+new MutationObserver(agregarVolverAdmin).observe(
+ document.querySelector('#vista'),
+ {childList:true,subtree:true}
+);
+agregarVolverAdmin();

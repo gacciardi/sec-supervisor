@@ -10,7 +10,7 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
  $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await inicio();})()};
  $('#init').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const secret=b.bootstrap;delete b.bootstrap;await api('/inicializar',{method:'POST',headers:{Authorization:'Bearer '+secret},body:JSON.stringify(b)});e.target.reset();mensaje('Administrador creado. Ingresá arriba con su legajo y contraseña.');})()};
 }
-async function inicio(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Distribución</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
+async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Distribución</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
  if(p==='Conductores'){conductores=await api('/conductores');abm();return;}
@@ -48,4 +48,29 @@ async function recorridos(){
  $('#cargarrec').onclick=run(async()=>{const f=$('#recfecha').value;if(!f)throw Error('Seleccionar fecha');const id=$('#recconductor')?.value;const puntos=await api('/gps?fecha='+f+(id?'&conductor_id='+encodeURIComponent(id):''));let visitas=await api('/visitas?fecha='+f);if(id)visitas=visitas.filter(v=>v.conductor_id===id);$('#visitaslista').innerHTML=tabla(['Cliente','Resultado','Llegada','Permanencia registrada','Fotos'],visitas.map(v=>[esc(v.codigo_cliente+' · '+v.nombre_cliente),esc(v.estado),esc(new Date(v.llegada).toLocaleString('es-AR')),esc(Math.round(Number(v.permanencia_segundos)/60)+' min'),`<button data-fotos="${esc(v.id)}">Ver fotos</button>`]));document.querySelectorAll('[data-fotos]').forEach(b=>b.onclick=run(async()=>{const fs=await api('/visitas/'+b.dataset.fotos+'/fotos');for(const f of fs){const r=await fetch(API+'/fotos/'+f.id,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('No se pudo cargar la foto');const url=URL.createObjectURL(await r.blob()),img=document.createElement('img');img.src=url;img.style.maxWidth='100%';img.onload=()=>URL.revokeObjectURL(url);b.parentNode.appendChild(img);}if(!fs.length)mensaje('Esta visita no tiene fotos.');b.disabled=true;}));
  $('#recinfo').textContent=puntos.length+' puntos registrados. Los saltos mayores a 5 minutos se muestran como tramos separados.';if(mapa)mapa.remove();if(!window.L)throw Error('No se pudo cargar el mapa');mapa=L.map('mapa').setView([-34.65,-58.8],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapa);let tramo=[];for(let i=0;i<puntos.length;i++){if(i&&new Date(puntos[i].fecha)-new Date(puntos[i-1].fecha)>300000){L.polyline(tramo).addTo(mapa);tramo=[];}tramo.push([Number(puntos[i].latitud),Number(puntos[i].longitud)]);}if(tramo.length)L.polyline(tramo).addTo(mapa);if(puntos.length){mapa.fitBounds(puntos.map(p=>[Number(p.latitud),Number(p.longitud)]),{maxZoom:16,padding:[20,20]});const marker=L.marker([puntos[0].latitud,puntos[0].longitud]).addTo(mapa);$('#replay').max=puntos.length-1;$('#replay').oninput=()=>{const p=puntos[+$('#replay').value];marker.setLatLng([p.latitud,p.longitud]);$('#hora').textContent=new Date(p.fecha).toLocaleString('es-AR')+' · precisión '+p.precision_metros+' m';};$('#replay').oninput();}else{$('#replay').max=0;$('#hora').textContent='Sin puntos para esta fecha.';}
  });await $('#cargarrec').onclick();
+}
+
+
+async function inicio(){
+ if(usuario?.rol!=='CONDUCTOR'){
+  await menuAdministrador();
+  return;
+ }
+ $('#nav').innerHTML='<button id="home">Mis entregas de hoy</button><button id="salir">Cerrar sesión</button>';
+ $('#home').onclick=run(inicio);
+ $('#salir').onclick=run(async()=>{
+  detenerGps();
+  await api('/logout',{method:'POST'});
+  sessionStorage.removeItem('sec-dist-apk-gps');
+  if(window.SECAndroid){
+   localStorage.removeItem('vendedorId');
+   sessionStorage.removeItem('sec-distribucion-token');
+   location.href='salida/login-vendedor.html';
+   return;
+  }
+  login();
+ });
+ await abrir('App Conductor');
+ const titulo=$('#vista h2');
+ if(titulo)titulo.textContent='Mis entregas de hoy';
 }

@@ -36,7 +36,7 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
 
  if(p==='Reemplazos por inasistencia'){await reemplazosInasistencia();return;}
 
- if(p==='Conductores'){conductores=await api('/conductores');abm();return;}
+ if(p==='Conductores'){conductores=await api('/conductores');abm();agregarVinculoConductor();return;}
 
  if(p==='Auditoría'){const rows=await api('/auditoria');agregarVista.html=tabla(['Fecha','Usuario','Acción','Detalle'],rows.map(r=>[esc(new Date(r.fecha).toLocaleString('es-AR')),esc((r.nombre||'')+' '+(r.apellido||'')),esc(r.accion),esc(JSON.stringify(r.detalle))]));return;}
 
@@ -239,3 +239,8 @@ new MutationObserver(agregarVolverAdmin).observe(
 );
 
 agregarVolverAdmin();
+function agregarVinculoConductor(){
+ if(usuario?.rol!=='ADMIN')return;
+ $('#vista').insertAdjacentHTML('beforeend','<div class="panel"><h3>Vincular conductor del padrón de Personal</h3><p>No crea otra persona ni cambia su rol. Si todavía no tiene empresa asignada, se vinculará a esta empresa con tu confirmación.</p><form id="vincular-personal"><label>Legajo existente<input name="legajo" required maxlength="20"></label><label><input type="checkbox" name="confirmar" required> Confirmo que esta persona pertenece a esta empresa y debe trabajar como conductor.</label><button>Vincular conductor</button></form></div>');
+ $('#vincular-personal').onsubmit=e=>{e.preventDefault();const b=new FormData(e.target);run(async()=>{await api('/conductores/vincular-persona',{method:'POST',body:JSON.stringify({legajo:b.get('legajo').trim(),confirmar_empresa:b.get('confirmar')==='on'})});await abrir('Conductores');mensaje('Conductor vinculado. Ya puede ingresar con su legajo, sin contraseña de gestión.');})();};
+}

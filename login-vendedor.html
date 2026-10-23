@@ -88,6 +88,21 @@ async function ingresar() {
       await fetch(`${API}/usuarios`)
       .then(r => r.json());
 
+
+    // El ingreso por legajo conserva el circuito comercial y separa a los conductores.
+    const accesoComercial=usuarios.find(u=>String(u.legajo||'')===legajo&&(u.rol==='VENDEDOR'||u.rol==='TRADE_MARKETING'));
+    if(!accesoComercial&&usuarios.some(u=>String(u.legajo||'').trim()===legajo&&u.rol==='CONDUCTOR')){
+      const partes=location.pathname.split('/').filter(Boolean);
+      const empresa=partes.length>1&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(partes[0])?partes[0]:null;
+      const respuesta=await fetch(API+'/distribucion/ingreso-conductor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({legajo,...(empresa?{empresa}:{})})});
+      let ingreso;try{ingreso=await respuesta.json();}catch{document.getElementById('mensaje').textContent='El servidor todavía no tiene instalado el ingreso de conductores.';return;}
+      if(!respuesta.ok){document.getElementById('mensaje').textContent=ingreso.error||'No se pudo ingresar a Distribución';return;}
+      sessionStorage.setItem('sec-distribucion-token',ingreso.token);
+      sessionStorage.setItem('sec-dist-apk-gps','1');
+      localStorage.setItem('vendedorId',ingreso.gps_clave);
+      localStorage.setItem('vendedorNombre',ingreso.usuario.nombre+' '+ingreso.usuario.apellido);
+      location.href='distribucion/index.html';return;
+    }
    const vendedor =
   usuarios.find(u =>
     String(u.legajo || "") === String(legajo)

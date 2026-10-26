@@ -28,7 +28,7 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
 
 }
 
-async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
+async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
 
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
@@ -108,7 +108,7 @@ async function conductor(){
 
  $('#gpsin').onclick=()=>{if(gpsWatch!==null)return;if(window.SECAndroid&&!sessionStorage.getItem('sec-dist-apk-gps')){run(async()=>{const d=await api('/gps-apk/iniciar',{method:'POST'});localStorage.setItem('vendedorId',d.clave);sessionStorage.setItem('sec-dist-apk-gps','1');location.reload();})();return;}if(!navigator.geolocation){mensaje('El dispositivo no dispone de ubicación.');return;}gpsWatch=navigator.geolocation.watchPosition(pos=>{api('/gps',{method:'POST',body:JSON.stringify({conductor_id:usuario.id,latitud:pos.coords.latitude,longitud:pos.coords.longitude,precision_metros:pos.coords.accuracy,velocidad:pos.coords.speed,fecha_local:new Date(pos.timestamp).toISOString()})}).then(()=>{$('#gpsestado')&&($('#gpsestado').textContent='Último punto enviado: '+new Date(pos.timestamp).toLocaleTimeString());}).catch(e=>mensaje('GPS: '+e.message));},e=>mensaje('Ubicación: '+e.message),{enableHighAccuracy:true,maximumAge:0,timeout:20000});};
 
- $('#gpsout').onclick=run(async()=>{detenerGps();await api('/gps-apk/detener',{method:'POST'});if(window.SECAndroid){sessionStorage.removeItem('sec-dist-apk-gps');localStorage.removeItem('vendedorId');location.href='salida/login-vendedor.html';}});
+ $('#gpsout').onclick=run(async()=>{detenerGps();await api('/gps-apk/detener',{method:'POST'});if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){sessionStorage.removeItem('sec-dist-apk-gps');localStorage.removeItem('vendedorId');location.href='salida/login-vendedor.html';}});
 
  if(window.SECAndroid&&sessionStorage.getItem('sec-dist-apk-gps'))$('#gpsin').onclick();
 
@@ -162,7 +162,7 @@ async function inicio(){
 
   sessionStorage.removeItem('sec-dist-apk-gps');
 
-  if(window.SECAndroid){
+  if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){
 
    localStorage.removeItem('vendedorId');
 

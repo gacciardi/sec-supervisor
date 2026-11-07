@@ -12,7 +12,7 @@ const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>
 
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
-const secciones=[['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
+const secciones=[['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.'],['Biblioteca de Fotos','Consultar evidencias por fecha, conductor y cliente.']];
 
 function mensaje(s){$('#mensaje').textContent=s;}
 
@@ -20,7 +20,7 @@ async function api(path,options={}){const h={Authorization:'Bearer '+token,...op
 
 function run(fn){return async()=>{mensaje('');try{await fn();}catch(e){mensaje(e.message);}};}
 
-function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
+function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><p>Seleccioná tu empresa para ingresar únicamente a sus datos.</p><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
 
  $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await inicio();})()};
 
@@ -28,11 +28,13 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
 
 }
 
-async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
+async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución · ${esc(usuario?.empresa||'Empresa')}</h2><p class="muted">Sesión de ${esc(usuario?.nombre||'')} ${esc(usuario?.apellido||'')} · ${esc(usuario?.rol||'')}</p><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>usuario?.rol!=='CONDUCTOR'||[1,2,9].includes(i)).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>abrir(secciones[+b.dataset.section][0])));}
 
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
+
+ if(p==='Biblioteca de Fotos'){await bibliotecaDistribucion();return;}
 
  if(p==='Reemplazos por inasistencia'){await reemplazosInasistencia();return;}
 
@@ -243,4 +245,37 @@ function agregarVinculoConductor(){
  if(usuario?.rol!=='ADMIN')return;
  $('#vista').insertAdjacentHTML('beforeend','<div class="panel"><h3>Vincular conductor del padrón de Personal</h3><p>No crea otra persona ni cambia su rol. Si todavía no tiene empresa asignada, se vinculará a esta empresa con tu confirmación.</p><form id="vincular-personal"><label>Legajo existente<input name="legajo" required maxlength="20"></label><label><input type="checkbox" name="confirmar" required> Confirmo que esta persona pertenece a esta empresa y debe trabajar como conductor.</label><button>Vincular conductor</button></form></div>');
  $('#vincular-personal').onsubmit=e=>{e.preventDefault();const b=new FormData(e.target);run(async()=>{await api('/conductores/vincular-persona',{method:'POST',body:JSON.stringify({legajo:b.get('legajo').trim(),confirmar_empresa:b.get('confirmar')==='on'})});await abrir('Conductores');mensaje('Conductor vinculado. Ya puede ingresar con su legajo, sin contraseña de gestión.');})();};
+}
+
+
+async function bibliotecaDistribucion(){
+ if(!['ADMIN','SUPERVISOR'].includes(usuario?.rol))throw Error('Acceso restringido');
+ const lista=await api('/conductores');
+ agregarVista.html=`<div class="panel"><div class="acciones">
+ <label>Fecha<input id="bf-fecha" type="date"></label>
+ <label>Conductor<select id="bf-conductor"><option value="">Todos</option>${lista.map(c=>`<option value="${esc(c.id)}">${esc(c.apellido+' '+c.nombre)} (${esc(c.legajo)})</option>`).join('')}</select></label>
+ <label>Cliente<input id="bf-cliente" maxlength="80" placeholder="Código o nombre"></label>
+ <button id="bf-buscar">Buscar fotografías</button></div>
+ <p class="muted">Se muestran hasta 200 fotografías por consulta, exclusivamente de la empresa activa.</p>
+ <div id="bf-resultados"></div></div>`;
+ $('#bf-buscar').onclick=run(async()=>{
+  const q=new URLSearchParams();if($('#bf-fecha').value)q.set('fecha',$('#bf-fecha').value);
+  if($('#bf-conductor').value)q.set('conductor_id',$('#bf-conductor').value);
+  if($('#bf-cliente').value.trim())q.set('cliente',$('#bf-cliente').value.trim());
+  const fotos=await api('/biblioteca-fotos?'+q.toString());
+  const cont=$('#bf-resultados');cont.innerHTML='';
+  if(!fotos.length){cont.textContent='No hay fotografías para estos filtros.';return;}
+  const gr=document.createElement('div');gr.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px';
+  for(const f of fotos){
+   const card=document.createElement('div');card.className='panel';card.style.margin='0';
+   const img=document.createElement('img');img.alt='Evidencia de entrega';img.style.cssText='width:100%;height:165px;object-fit:contain;background:#f3f4f6;border-radius:8px';
+   const desc=document.createElement('p');desc.textContent=[f.codigo_cliente,f.nombre_cliente,f.estado].filter(Boolean).join(' · ');
+   const info=document.createElement('p');info.className='muted';info.textContent=[new Date(f.fecha).toLocaleString('es-AR'),f.conductor_nombre,f.conductor_apellido].filter(Boolean).join(' · ');
+   const link=document.createElement('button');link.textContent='Ver imagen';link.onclick=()=>window.open(img.src,'_blank','noopener');
+   card.append(img,desc,info,link);gr.append(card);
+   try{const r=await fetch(API+'/fotos/'+encodeURIComponent(f.id),{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('No disponible');const blob=await r.blob();const url=URL.createObjectURL(blob);img.src=url;img.onload=()=>setTimeout(()=>URL.revokeObjectURL(url),120000);}catch{img.alt='Imagen no disponible';link.disabled=true;}
+  }
+  cont.append(gr);
+ });
+ $('#bf-buscar').click();
 }

@@ -75,11 +75,11 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
     esc(r.conductor_id?(r.conductor||r.conductor_nombre||'Asignado'):'Sin asignar'),
     esc((r.interno||'')+(r.patente?' / '+r.patente:'')),
     esc((r.interno_semi||'')+(r.patente_semi?' / '+r.patente_semi:'')),
-    esc(estado(r)),
+    `<span style="color:${completo(r)?'#16753c':'#b42318'};font-weight:700" aria-label="${esc(estado(r))}">${completo(r)?'●':'●'} ${esc(estado(r))}</span>`,
     `<button data-reparto="${esc(r.id)}">Asignar</button>`
    ])):'<p>No hay despachos para este filtro y fecha.</p>';
    document.querySelectorAll('[data-reparto]').forEach(b=>b.onclick=run(()=>asignar(b.dataset.reparto)));
-   $('#total-repartos').textContent=repartos.length+' despachos · '+completos+' asignados · '+pendientes+' pendientes de salida';
+   $('#total-repartos').innerHTML=esc(repartos.length)+' despachos · <strong style="color:#16753c">● '+esc(completos)+' asignados</strong> · <strong style="color:#b42318">● '+esc(pendientes)+' pendientes de salida</strong>';
    $('#filtro-estado').value=filtroEstado;
   };
   agregarVista.html=`<div class="panel"><label>Fecha de entrega <input id="fecha-asignacion" type="date" value="${esc(fechaAsignacion)}"></label><button id="ver-hoy" type="button">Hoy</button><label>Mostrar <select id="filtro-estado"><option value="todos">Todos</option><option value="pendientes">Pendientes de salida</option><option value="completos">Asignados</option></select></label><p id="total-repartos"></p></div><div class="panel" id="lista-repartos"></div>`;

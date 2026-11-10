@@ -146,9 +146,11 @@ async function conductor(){
 
  const fecha=fechaHoy(),ps=await api('/pedidos?fecha='+fecha),vs=await api('/visitas?fecha='+fecha),seen=new Set();
  const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});
+ const coordValida=p=>p&&p.latitud!=null&&p.longitud!=null&&Number.isFinite(Number(p.latitud))&&Number.isFinite(Number(p.longitud))&&Math.abs(Number(p.latitud))<=90&&Math.abs(Number(p.longitud))<=180;
+ const abrirMaps=p=>{if(!coordValida(p)){mensaje('Este cliente no tiene coordenadas válidas para navegar.');return;}const destino=Number(p.latitud)+','+Number(p.longitud);window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving','_blank','noopener,noreferrer');};
  const entregados=stops.filter(p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado))).length;
 
- agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
+ agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 
  // Mapa del reparto: puntos con coordenadas y traza GPS de esta sesión.
  agregarVista.html=`<div class="conductor-mapa"><div id="mapa-conductor"></div><p id="mapa-aviso" class="muted"></p></div>`;
@@ -166,7 +168,7 @@ async function conductor(){
      const entregado=vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado));
      const color=entregado?'#16a34a':'#dc2626';
      const icon=L.divIcon({className:'',html:'<div class="conductor-pin" style="background:'+color+'">'+(i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
-     L.marker([lat,lng],{icon}).addTo(mapaConductor).bindPopup('<strong>'+esc(p.codigo_cliente+' · '+p.nombre_cliente)+'</strong><p>Despacho '+esc(p.despacho)+'</p><button type="button" class="abrir-entrega" data-stop="'+i+'">Registrar entrega</button>');
+     L.marker([lat,lng],{icon}).addTo(mapaConductor).bindPopup('<strong>'+esc(p.codigo_cliente+' · '+p.nombre_cliente)+'</strong><p>Despacho '+esc(p.despacho)+'</p><button type="button" class="abrir-entrega" data-stop="'+i+'">Registrar entrega</button><button type="button" class="navegar-entrega" data-nav="'+i+'">Navegar con Maps</button>');
      puntos.push([lat,lng]);
    });
    if(puntos.length)mapaConductor.fitBounds(puntos,{padding:[24,24],maxZoom:15});
@@ -174,6 +176,7 @@ async function conductor(){
    setTimeout(()=>mapaConductor.invalidateSize(),200);
  }else $('#mapa-aviso').textContent='No se pudo cargar el mapa. Revisá la conexión a Internet.';
  if(window.L)$('#mapa-aviso').textContent=puntos.length+' puntos ubicados · '+clientesSinGps.length+' clientes sin coordenadas. La línea verde muestra solo el GPS registrado en esta sesión; no es una ruta de navegación.';
+ $('#navproximo').onclick=()=>{const siguiente=stops.find(p=>coordValida(p)&&!vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado)));if(siguiente)abrirMaps(siguiente);else mensaje('No hay entregas pendientes con coordenadas válidas.');};
  const actualizarMapaGps=(lat,lng)=>{
    if(!mapaConductor)return;
    if(!marcadorGps){marcadorGps=L.circleMarker([lat,lng],{radius:9,color:'#0754a5',fillColor:'#3b82f6',fillOpacity:1}).addTo(mapaConductor).bindPopup('Mi ubicación actual');}
@@ -186,10 +189,11 @@ async function conductor(){
 
  if(window.SECAndroid&&sessionStorage.getItem('sec-dist-apk-gps'))$('#gpsin').onclick();
 
- agregarVista.html=`<div class="conductor-entregas"><h3>Mis entregas de hoy</h3>${stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente);return `<div class="conductor-cliente"><div><strong>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</strong><small>Despacho ${esc(p.despacho)} · ${esc(v?.estado||'Pendiente')}</small></div><button data-stop="${i}">Registrar</button></div>`;}).join('')}</div>`;
+ agregarVista.html=`<div class="conductor-entregas"><h3>Mis entregas de hoy</h3>${stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente);return `<div class="conductor-cliente"><div><strong>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</strong><small>Despacho ${esc(p.despacho)} · ${esc(v?.estado||'Pendiente')}</small></div><div class="conductor-acciones"><button data-stop="${i}">Registrar</button><button data-nav="${i}" class="btn-maps">Navegar</button></div></div>`;}).join('')}</div>`;
  const abrirEntrega=i=>run(()=>resultado(stops[i]))();
  document.querySelectorAll('[data-stop]').forEach(b=>b.onclick=()=>abrirEntrega(+b.dataset.stop));
- if(mapaConductor)mapaConductor.on('popupopen',e=>{const btn=e.popup.getElement()?.querySelector('.abrir-entrega');if(btn)btn.onclick=()=>abrirEntrega(+btn.dataset.stop);});
+ document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>abrirMaps(stops[+b.dataset.nav]));
+ if(mapaConductor)mapaConductor.on('popupopen',e=>{const btn=e.popup.getElement()?.querySelector('.abrir-entrega');if(btn)btn.onclick=()=>abrirEntrega(+btn.dataset.stop);const nav=e.popup.getElement()?.querySelector('.navegar-entrega');if(nav)nav.onclick=()=>abrirMaps(stops[+nav.dataset.nav]);});
 
 }
 

@@ -148,10 +148,17 @@ async function conductor(){
  const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});
  const coordValida=p=>p&&p.latitud!=null&&p.longitud!=null&&Number.isFinite(Number(p.latitud))&&Number.isFinite(Number(p.longitud))&&Math.abs(Number(p.latitud))<=90&&Math.abs(Number(p.longitud))<=180;
  const abrirMaps=p=>{if(!coordValida(p)){mensaje('Este cliente no tiene coordenadas válidas para navegar.');return;}const destino=Number(p.latitud)+','+Number(p.longitud);window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving','_blank','noopener,noreferrer');};
+ let ultimaUbicacion=null,ordenSugerido=[];
+ const entregado=p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado));
+ const distancia=(a,b)=>{const rad=Math.PI/180,dlat=(Number(b.latitud)-Number(a.latitud))*rad,dlon=(Number(b.longitud)-Number(a.longitud))*rad,x=Math.sin(dlat/2)**2+Math.cos(Number(a.latitud)*rad)*Math.cos(Number(b.latitud)*rad)*Math.sin(dlon/2)**2;return 6371*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));};
+ const sugerirOrden=()=>{const disponibles=stops.filter(p=>coordValida(p)&&!entregado(p));const sinCoordenadas=stops.filter(p=>!coordValida(p)&&!entregado(p));const pendientes=[...disponibles];let actual=ultimaUbicacion||pendientes[0];const orden=[];while(pendientes.length){let indice=0;if(actual){let mejor=Infinity;pendientes.forEach((p,i)=>{const d=distancia(actual,p);if(d<mejor){mejor=d;indice=i;}});}const siguiente=pendientes.splice(indice,1)[0];orden.push(siguiente);actual=siguiente;}ordenSugerido=orden;return {orden,sinCoordenadas};};
+ const mostrarSugerencia=()=>{const {orden,sinCoordenadas}=sugerirOrden();$('#ruta-sugerida').innerHTML='<strong>Orden sugerido de entregas</strong><p>Estimación por cercanía geográfica, no por calles, tránsito ni restricciones del camión. Podés seguirla o elegir cualquier cliente.</p>'+ (orden.length?'<ol>'+orden.map(p=>'<li>'+esc(p.codigo_cliente+' · '+p.nombre_cliente)+' · Despacho '+esc(p.despacho)+'</li>').join('')+'</ol>':'<p>No hay entregas pendientes con coordenadas.</p>')+(sinCoordenadas.length?'<p>'+sinCoordenadas.length+' entregas sin coordenadas no incluidas en la sugerencia.</p>':'');$('#ruta-sugerida').hidden=false;};
  const entregados=stops.filter(p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado))).length;
 
- agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
+ agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="sugerir-ruta" type="button">Sugerir ruta</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 
+ agregarVista.html='<div class="conductor-entregas" id="ruta-sugerida" hidden></div>';
+ $('#sugerir-ruta').onclick=mostrarSugerencia;
  // Mapa del reparto: puntos con coordenadas y traza GPS de esta sesión.
  agregarVista.html=`<div class="conductor-mapa"><div id="mapa-conductor"></div><p id="mapa-aviso" class="muted"></p></div>`;
  let mapaConductor=null,marcadorGps=null,trazaGps=null;
@@ -176,8 +183,8 @@ async function conductor(){
    setTimeout(()=>mapaConductor.invalidateSize(),200);
  }else $('#mapa-aviso').textContent='No se pudo cargar el mapa. Revisá la conexión a Internet.';
  if(window.L)$('#mapa-aviso').textContent=puntos.length+' puntos ubicados · '+clientesSinGps.length+' clientes sin coordenadas. La línea verde muestra solo el GPS registrado en esta sesión; no es una ruta de navegación.';
- $('#navproximo').onclick=()=>{const siguiente=stops.find(p=>coordValida(p)&&!vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado)));if(siguiente)abrirMaps(siguiente);else mensaje('No hay entregas pendientes con coordenadas válidas.');};
- const actualizarMapaGps=(lat,lng)=>{
+ $('#navproximo').onclick=()=>{const siguiente=ordenSugerido.find(p=>!entregado(p))||stops.find(p=>coordValida(p)&&!entregado(p));if(siguiente)abrirMaps(siguiente);else mensaje('No hay entregas pendientes con coordenadas válidas.');};
+ const actualizarMapaGps=(lat,lng)=>{ultimaUbicacion={latitud:lat,longitud:lng};
    if(!mapaConductor)return;
    if(!marcadorGps){marcadorGps=L.circleMarker([lat,lng],{radius:9,color:'#0754a5',fillColor:'#3b82f6',fillOpacity:1}).addTo(mapaConductor).bindPopup('Mi ubicación actual');}
    else marcadorGps.setLatLng([lat,lng]);

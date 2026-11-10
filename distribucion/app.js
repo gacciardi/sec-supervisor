@@ -148,7 +148,34 @@ async function conductor(){
 
  agregarVista.html=`<div class="panel"><p>En la APK de SEC se aprovecha el GPS existente, incluso con pantalla bloqueada. En navegador se registra mientras la página está abierta. El recorrido se vincula a tu sesión de Distribución.</p><button id="gpsin">Iniciar recorrido</button><button id="gpsout">Detener recorrido</button><p id="gpsestado"></p></div>`;
 
- $('#gpsin').onclick=()=>{if(gpsWatch!==null)return;if(window.SECAndroid&&!sessionStorage.getItem('sec-dist-apk-gps')){run(async()=>{const d=await api('/gps-apk/iniciar',{method:'POST'});localStorage.setItem('vendedorId',d.clave);sessionStorage.setItem('sec-dist-apk-gps','1');location.reload();})();return;}if(!navigator.geolocation){mensaje('El dispositivo no dispone de ubicación.');return;}gpsWatch=navigator.geolocation.watchPosition(pos=>{api('/gps',{method:'POST',body:JSON.stringify({conductor_id:usuario.id,latitud:pos.coords.latitude,longitud:pos.coords.longitude,precision_metros:pos.coords.accuracy,velocidad:pos.coords.speed,fecha_local:new Date(pos.timestamp).toISOString()})}).then(()=>{$('#gpsestado')&&($('#gpsestado').textContent='Último punto enviado: '+new Date(pos.timestamp).toLocaleTimeString());}).catch(e=>mensaje('GPS: '+e.message));},e=>mensaje('Ubicación: '+e.message),{enableHighAccuracy:true,maximumAge:0,timeout:20000});};
+ // Mapa del reparto: puntos con coordenadas y traza GPS de esta sesión.
+ agregarVista.html=`<div class="panel"><h3>Mapa de mis entregas</h3><div id="mapa-conductor" style="height:360px;min-height:300px;border-radius:10px"></div><p id="mapa-aviso" class="muted"></p></div>`;
+ let mapaConductor=null,marcadorGps=null,trazaGps=null;
+ const puntos=[],clientesSinGps=[];
+ if(window.L){
+   mapaConductor=L.map('mapa-conductor').setView([-34.65,-58.8],11);
+   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapaConductor);
+   const clientesVistos=new Set();
+   ps.forEach(p=>{
+     const k=p.reparto_id+'|'+p.codigo_cliente;
+     if(clientesVistos.has(k))return;clientesVistos.add(k);
+     const lat=Number(p.latitud),lng=Number(p.longitud);
+     if(p.latitud==null||p.longitud==null||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){clientesSinGps.push(p);return;}
+     L.marker([lat,lng]).addTo(mapaConductor).bindPopup(esc(p.codigo_cliente+' · '+p.nombre_cliente+' · Despacho '+p.despacho));
+     puntos.push([lat,lng]);
+   });
+   if(puntos.length)mapaConductor.fitBounds(puntos,{padding:[24,24],maxZoom:15});
+   trazaGps=L.polyline([],{color:'#16753c',weight:4}).addTo(mapaConductor);
+   setTimeout(()=>mapaConductor.invalidateSize(),200);
+ }else $('#mapa-aviso').textContent='No se pudo cargar el mapa. Revisá la conexión a Internet.';
+ if(window.L)$('#mapa-aviso').textContent=puntos.length+' puntos ubicados · '+clientesSinGps.length+' clientes sin coordenadas. La línea verde muestra solo el GPS registrado en esta sesión; no es una ruta de navegación.';
+ const actualizarMapaGps=(lat,lng)=>{
+   if(!mapaConductor)return;
+   if(!marcadorGps){marcadorGps=L.circleMarker([lat,lng],{radius:9,color:'#0754a5',fillColor:'#3b82f6',fillOpacity:1}).addTo(mapaConductor).bindPopup('Mi ubicación actual');}
+   else marcadorGps.setLatLng([lat,lng]);
+   trazaGps.addLatLng([lat,lng]);
+ };
+ $('#gpsin').onclick=()=>{if(gpsWatch!==null)return;if(window.SECAndroid&&!sessionStorage.getItem('sec-dist-apk-gps')){run(async()=>{const d=await api('/gps-apk/iniciar',{method:'POST'});localStorage.setItem('vendedorId',d.clave);sessionStorage.setItem('sec-dist-apk-gps','1');location.reload();})();return;}if(!navigator.geolocation){mensaje('El dispositivo no dispone de ubicación.');return;}gpsWatch=navigator.geolocation.watchPosition(pos=>{api('/gps',{method:'POST',body:JSON.stringify({conductor_id:usuario.id,latitud:pos.coords.latitude,longitud:pos.coords.longitude,precision_metros:pos.coords.accuracy,velocidad:pos.coords.speed,fecha_local:new Date(pos.timestamp).toISOString()})}).then(()=>{actualizarMapaGps(pos.coords.latitude,pos.coords.longitude);$('#gpsestado')&&($('#gpsestado').textContent='Último punto enviado: '+new Date(pos.timestamp).toLocaleTimeString());}).catch(e=>mensaje('GPS: '+e.message));},e=>mensaje('Ubicación: '+e.message),{enableHighAccuracy:true,maximumAge:0,timeout:20000});};
 
  $('#gpsout').onclick=run(async()=>{detenerGps();await api('/gps-apk/detener',{method:'POST'});if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){sessionStorage.removeItem('sec-dist-apk-gps');localStorage.removeItem('vendedorId');location.href='salida/login-vendedor.html';}});
 

@@ -13,7 +13,7 @@ const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
-const secciones=[['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
+const secciones=[['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Importar horarios','Excel o CSV: cliente y horario de recepción.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
 
 function mensaje(s){$('#mensaje').textContent=s;}
 
@@ -35,6 +35,13 @@ function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
 
+ if(p==='Importar horarios'){
+  agregarVista.html='<div class="panel"><p><strong>Formato:</strong> CLIENTE, HORARIO. Ejemplo: 15118, 08:00-12:00 / 14:00-18:00.</p><p>Opcionales: DIA (LUNES a DOMINGO, o TODOS) y DESCARGA_MIN (por defecto 15). Si no hay DIA, se aplica a todos los días. Los clientes existentes no se borran.</p><input id="archivo-horarios" type="file" accept=".xlsx,.xls,.csv"><button id="validar-horarios">Validar sin grabar</button><button id="confirmar-horarios" disabled>Confirmar importación</button><p id="estado-horarios"></p></div>';
+  const archivo=$('#archivo-horarios'),confirmar=$('#confirmar-horarios'),estado=$('#estado-horarios');let validado=false;
+  archivo.onchange=()=>{validado=false;confirmar.disabled=true;estado.textContent='';};
+  const enviar=async(guardar)=>{const f=archivo.files[0];if(!f)throw Error('Seleccioná el archivo');const form=new FormData();form.append('archivo',f);form.append(guardar?'confirmar':'solo_validar',guardar?'SI':'1');const d=await api('/importar-horarios',{method:'POST',body:form});estado.textContent=guardar?'Importados '+d.clientes+' clientes y '+d.horarios+' horarios.':'Validado: '+d.clientes+' clientes y '+d.horarios+' horarios. Confirmá para guardar.';validado=!guardar;confirmar.disabled=!validado;};
+  $('#validar-horarios').onclick=run(()=>enviar(false));confirmar.onclick=run(async()=>{if(!validado)throw Error('Primero validá el archivo');await enviar(true);});return;
+ }
  if(p==='Reemplazos por inasistencia'){await reemplazosInasistencia();return;}
 
  if(p==='Conductores'){conductores=await api('/conductores');abm();agregarVinculoConductor();return;}

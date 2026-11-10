@@ -149,7 +149,26 @@ function fechaHoy(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Ar
 
 async function conductor(){
 
- if(usuario?.rol!=='CONDUCTOR'){mensaje('Ingresá con el usuario del conductor para registrar su recorrido.');return;}
+ if(usuario?.rol!=='CONDUCTOR'){
+   agregarVista.html='<div class="panel"><h3>Ingresar como conductor</h3><p>Como en Comercial, podés ingresar con el legajo del conductor sin cerrar tu sesión administrativa. La App Conductor se abrirá en otra pestaña.</p><form id="acceso-conductor-legajo"><label>Legajo del conductor<input name="legajo" inputmode="numeric" autocomplete="off" required placeholder="Ej.: 164"></label><button type="submit">Abrir App Conductor</button></form></div>';
+   $('#acceso-conductor-legajo').onsubmit=async e=>{
+     e.preventDefault();
+     const legajo=String(new FormData(e.target).get('legajo')||'').trim();
+     if(!legajo)return;
+     const nueva=window.open('about:blank','_blank');
+     if(!nueva){mensaje('Permití las ventanas emergentes para abrir la App Conductor en otra pestaña.');return;}
+     try{
+       const respuesta=await fetch(API+'/ingreso-conductor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({legajo,empresa:'rebesa'})});
+       const ingreso=await respuesta.json();
+       if(!respuesta.ok||!ingreso.token)throw Error(ingreso.error||'No se pudo ingresar con ese legajo');
+       nueva.sessionStorage.setItem('sec-distribucion-token',ingreso.token);
+       nueva.sessionStorage.setItem('sec-dist-apk-gps','0');
+       nueva.location.replace(location.origin+'/distribucion/index.html');
+       mensaje('App Conductor abierta en otra pestaña para el legajo '+legajo+'. Tu sesión administrativa sigue abierta.');
+     }catch(error){nueva.close();mensaje(error.message);}
+   };
+   return;
+ }
 
  const fecha=fechaHoy(),ps=await api('/pedidos?fecha='+fecha),vs=await api('/visitas?fecha='+fecha),seen=new Set();
  const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});

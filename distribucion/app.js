@@ -10,6 +10,7 @@ const API='https://sec-backend-gg4j.onrender.com/distribucion';
 
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
 const secciones=[['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
@@ -60,13 +61,31 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
 
  if(p==='App Conductor'){await conductor();return;}
 
+ if(p==='Asignación de repartos'){
+  fechaAsignacion=fechaAsignacion||fechaHoy();
+  repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));
+  const mostrar=()=>{
+   $('#lista-repartos').innerHTML=tabla(['Fecha','Despacho','Conductor','Interno / patente','Semi','Estado','Acción'],repartos.map(r=>[
+    esc(r.fecha.slice(0,10)),esc(r.despacho),esc(r.conductor||r.conductor_nombre||'Sin asignar'),
+    esc((r.interno||'')+(r.patente?' / '+r.patente:'')),esc((r.interno_semi||'')+(r.patente_semi?' / '+r.patente_semi:'')),
+    esc(!r.conductor_id?'Sin conductor':!r.principal_id?'Sin camión':'Completo'),
+    `<button data-reparto="${esc(r.id)}">Asignar</button>`
+   ]));
+   document.querySelectorAll('[data-reparto]').forEach(b=>b.onclick=run(()=>asignar(b.dataset.reparto)));
+   $('#total-repartos').textContent=repartos.length+' despachos · '+repartos.filter(r=>r.conductor_id&&r.principal_id).length+' completos · '+repartos.filter(r=>!r.conductor_id||!r.principal_id).length+' pendientes';
+  };
+  agregarVista.html=`<div class="panel"><label>Fecha de entrega <input id="fecha-asignacion" type="date" value="${esc(fechaAsignacion)}"></label><button id="ver-hoy" type="button">Hoy</button><p id="total-repartos"></p></div><div class="panel" id="lista-repartos"></div>`;
+  $('#fecha-asignacion').onchange=run(async()=>{fechaAsignacion=$('#fecha-asignacion').value;if(!fechaAsignacion)throw Error('Seleccioná una fecha');repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));mostrar();});
+  $('#ver-hoy').onclick=run(async()=>{fechaAsignacion=fechaHoy();$('#fecha-asignacion').value=fechaAsignacion;repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));mostrar();});
+  mostrar();return;
+ }
  pedidos=await api('/pedidos');repartos=await api('/repartos');
 
  if(p==='Mapa de clientes'){agregarVista.html=`<div class="panel"><label>Fecha<input id="fecha" type="date"></label><label>Despacho<select id="despacho"><option value="">Todos</option>${repartos.map(r=>`<option value="${esc(r.id)}">${esc(r.fecha.slice(0,10)+' · '+r.despacho)}</option>`).join('')}</select></label><div id="mapa"></div><p id="sincoordenadas"></p></div>`;const draw=()=>{if(mapa)mapa.remove();if(!window.L){mensaje('No se pudo cargar el componente de mapa');return;}mapa=L.map('mapa').setView([-34.65,-58.8],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapa);const seen=new Set(),pts=[],rs=pedidos.filter(p=>(!$('#fecha').value||p.fecha.slice(0,10)===$('#fecha').value)&&(!$('#despacho').value||p.reparto_id===$('#despacho').value));let missing=0;for(const p of rs){if(seen.has(p.codigo_cliente))continue;seen.add(p.codigo_cliente);if(p.latitud==null||p.longitud==null){missing++;continue;}const lat=Number(p.latitud),lng=Number(p.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng)){missing++;continue;}L.marker([lat,lng]).addTo(mapa).bindPopup(esc(p.codigo_cliente+' · '+p.nombre_cliente));pts.push([lat,lng]);}if(pts.length)mapa.fitBounds(pts,{padding:[25,25],maxZoom:16});$('#sincoordenadas').textContent='Clientes sin coordenadas: '+missing;};$('#fecha').onchange=draw;$('#despacho').onchange=draw;draw();return;}
 
  if(p==='Alertas'){agregarVista.html=tabla(['Referencia','Motivo'],repartos.filter(r=>!r.conductor_id||!r.principal_id).map(r=>[esc(r.despacho),esc(!r.conductor_id?'Sin conductor asignado':'Sin vehículo asignado')]).concat(pedidos.filter(p=>p.latitud==null||p.longitud==null).map(p=>[esc(p.codigo_cliente),'Cliente sin coordenadas o sin vínculo de empresa'])));return;}
 
- agregarVista.html=tabla(['Fecha','Despacho','Conductor','Interno / patente','Semi','Acción'],repartos.map(r=>[esc(r.fecha.slice(0,10)),esc(r.despacho),esc(r.conductor||r.conductor_nombre||'Sin asignar'),esc((r.interno||'')+' / '+(r.patente||'')),esc((r.interno_semi||'')+' / '+(r.patente_semi||'')),`<button data-reparto="${esc(r.id)}">Asignar</button>`]));document.querySelectorAll('[data-reparto]').forEach(b=>b.onclick=run(()=>asignar(b.dataset.reparto)));
+ // La asignación se muestra arriba con filtro de fecha.
 
 }
 

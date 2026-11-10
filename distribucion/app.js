@@ -64,18 +64,26 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
  if(p==='Asignación de repartos'){
   fechaAsignacion=fechaAsignacion||fechaHoy();
   repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));
+  let filtroEstado='todos';
+  const completo=r=>Boolean(r.conductor_id&&r.principal_id);
   const mostrar=()=>{
-   $('#lista-repartos').innerHTML=tabla(['Fecha','Despacho','Conductor','Interno / patente','Semi','Estado','Acción'],repartos.map(r=>[
-    esc(r.fecha.slice(0,10)),esc(r.despacho),esc(r.conductor||r.conductor_nombre||'Sin asignar'),
-    esc((r.interno||'')+(r.patente?' / '+r.patente:'')),esc((r.interno_semi||'')+(r.patente_semi?' / '+r.patente_semi:'')),
+   const completos=repartos.filter(completo).length,pendientes=repartos.length-completos;
+   const visibles=repartos.filter(r=>filtroEstado==='todos'||(filtroEstado==='completos'?completo(r):!completo(r)));
+   $('#lista-repartos').innerHTML=visibles.length?tabla(['Fecha','Despacho','Conductor','Interno / patente','Semi','Estado','Acción'],visibles.map(r=>[
+    esc(r.fecha.slice(0,10)),esc(r.despacho),
+    esc(r.conductor_id?(r.conductor||r.conductor_nombre||'Asignado'):'Sin asignar'),
+    esc((r.interno||'')+(r.patente?' / '+r.patente:'')),
+    esc((r.interno_semi||'')+(r.patente_semi?' / '+r.patente_semi:'')),
     esc(!r.conductor_id?'Sin conductor':!r.principal_id?'Sin camión':'Completo'),
     `<button data-reparto="${esc(r.id)}">Asignar</button>`
-   ]));
+   ])):'<p>No hay despachos para este filtro y fecha.</p>';
    document.querySelectorAll('[data-reparto]').forEach(b=>b.onclick=run(()=>asignar(b.dataset.reparto)));
-   $('#total-repartos').textContent=repartos.length+' despachos · '+repartos.filter(r=>r.conductor_id&&r.principal_id).length+' completos · '+repartos.filter(r=>!r.conductor_id||!r.principal_id).length+' pendientes';
+   $('#total-repartos').textContent=repartos.length+' despachos · '+completos+' completos · '+pendientes+' pendientes';
+   $('#filtro-estado').value=filtroEstado;
   };
-  agregarVista.html=`<div class="panel"><label>Fecha de entrega <input id="fecha-asignacion" type="date" value="${esc(fechaAsignacion)}"></label><button id="ver-hoy" type="button">Hoy</button><p id="total-repartos"></p></div><div class="panel" id="lista-repartos"></div>`;
-  $('#fecha-asignacion').onchange=run(async()=>{fechaAsignacion=$('#fecha-asignacion').value;if(!fechaAsignacion)throw Error('Seleccioná una fecha');repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));mostrar();});
+  agregarVista.html=`<div class="panel"><label>Fecha de entrega <input id="fecha-asignacion" type="date" value="${esc(fechaAsignacion)}"></label><button id="ver-hoy" type="button">Hoy</button><label>Mostrar <select id="filtro-estado"><option value="todos">Todos</option><option value="pendientes">Pendientes</option><option value="completos">Completos</option></select></label><p id="total-repartos"></p></div><div class="panel" id="lista-repartos"></div>`;
+  $('#filtro-estado').onchange=()=>{filtroEstado=$('#filtro-estado').value;mostrar()};
+  $('#fecha-asignacion').onchange=run(async()=>{const nueva=$('#fecha-asignacion').value;if(!nueva)throw Error('Seleccioná una fecha');fechaAsignacion=nueva;repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));mostrar();});
   $('#ver-hoy').onclick=run(async()=>{fechaAsignacion=fechaHoy();$('#fecha-asignacion').value=fechaAsignacion;repartos=await api('/repartos?fecha='+encodeURIComponent(fechaAsignacion));mostrar();});
   mostrar();return;
  }

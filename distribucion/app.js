@@ -145,23 +145,28 @@ async function conductor(){
  if(usuario?.rol!=='CONDUCTOR'){mensaje('Ingresá con el usuario del conductor para registrar su recorrido.');return;}
 
  const fecha=fechaHoy(),ps=await api('/pedidos?fecha='+fecha),vs=await api('/visitas?fecha='+fecha),seen=new Set();
+ const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});
+ const entregados=stops.filter(p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado))).length;
 
- agregarVista.html=`<div class="panel"><p>En la APK de SEC se aprovecha el GPS existente, incluso con pantalla bloqueada. En navegador se registra mientras la página está abierta. El recorrido se vincula a tu sesión de Distribución.</p><button id="gpsin">Iniciar recorrido</button><button id="gpsout">Detener recorrido</button><p id="gpsestado"></p></div>`;
+ agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 
  // Mapa del reparto: puntos con coordenadas y traza GPS de esta sesión.
- agregarVista.html=`<div class="panel"><h3>Mapa de mis entregas</h3><div id="mapa-conductor" style="height:360px;min-height:300px;border-radius:10px"></div><p id="mapa-aviso" class="muted"></p></div>`;
+ agregarVista.html=`<div class="conductor-mapa"><div id="mapa-conductor"></div><p id="mapa-aviso" class="muted"></p></div>`;
  let mapaConductor=null,marcadorGps=null,trazaGps=null;
  const puntos=[],clientesSinGps=[];
  if(window.L){
    mapaConductor=L.map('mapa-conductor').setView([-34.65,-58.8],11);
    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapaConductor);
    const clientesVistos=new Set();
-   ps.forEach(p=>{
+   stops.forEach((p,i)=>{
      const k=p.reparto_id+'|'+p.codigo_cliente;
      if(clientesVistos.has(k))return;clientesVistos.add(k);
      const lat=Number(p.latitud),lng=Number(p.longitud);
      if(p.latitud==null||p.longitud==null||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){clientesSinGps.push(p);return;}
-     L.marker([lat,lng]).addTo(mapaConductor).bindPopup(esc(p.codigo_cliente+' · '+p.nombre_cliente+' · Despacho '+p.despacho));
+     const entregado=vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado));
+     const color=entregado?'#16a34a':'#dc2626';
+     const icon=L.divIcon({className:'',html:'<div class="conductor-pin" style="background:'+color+'">'+(i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
+     L.marker([lat,lng],{icon}).addTo(mapaConductor).bindPopup('<strong>'+esc(p.codigo_cliente+' · '+p.nombre_cliente)+'</strong><p>Despacho '+esc(p.despacho)+'</p><button type="button" class="abrir-entrega" data-stop="'+i+'">Registrar entrega</button>');
      puntos.push([lat,lng]);
    });
    if(puntos.length)mapaConductor.fitBounds(puntos,{padding:[24,24],maxZoom:15});
@@ -181,11 +186,10 @@ async function conductor(){
 
  if(window.SECAndroid&&sessionStorage.getItem('sec-dist-apk-gps'))$('#gpsin').onclick();
 
- const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});
-
- agregarVista.html=tabla(['Cliente','Despacho','Resultado','Acción'],stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente);return [esc(p.codigo_cliente+' · '+p.nombre_cliente),esc(p.despacho),esc(v?.estado||'Pendiente'),`<button data-stop="${i}">Registrar entrega / foto</button>`];}));
-
- document.querySelectorAll('[data-stop]').forEach(b=>b.onclick=run(()=>resultado(stops[+b.dataset.stop])));
+ agregarVista.html=`<div class="conductor-entregas"><h3>Mis entregas de hoy</h3>${stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente);return `<div class="conductor-cliente"><div><strong>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</strong><small>Despacho ${esc(p.despacho)} · ${esc(v?.estado||'Pendiente')}</small></div><button data-stop="${i}">Registrar</button></div>`;}).join('')}</div>`;
+ const abrirEntrega=i=>run(()=>resultado(stops[i]))();
+ document.querySelectorAll('[data-stop]').forEach(b=>b.onclick=()=>abrirEntrega(+b.dataset.stop));
+ if(mapaConductor)mapaConductor.on('popupopen',e=>{const btn=e.popup.getElement()?.querySelector('.abrir-entrega');if(btn)btn.onclick=()=>abrirEntrega(+btn.dataset.stop);});
 
 }
 

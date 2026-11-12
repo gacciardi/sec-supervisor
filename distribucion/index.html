@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SEC - Distribución</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"><style>.menu-principal{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:25px}.menu-card{background:white;border-radius:18px;padding:25px;text-decoration:none;color:#111827;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid #e5e7eb;min-height:115px;display:block;cursor:pointer}.menu-card h3{margin:0 0 8px;color:#071b3a;font-size:22px}.menu-card p{margin:0;color:#4b5563;font-size:14px;line-height:1.45}button,input,select{padding:10px;margin:5px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}button{cursor:pointer}label{display:block}nav button{color:white;background:transparent;border:0}.panel{background:white;padding:20px;border-radius:15px;margin-top:15px;overflow:auto}#mensaje:not(:empty){padding:15px;background:#fff4df;white-space:pre-wrap;margin:15px 0}.acciones{display:flex;gap:8px;flex-wrap:wrap}#mapa{height:500px}.muted{color:#6b7280;font-size:14px}details{margin:15px 0} .conductor-acciones{display:flex;gap:5px;flex-wrap:wrap}.conductor-acciones .btn-maps{background:#0b55c7;color:white}.navegar-entrega{background:#0b55c7;color:white;margin-left:5px;padding:7px;border:0;border-radius:5px}
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SEC - Distribución</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"><style>.menu-principal{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:25px}.menu-card{background:white;border-radius:18px;padding:25px;text-decoration:none;color:#111827;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid #e5e7eb;min-height:115px;display:block;cursor:pointer}.menu-card h3{margin:0 0 8px;color:#071b3a;font-size:22px}.menu-card p{margin:0;color:#4b5563;font-size:14px;line-height:1.45}button,input,select{padding:10px;margin:5px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}button{cursor:pointer}label{display:block}nav button{color:white;background:transparent;border:0}.panel{background:white;padding:20px;border-radius:15px;margin-top:15px;overflow:auto}#mensaje:not(:empty){padding:15px;background:#fff4df;white-space:pre-wrap;margin:15px 0}.acciones{display:flex;gap:8px;flex-wrap:wrap}#mapa{height:500px}.muted{color:#6b7280;font-size:14px}details{margin:15px 0} .conductor-acciones{display:flex;gap:5px;flex-wrap:wrap}.conductor-acciones .btn-maps{background:#0b55c7;color:white}.navegar-entrega{background:#0b55c7;color:white;margin-left:5px;padding:7px;border:0;border-radius:5px}
 </style><style>
 .conductor-resumen{display:flex;justify-content:space-around;background:#fff;border-radius:16px;padding:12px 4px;margin:8px 0;box-shadow:0 3px 12px #0001}
 .conductor-resumen>div{flex:1;text-align:center;border-right:1px solid #ddd}.conductor-resumen>div:last-child{border:0}
@@ -17,4 +17,39 @@
 .conductor-mapa-acciones{display:flex;flex-wrap:wrap;gap:5px;position:relative;z-index:2}.conductor-mapa-acciones button{flex:1;min-width:130px;background:#071b3a;color:white;font-weight:600;margin:2px}.conductor-mapa-acciones #modo-recorrido{background:#137b39}.conductor-siguiente{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 5px}.conductor-siguiente strong{flex:1;min-width:180px}.conductor-siguiente button{background:#0b55c7;color:white;margin:2px}.sec-mapa-expandido #panel-mapa-conductor{position:fixed;inset:0;z-index:9999;margin:0;border-radius:0;padding:8px;display:flex;flex-direction:column;background:white}.sec-mapa-expandido #mapa-conductor{flex:1;min-height:0;height:auto!important;width:100%;border-radius:8px}.sec-mapa-expandido #mapa-aviso{display:none}.sec-mapa-expandido .conductor-mapa-acciones{flex-shrink:0}.sec-mapa-expandido .conductor-siguiente{flex-shrink:0}.sec-mapa-expandido{overflow:hidden}@media(max-width:600px){.conductor-mapa-acciones button{min-width:90px;font-size:12px;padding:9px 5px}.sec-mapa-expandido #panel-mapa-conductor{padding:4px}.sec-mapa-expandido .conductor-siguiente{font-size:13px}}
 .conductor-despachos{display:flex;gap:8px;flex-wrap:wrap;padding:7px 4px;font-size:13px;align-items:center}.conductor-despachos span{display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;padding:5px 9px;border-radius:20px}.conductor-despachos i,.conductor-punto-despacho{display:inline-block;width:12px;height:12px;border-radius:50%;flex-shrink:0}.conductor-punto-despacho{margin-right:5px}.sec-mapa-expandido .conductor-despachos{flex-shrink:0}
 .conductor-elegir-despacho{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 5px;font-weight:700;color:#071b3a}.conductor-elegir-despacho select{flex:1;min-width:180px;max-width:380px;background:#fff;border:2px solid #071b3a;margin:0;padding:9px}.sec-mapa-expandido .conductor-elegir-despacho{flex-shrink:0}
-</style></head><body><header class="header-sec"><img src="../assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa"><div><h1>SEC - Distribución</h1><p>Sistema de Ejecución Comercial</p></div></header><nav id="nav"></nav><div class="container"><div id="mensaje" role="status"></div><div id="vista"></div></div><script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><script src="app.js?v=20261112-selector-despacho-4"></script></body></html>
+
+/* Modo recorrido: respetar barras del sistema Android e iOS y mantener los controles visibles. */
+.sec-mapa-expandido #panel-mapa-conductor{
+ box-sizing:border-box;
+ padding-top:max(34px,env(safe-area-inset-top,0px));
+ padding-bottom:max(38px,env(safe-area-inset-bottom,0px));
+ padding-left:max(6px,env(safe-area-inset-left,0px));
+ padding-right:max(6px,env(safe-area-inset-right,0px));
+ height:100dvh;
+ overflow:hidden;
+}
+.sec-mapa-expandido .conductor-mapa-acciones{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%;
+}
+.sec-mapa-expandido .conductor-mapa-acciones button{
+ box-sizing:border-box;min-width:0;width:100%;margin:0;
+ padding:10px 4px;font-size:clamp(11px,2.8vw,15px);
+ line-height:1.15;min-height:43px;white-space:normal;
+}
+.sec-mapa-expandido #salir-mapa{display:none!important}
+.sec-mapa-expandido .conductor-siguiente{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+ padding:7px 2px 0;max-height:33dvh;overflow-y:auto;
+}
+.sec-mapa-expandido .conductor-siguiente strong{grid-column:1/-1;min-width:0;font-size:14px;line-height:1.25}
+.sec-mapa-expandido .conductor-siguiente button{
+ width:100%;min-width:0;margin:0;padding:10px 5px;min-height:44px;font-size:13px;
+}
+.sec-mapa-expandido .conductor-elegir-despacho{gap:5px;padding:4px 2px;font-size:13px}
+.sec-mapa-expandido .conductor-elegir-despacho select{min-width:0;max-width:none;padding:8px;flex:1}
+.sec-mapa-expandido .conductor-despachos{padding:4px 2px;gap:5px;font-size:12px}
+@media(max-width:400px){
+ .sec-mapa-expandido .conductor-elegir-despacho{display:grid;grid-template-columns:1fr}
+ .sec-mapa-expandido .conductor-siguiente button{font-size:12px}
+}
+</style></head><body><header class="header-sec"><img src="../assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa"><div><h1>SEC - Distribución</h1><p>Sistema de Ejecución Comercial</p></div></header><nav id="nav"></nav><div class="container"><div id="mensaje" role="status"></div><div id="vista"></div></div><script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><script src="app.js?v=20261112-mobile-safe-area-5"></script></body></html>

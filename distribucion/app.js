@@ -193,7 +193,7 @@ async function conductor(){
   const decode=encoded=>{let index=0,lat=0,lng=0,path=[];while(index<encoded.length){let b,shift=0,result=0;do{b=encoded.charCodeAt(index++)-63;result|=(b&31)<<shift;shift+=5;}while(b>=32);lat+=(result&1)?~(result>>1):(result>>1);shift=0;result=0;do{b=encoded.charCodeAt(index++)-63;result|=(b&31)<<shift;shift+=5;}while(b>=32);lng+=(result&1)?~(result>>1):(result>>1);path.push({lat:lat/1e5,lng:lng/1e5});}return path;};
   (respuesta.polilineas||[]).forEach(encoded=>{const path=decode(encoded);const line=new google.maps.Polyline({map:mapaGoogle,path,strokeColor:'#1565c0',strokeOpacity:0.9,strokeWeight:6});lineasGoogle.push(line);path.forEach(p=>bounds.extend(p));});
   if(gpsGoogle)gpsGoogle.setMap(null);gpsGoogle=new google.maps.Marker({map:mapaGoogle,position:actual,title:'Mi ubicación',icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:'#1976d2',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}});
-  mapaGoogle.fitBounds(bounds);$('#mapa-aviso').textContent='Ruta por calles (azul) · GPS (azul claro) · Próxima parada (verde). Tránsito estimado al último cálculo.';
+  mapaGoogle.fitBounds(bounds);actualizarSiguiente();$('#mapa-aviso').textContent='Ruta por calles (azul) · GPS (azul claro) · Próxima parada (verde). Tránsito estimado al último cálculo.';
  };
  const mostrarSugerencia=async(automatica=false)=>{if(calculandoRuta)return;calculandoRuta=true;const caja=$('#ruta-sugerida');caja.hidden=false;const ordenAnterior=[...ordenSugerido];const {orden,sinCoordenadas}=sugerirOrden();ordenSugerido=ordenAnterior;if(!automatica)caja.innerHTML='<strong>Calculando ruta por calles y tránsito…</strong>';
   try{if(!orden.length){caja.innerHTML='<p>No hay entregas pendientes con coordenadas.</p>';return;}
@@ -218,7 +218,7 @@ async function conductor(){
  $('#sugerir-ruta').onclick=()=>mostrarSugerencia(false);
  temporizadorRuta=setInterval(()=>{if(!$('#mapa-conductor')){clearInterval(temporizadorRuta);return;}if(document.visibilityState==='visible'&&ultimaRuta)mostrarSugerencia(true);},300000);
  // Mapa del reparto: puntos con coordenadas y traza GPS de esta sesión.
- agregarVista.html=`<div class="conductor-mapa"><div id="mapa-conductor"></div><p id="mapa-aviso" class="muted"></p></div>`;
+ agregarVista.html=`<div class="conductor-mapa" id="panel-mapa-conductor"><div class="conductor-mapa-acciones"><button type="button" id="modo-recorrido">Iniciar recorrido</button><button type="button" id="ampliar-mapa">Ampliar mapa</button><button type="button" id="centrar-mapa">Mi ubicación</button><button type="button" id="salir-mapa" hidden>Salir de pantalla completa</button></div><div id="mapa-conductor"></div><div class="conductor-siguiente" id="conductor-siguiente"><strong>Calculá la ruta para comenzar</strong><button type="button" id="registrar-siguiente" hidden>Registrar entrega</button><button type="button" id="navegar-siguiente" hidden>Navegación guiada</button></div><p id="mapa-aviso" class="muted"></p></div>`;
  let mapaConductor=null,marcadorGps=null,trazaGps=null;
  const puntos=[],clientesSinGps=[];
  if(window.L){
@@ -242,6 +242,15 @@ async function conductor(){
  }else $('#mapa-aviso').textContent='No se pudo cargar el mapa. Revisá la conexión a Internet.';
  if(window.L)$('#mapa-aviso').textContent=puntos.length+' puntos ubicados · '+clientesSinGps.length+' clientes sin coordenadas. La línea verde muestra solo el GPS registrado en esta sesión; no es una ruta de navegación.';
  $('#navproximo').onclick=()=>{const siguiente=ordenSugerido.find(p=>!entregado(p))||stops.find(p=>coordValida(p)&&!entregado(p));if(siguiente)abrirMaps(siguiente);else mensaje('No hay entregas pendientes con coordenadas válidas.');};
+ const proximoPendiente=()=>ordenSugerido.find(p=>!entregado(p))||stops.find(p=>coordValida(p)&&!entregado(p));
+ const actualizarSiguiente=()=>{const p=proximoPendiente(),caja=$('#conductor-siguiente');if(!caja)return;caja.querySelector('strong').textContent=p?'Próxima entrega: '+p.codigo_cliente+' · '+p.nombre_cliente:'Sin entregas pendientes con GPS';$('#registrar-siguiente').hidden=!p;$('#navegar-siguiente').hidden=!p;};
+ const ajustarVistaMapa=()=>{if(mapaGoogle){google.maps.event.trigger(mapaGoogle,'resize');if(gpsGoogle?.getPosition())mapaGoogle.panTo(gpsGoogle.getPosition());}else if(mapaConductor)mapaConductor.invalidateSize();};
+ $('#modo-recorrido').onclick=()=>{if(!ultimaRuta){mostrarSugerencia(false).then(()=>{if(ultimaRuta)$('#modo-recorrido').click();});return;}$('#gpsin').click();document.body.classList.add('sec-mapa-expandido');$('#modo-recorrido').textContent='Recorrido activo';$('#modo-recorrido').disabled=true;$('#salir-mapa').hidden=false;$('#ampliar-mapa').textContent='Reducir mapa';actualizarSiguiente();setTimeout(ajustarVistaMapa,150);};
+ $('#ampliar-mapa').onclick=()=>{const activo=document.body.classList.toggle('sec-mapa-expandido');$('#salir-mapa').hidden=!activo;$('#ampliar-mapa').textContent=activo?'Reducir mapa':'Ampliar mapa';setTimeout(ajustarVistaMapa,150);};
+ $('#salir-mapa').onclick=()=>$('#ampliar-mapa').click();
+ $('#centrar-mapa').onclick=()=>{if(!ultimaUbicacion){mensaje('Esperando ubicación GPS.');return;}if(mapaGoogle){mapaGoogle.panTo({lat:Number(ultimaUbicacion.latitud),lng:Number(ultimaUbicacion.longitud)});mapaGoogle.setZoom(16);}else if(mapaConductor)mapaConductor.setView([ultimaUbicacion.latitud,ultimaUbicacion.longitud],16);};
+ $('#registrar-siguiente').onclick=()=>{const p=proximoPendiente();if(p){const i=stops.findIndex(x=>x.reparto_id===p.reparto_id&&x.codigo_cliente===p.codigo_cliente);if(i>=0)abrirEntrega(i);}};
+ $('#navegar-siguiente').onclick=()=>{const p=proximoPendiente();if(p)abrirMaps(p);};
  const actualizarMapaGps=(lat,lng)=>{ultimaUbicacion={latitud:lat,longitud:lng};if(mapaGoogle&&gpsGoogle)gpsGoogle.setPosition({lat,lng});
    if(!mapaConductor)return;
    if(!marcadorGps){marcadorGps=L.circleMarker([lat,lng],{radius:9,color:'#0754a5',fillColor:'#3b82f6',fillOpacity:1}).addTo(mapaConductor).bindPopup('Mi ubicación actual');}

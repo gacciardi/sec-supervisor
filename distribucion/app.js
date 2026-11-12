@@ -13,7 +13,7 @@ const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
-const secciones=[['Dashboard conductores','Estado GPS y entregas de todos los conductores.'],['Recrear viaje','Reproducción del recorrido con control de velocidad.'],['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Importar horarios','Excel o CSV: cliente y horario de recepción.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
+const secciones=[['Dashboard conductores','Estado GPS y entregas de todos los conductores.'],['Recrear viaje','Reproducción del recorrido con control de velocidad.'],['Fotos del recorrido','Fotografías libres y asociadas a clientes.'],['Conductores','Alta, modificación y baja de conductores.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Importar horarios','Excel o CSV: cliente y horario de recepción.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
 
 function mensaje(s){$('#mensaje').textContent=s;}
 
@@ -64,6 +64,7 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
  }
  if(isV){vehiculos=await api('/vehiculos');agregarVista.html=tabla(['Interno','Patente','Tipo'],vehiculos.map(v=>[esc(v.interno),esc(v.patente),esc(v.tipo)]));}return;}
 
+ if(p==='Fotos del recorrido'){await fotosRecorrido();return;}
  if(p==='Dashboard conductores'){await dashboardConductores();return;}
  if(p==='Recrear viaje'){await recorridos();return;}
  if(p==='Visitas y recorridos'){await recorridos();return;}
@@ -275,14 +276,25 @@ async function recorridos(){
 
 
 
-function abrirFotoMenu(origen){
- const anterior=document.querySelector('#foto-menu-panel');if(anterior)anterior.remove();
+async function abrirFotoMenu(origen){
+ const anterior=$('#foto-menu-panel');if(anterior)anterior.remove();
  const panel=document.createElement('div');panel.id='foto-menu-panel';panel.className='panel';
- panel.innerHTML='<h3>Foto del recorrido</h3><p>Podés tomar o elegir una imagen. Para guardarla asociada a un cliente, seleccioná su entrega. La asociación libre al recorrido todavía está pendiente de habilitar en el servidor.</p><input id="foto-menu-archivo" type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Sin imagen seleccionada</p><button id="foto-menu-cerrar" type="button">Cerrar</button>';
- document.querySelector('#vista').prepend(panel);
+ panel.innerHTML='<h3>Foto del recorrido</h3><p>Seleccioná un cliente detectado por geocerca o «Foto libre».</p><input id="foto-menu-archivo" type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Elegí una imagen.</p><label>Asociación <select id="foto-menu-cliente"><option value="">Foto libre (sin cliente)</option></select></label><button id="foto-menu-guardar" type="button" disabled>Guardar fotografía</button><button id="foto-menu-cerrar" type="button">Cancelar</button>';
+ $('#vista').prepend(panel);const estado=panel.querySelector('#foto-menu-estado'),archivo=panel.querySelector('#foto-menu-archivo'),sel=panel.querySelector('#foto-menu-cliente'),guardar=panel.querySelector('#foto-menu-guardar');
  panel.querySelector('#foto-menu-cerrar').onclick=()=>panel.remove();
- panel.querySelector('#foto-menu-archivo').onchange=e=>{const f=e.target.files[0];if(!f)return;const p=panel.querySelector('#foto-menu-estado');p.textContent=f.size>5*1024*1024?'La imagen supera 5 MB. Elegí otra.':'Seleccionada: '+f.name+'. Para guardarla, ingresá a la entrega del cliente.';};
- panel.querySelector('#foto-menu-archivo').click();
+ let gps=null,candidatos=[];
+ const ubicacion=()=>new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({latitud:p.coords.latitude,longitud:p.coords.longitude,precision_metros:p.coords.accuracy}),()=>resolve(null),{enableHighAccuracy:true,timeout:9000,maximumAge:15000});});
+ archivo.onchange=async()=>{const f=archivo.files[0];if(!f)return;if(f.size>5*1024*1024){estado.textContent='La imagen supera 5 MB';guardar.disabled=true;return;}guardar.disabled=false;estado.textContent='Imagen seleccionada: '+f.name+'. Buscando clientes cercanos…';gps=await ubicacion();if(!panel.isConnected)return;
+  if(gps){try{candidatos=await api('/fotos-recorrido/candidatos?'+new URLSearchParams(gps));candidatos.forEach((c,i)=>{const o=document.createElement('option');o.value=String(i+1);o.textContent=c.codigo_cliente+' · '+c.nombre_cliente+' · Despacho '+c.despacho;sel.appendChild(o);});if(candidatos.length===1)sel.value='1';estado.textContent=candidatos.length===1?'Cliente detectado. Podés cambiar a foto libre.':candidatos.length>1?'Hay varios clientes cercanos. Elegí uno o usá foto libre.':'No se detectó un cliente dentro de la geocerca. Podés guardar foto libre.';}catch(e){estado.textContent='No se pudo consultar la geocerca. Podés guardar foto libre: '+e.message;}}
+  else estado.textContent='Sin GPS disponible. Podés guardar foto libre.';
+ };
+ guardar.onclick=run(async()=>{const f=archivo.files[0];if(!f)return;guardar.disabled=true;estado.textContent='Guardando fotografía…';try{const form=new FormData();form.append('archivo',f);form.append('origen',origen);if(gps)Object.entries(gps).forEach(([k,v])=>form.append(k,String(v)));const elegido=candidatos[Number(sel.value)-1];if(elegido){form.append('reparto_id',elegido.reparto_id);form.append('codigo_cliente',elegido.codigo_cliente);}await api('/fotos-recorrido',{method:'POST',body:form});estado.textContent='Fotografía guardada'+(elegido?' para cliente '+elegido.codigo_cliente:' como foto libre')+'.';archivo.value='';}catch(e){guardar.disabled=false;estado.textContent='No se pudo guardar: '+e.message;}});
+ archivo.click();
+}
+
+async function fotosRecorrido(){
+ agregarVista.html='<div class="panel"><label>Fecha <input type="date" id="fotosfecha" value="'+fechaHoy()+'"></label><button id="fotocargar">Consultar fotos</button><div id="fotoslistado"></div></div>';
+ $('#fotocargar').onclick=run(async()=>{const fotos=await api('/fotos-recorrido?fecha='+$('#fotosfecha').value);$('#fotoslistado').innerHTML=tabla(['Fecha','Conductor','Asociación','Origen','Foto'],fotos.map(f=>[esc(new Date(f.fecha).toLocaleString('es-AR')),esc(f.nombre+' '+f.apellido),esc(f.codigo_cliente||'Libre'),esc(f.origen),'<button data-fotorec="'+esc(f.id)+'">Ver foto</button>']));document.querySelectorAll('[data-fotorec]').forEach(b=>b.onclick=run(async()=>{const r=await fetch(API+'/fotos-recorrido/'+b.dataset.fotorec+'/imagen',{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('No se pudo abrir la imagen');const url=URL.createObjectURL(await r.blob()),img=document.createElement('img');img.src=url;img.style.maxWidth='100%';img.onload=()=>URL.revokeObjectURL(url);b.parentNode.appendChild(img);b.disabled=true;}));});await $('#fotocargar').onclick();
 }
 
 async function inicio(){

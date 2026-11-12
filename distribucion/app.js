@@ -195,12 +195,12 @@ async function conductor(){
   if(gpsGoogle)gpsGoogle.setMap(null);gpsGoogle=new google.maps.Marker({map:mapaGoogle,position:actual,title:'Mi ubicación',icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:'#1976d2',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}});
   mapaGoogle.fitBounds(bounds);$('#mapa-aviso').textContent='Ruta por calles (azul) · GPS (azul claro) · Próxima parada (verde). Tránsito estimado al último cálculo.';
  };
- const mostrarSugerencia=async(automatica=false)=>{if(calculandoRuta)return;calculandoRuta=true;const caja=$('#ruta-sugerida');caja.hidden=false;const {orden,sinCoordenadas}=sugerirOrden();if(!automatica)caja.innerHTML='<strong>Calculando ruta por calles y tránsito…</strong>';
+ const mostrarSugerencia=async(automatica=false)=>{if(calculandoRuta)return;calculandoRuta=true;const caja=$('#ruta-sugerida');caja.hidden=false;const ordenAnterior=[...ordenSugerido];const {orden,sinCoordenadas}=sugerirOrden();ordenSugerido=ordenAnterior;if(!automatica)caja.innerHTML='<strong>Calculando ruta por calles y tránsito…</strong>';
   try{if(!orden.length){caja.innerHTML='<p>No hay entregas pendientes con coordenadas.</p>';return;}
    if(!ultimaUbicacion){const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000,maximumAge:15000}));ultimaUbicacion={latitud:pos.coords.latitude,longitud:pos.coords.longitude};}
    const respuesta=await api('/rutas-google/sugerir',{method:'POST',body:JSON.stringify({origen:ultimaUbicacion,puntos:orden.map(p=>({reparto_id:p.reparto_id,codigo_cliente:p.codigo_cliente,latitud:p.latitud,longitud:p.longitud}))})});
    const clave=p=>p.reparto_id+'|'+p.codigo_cliente,mapaPuntos=new Map(orden.map(p=>[clave(p),p]));const nuevoOrden=respuesta.orden.map(p=>mapaPuntos.get(clave(p))).filter(Boolean);
-   if(automatica&&ordenSugerido.length&&nuevoOrden.map(clave).join(',')!==ordenSugerido.filter(p=>!entregado(p)).map(clave).join(',')){
+   if(automatica&&ordenAnterior.length&&nuevoOrden.map(clave).join(',')!==ordenAnterior.filter(p=>!entregado(p)).map(clave).join(',')){
     caja.innerHTML='<strong>Google propone cambiar el orden de las entregas</strong><p>Hay una nueva propuesta por tránsito. El orden actual no se modificó.</p><button id="aplicar-ruta-nueva" type="button">Aplicar nueva ruta</button><button id="mantener-ruta" type="button">Mantener orden actual</button>';
     $('#aplicar-ruta-nueva').onclick=()=>{ordenSugerido=nuevoOrden;ultimaRuta=respuesta;dibujarRutaGoogle(respuesta).catch(e=>mensaje(e.message));mostrarResumenRuta(respuesta);};
     $('#mantener-ruta').onclick=()=>{caja.innerHTML='<p>Se mantiene el orden actual. Podés recalcular manualmente.</p>';};return;

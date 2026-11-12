@@ -275,6 +275,16 @@ async function recorridos(){
 
 
 
+function abrirFotoMenu(origen){
+ const anterior=document.querySelector('#foto-menu-panel');if(anterior)anterior.remove();
+ const panel=document.createElement('div');panel.id='foto-menu-panel';panel.className='panel';
+ panel.innerHTML='<h3>Foto del recorrido</h3><p>Podés tomar o elegir una imagen. Para guardarla asociada a un cliente, seleccioná su entrega. La asociación libre al recorrido todavía está pendiente de habilitar en el servidor.</p><input id="foto-menu-archivo" type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Sin imagen seleccionada</p><button id="foto-menu-cerrar" type="button">Cerrar</button>';
+ document.querySelector('#vista').prepend(panel);
+ panel.querySelector('#foto-menu-cerrar').onclick=()=>panel.remove();
+ panel.querySelector('#foto-menu-archivo').onchange=e=>{const f=e.target.files[0];if(!f)return;const p=panel.querySelector('#foto-menu-estado');p.textContent=f.size>5*1024*1024?'La imagen supera 5 MB. Elegí otra.':'Seleccionada: '+f.name+'. Para guardarla, ingresá a la entrega del cliente.';};
+ panel.querySelector('#foto-menu-archivo').click();
+}
+
 async function inicio(){
 
  if(usuario?.rol!=='CONDUCTOR'){
@@ -285,7 +295,9 @@ async function inicio(){
 
  }
 
- $('#nav').innerHTML='<button id="home">Volver a mis entregas</button><button id="salir">Cerrar sesión</button>';
+ $('#nav').innerHTML='<button id="home">Volver a mis entregas</button><button id="foto-menu" type="button">📷 Foto</button><button id="galeria-menu" type="button">🖼️ Galería</button><button id="salir">Cerrar sesión</button>';
+ $('#foto-menu').onclick=()=>abrirFotoMenu('camara');
+ $('#galeria-menu').onclick=()=>abrirFotoMenu('galeria');
 
  $('#home').onclick=run(inicio);
 

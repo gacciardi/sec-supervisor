@@ -442,24 +442,47 @@ async function conductor(){
 function detenerGps(){if(gpsWatch!==null)navigator.geolocation.clearWatch(gpsWatch);gpsWatch=null;if($('#gpsestado'))$('#gpsestado').textContent='Recorrido detenido.';}
 
 async function resultado(p){
- const [motivos,pedidosCliente]=await Promise.all([
+ const [motivos,medios,pedidosCliente,rendiciones,cobrosPrevios]=await Promise.all([
   api('/rendicion/catalogos/motivos'),
-  api('/pedidos?fecha='+encodeURIComponent(fechaHoy()))
+  api('/rendicion/catalogos/medios'),
+  api('/pedidos?fecha='+encodeURIComponent(fechaHoy())),
+  api('/rendicion/entregas?fecha='+encodeURIComponent(fechaHoy())),
+  api('/rendicion/cobros?fecha='+encodeURIComponent(fechaHoy()))
  ]);
  const total=pedidosCliente.filter(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente)).reduce((sum,x)=>sum+Number(x.importe||0),0);
+ const previa=rendiciones.find(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente));
+ const pagosPrevios=previa?cobrosPrevios.filter(x=>String(x.rendicion_entrega_id)===String(previa.id)):[];
  const opciones=motivos.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
- $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><label>📷 Sacar foto<input id="foto-camara" type="file" accept="image/jpeg,image/png,image/*" capture="environment"></label><label>🖼️ Biblioteca<input id="foto-biblioteca" type="file" accept="image/jpeg,image/png,image/*"></label></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><button>Guardar</button></form></div>`;
- const actualizar=()=>{const estado=$('#resultado [name=estado]').value,requiere=estado==='RECHAZADO'||estado==='PARCIAL';$('#resultado-motivo').hidden=!requiere;$('#resultado-parcial').hidden=estado!=='PARCIAL';$('#resultado [name=motivo_rechazo_id]').required=requiere;$('#resultado [name=importe_entregado]').required=estado==='PARCIAL';};
+ const opcionesMedios=medios.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
+ $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><label>📷 Sacar foto<input id="foto-camara" type="file" accept="image/jpeg,image/png,image/*" capture="environment"></label><label>🖼️ Biblioteca<input id="foto-biblioteca" type="file" accept="image/jpeg,image/png,image/*"></label></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><button>Guardar</button></form></div>`;
+ const agregarPago=(medio='',importe='',referencia='')=>{
+  const fila=document.createElement('div');fila.className='panel';fila.style.margin='8px 0';
+  fila.innerHTML='<label>Forma de pago<select class="pago-medio" required><option value="">Seleccionar forma de pago</option>'+opcionesMedios+'</select></label><label>Importe cobrado ($)<input class="pago-importe" type="number" min="0.01" step="0.01" required></label><label>Referencia (opcional)<input class="pago-referencia" maxlength="150"></label><button type="button" class="pago-quitar">Quitar</button>';
+  $('#resultado-pagos').appendChild(fila);fila.querySelector('.pago-medio').value=String(medio);fila.querySelector('.pago-importe').value=String(importe);fila.querySelector('.pago-referencia').value=referencia;
+  fila.querySelector('.pago-quitar').onclick=()=>{fila.remove();resumirCobro();};
+  fila.querySelector('.pago-importe').oninput=resumirCobro;resumirCobro();
+ };
+ const resumirCobro=()=>{const suma=[...document.querySelectorAll('.pago-importe')].reduce((n,x)=>n+Math.round(Number(x.value||0)*100),0)/100;const destino=$('#resultado-total-cobrado');if(destino)destino.textContent='Total registrado: '+suma.toLocaleString('es-AR',{style:'currency',currency:'ARS'});};
+ $('#resultado-agregar-pago').onclick=()=>{if(document.querySelectorAll('#resultado-pagos .panel').length>=8){mensaje('Máximo ocho medios por entrega.');return;}agregarPago();};
+ if(pagosPrevios.length)pagosPrevios.forEach(x=>agregarPago(x.medio_cobranza_id,x.importe,x.referencia||''));
+ else agregarPago();
+ if(previa){$('#resultado [name=estado]').value=previa.estado;$('#resultado [name=motivo_rechazo_id]').value=String(previa.motivo_rechazo_id||'');$('#resultado [name=importe_entregado]').value=previa.importe_entregado;$('#resultado [name=observacion]').value=previa.observacion||'';}
+ const actualizar=()=>{const estado=$('#resultado [name=estado]').value,requiere=estado==='RECHAZADO'||estado==='PARCIAL';$('#resultado-motivo').hidden=!requiere;$('#resultado-cobranza').hidden=estado==='VISITADO'||estado==='RECHAZADO';$('#resultado-parcial').hidden=estado!=='PARCIAL';$('#resultado [name=motivo_rechazo_id]').required=requiere;$('#resultado [name=importe_entregado]').required=estado==='PARCIAL';document.querySelectorAll('#resultado-pagos input,#resultado-pagos select').forEach(x=>{if(x.classList.contains('pago-referencia'))return;x.required=estado==='ENTREGADO'||estado==='PARCIAL';});};
  $('#resultado [name=estado]').onchange=actualizar;actualizar();
  $('#resultado').onsubmit=e=>{e.preventDefault();run(async()=>{
   const form=Object.fromEntries(new FormData(e.target)),file=$('#foto-camara').files[0]||$('#foto-biblioteca').files[0];
   if(file&&file.size>5*1024*1024)throw Error('La foto supera 5 MB');
   const estado=form.estado;
-  if(estado==='RECHAZADO'||estado==='PARCIAL'){
+  if(estado!=='VISITADO'){
    if(!Number.isFinite(total)||total<=0)throw Error('No se puede rendir sin importe original válido');
-   const importe=estado==='RECHAZADO'?0:Number(form.importe_entregado);
+   const importe=estado==='RECHAZADO'?0:estado==='ENTREGADO'?total:Number(form.importe_entregado);
    if(estado==='PARCIAL'&&!(importe>0&&importe<total))throw Error('El importe parcial debe ser mayor a cero y menor al pedido');
-   await api('/rendicion/entregas',{method:'POST',body:JSON.stringify({reparto_id:p.reparto_id,codigo_cliente:p.codigo_cliente,estado,importe_entregado:importe,motivo_rechazo_id:form.motivo_rechazo_id,cobros:[],observacion:form.observacion})});
+   const pagos=estado==='RECHAZADO'?[]:[...document.querySelectorAll('#resultado-pagos .panel')].map(f=>({medio_cobranza_id:f.querySelector('.pago-medio').value,importe:Number(f.querySelector('.pago-importe').value),referencia:f.querySelector('.pago-referencia').value})).filter(x=>x.medio_cobranza_id||x.importe);
+   if(pagos.some(x=>!x.medio_cobranza_id||!Number.isFinite(x.importe)||x.importe<=0||Math.round(x.importe*100)!==x.importe*100))throw Error('Revisá las formas de pago y los importes.');
+   const suma=pagos.reduce((n,x)=>n+Math.round(x.importe*100),0);
+   if(suma>Math.round(importe*100))throw Error('Los cobros superan el importe entregado.');
+   if(previa&&!confirm('Esta entrega ya tiene una rendición guardada. Al continuar se reemplazarán sus cobros anteriores. ¿Confirmás la corrección?'))return;
+   await api('/rendicion/entregas',{method:'POST',body:JSON.stringify({reparto_id:p.reparto_id,codigo_cliente:p.codigo_cliente,estado,importe_entregado:importe,motivo_rechazo_id:estado==='ENTREGADO'?null:form.motivo_rechazo_id,cobros:pagos,observacion:form.observacion})});
   }
   const visitaEstado=estado==='RECHAZADO'||estado==='PARCIAL'?'INCIDENCIA':estado;
   const v=await api('/visitas',{method:'POST',body:JSON.stringify({estado:visitaEstado,observacion:form.observacion,reparto_id:p.reparto_id,codigo_cliente:p.codigo_cliente})});

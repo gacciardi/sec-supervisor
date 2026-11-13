@@ -13,7 +13,7 @@ const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
-const secciones=[['Dashboard conductores','Estado GPS y entregas de todos los conductores.'],['Recrear viaje','Reproducción del recorrido con control de velocidad.'],['Fotos del recorrido','Fotografías libres y asociadas a clientes.'],['Conductores','Alta, modificación y baja de conductores.'],['ABM de usuarios','Usuarios de oficina, perfiles, contraseñas y estado de acceso.'],['Rendición de Viaje','Operaciones, indicadores y cobros por viaje.'],['Configuración de rendiciones','ABM de motivos de rechazo y medios de cobranza.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Faltantes de ubicación y asignación.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Importar horarios','Excel o CSV: cliente y horario de recepción.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
+const secciones=[['Dashboard conductores','Estado GPS y entregas de todos los conductores.'],['Recrear viaje','Reproducción del recorrido con control de velocidad.'],['Fotos del recorrido','Fotografías libres y asociadas a clientes.'],['Conductores','Alta, modificación y baja de conductores.'],['ABM de usuarios','Usuarios de oficina, perfiles, contraseñas y estado de acceso.'],['Rendición de Viaje','Operaciones, indicadores y cobros por viaje.'],['Configuración de rendiciones','ABM de motivos de rechazo y medios de cobranza.'],['Mapa de clientes','Comercios del plan de entregas.'],['Visitas y recorridos','Registro y recreación del recorrido del conductor.'],['Supervisor','Control del plan de entregas.'],['Asignación de repartos','Asignar conductor y vehículo a cada reparto.'],['Alertas','Alertas de robo, pedido de mecánico y controles operativos.'],['Auditoría','Historial de cambios del módulo.'],['Importar pedidos','Excel de distribución.'],['Importar horarios','Excel o CSV: cliente y horario de recepción.'],['Vehículos','Internos y patentes; camión o tractor con semi.'],['App Conductor','Entregas, incidencias, fotos y GPS con la página abierta.'],['Reemplazos por inasistencia','Cubrir ausencias de conductores en los repartos cargados.']];
 
 function mensaje(s){$('#mensaje').textContent=s;}
 
@@ -29,8 +29,27 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
 
 }
 
-async function menuAdministrador(){if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>(usuario?.rol!=='CONDUCTOR'||[1,2,12].includes(i))&&(![4,6].includes(i)||['ADMIN','ADMINISTRADOR'].includes(usuario?.rol))).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
+async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>(usuario?.rol!=='CONDUCTOR'||[1,2,12].includes(i))&&(![4,6].includes(i)||['ADMIN','ADMINISTRADOR'].includes(usuario?.rol))).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
+let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false;
+function sonarAlerta(){
+ try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;const ctx=new AudioContext(),osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='square';osc.frequency.value=750;gain.gain.value=0.08;osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.22);osc.onended=()=>ctx.close();}catch(_){}
+}
+async function consultarAlertasOficina(){
+ if(!usuario||!['ADMIN','SUPERVISOR'].includes(usuario.rol))return;
+ try{
+  const todas=await api('/alertas-conductor'),pendientes=todas.filter(x=>x.estado==='ENVIADA');
+  const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
+  if(nuevas.length&&secAlertasInicializadas)sonarAlerta();
+  secAlertasInicializadas=true;secAlertasConocidas=new Set(pendientes.map(x=>String(x.id)));
+  let panel=document.getElementById('sec-alertas-emergentes');
+  if(!panel){panel=document.createElement('div');panel.id='sec-alertas-emergentes';panel.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;top:12px;max-width:620px;margin:auto;max-height:70vh;overflow:auto;background:#fff;color:#111;border:3px solid #b91c1c;border-radius:12px;padding:12px;box-shadow:0 5px 28px #0007';document.body.appendChild(panel);}
+  panel.hidden=!pendientes.length;
+  panel.innerHTML=pendientes.map(a=>'<div style="border-bottom:1px solid #ddd;padding:10px"><strong style="color:#b91c1c">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+(a.latitud!=null?' · GPS: '+esc(a.latitud)+', '+esc(a.longitud):' · Sin GPS')+'</p><button type="button" data-confirmar="'+esc(a.id)+'">Confirmar lectura</button></div>').join('');
+  panel.querySelectorAll('[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();})());
+ }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
+}
+function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);}}
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
@@ -161,7 +180,11 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
 
  if(p==='Mapa de clientes'){agregarVista.html=`<div class="panel"><label>Fecha<input id="fecha" type="date"></label><label>Despacho<select id="despacho"><option value="">Todos</option>${repartos.map(r=>`<option value="${esc(r.id)}">${esc(r.fecha.slice(0,10)+' · '+r.despacho)}</option>`).join('')}</select></label><div id="mapa"></div><p id="sincoordenadas"></p></div>`;const draw=()=>{if(mapa)mapa.remove();if(!window.L){mensaje('No se pudo cargar el componente de mapa');return;}mapa=L.map('mapa').setView([-34.65,-58.8],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapa);const seen=new Set(),pts=[],rs=pedidos.filter(p=>(!$('#fecha').value||p.fecha.slice(0,10)===$('#fecha').value)&&(!$('#despacho').value||p.reparto_id===$('#despacho').value));let missing=0;for(const p of rs){if(seen.has(p.codigo_cliente))continue;seen.add(p.codigo_cliente);if(p.latitud==null||p.longitud==null){missing++;continue;}const lat=Number(p.latitud),lng=Number(p.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng)){missing++;continue;}L.marker([lat,lng]).addTo(mapa).bindPopup(esc(p.codigo_cliente+' · '+p.nombre_cliente));pts.push([lat,lng]);}if(pts.length)mapa.fitBounds(pts,{padding:[25,25],maxZoom:16});$('#sincoordenadas').textContent='Clientes sin coordenadas: '+missing;};$('#fecha').onchange=draw;$('#despacho').onchange=draw;draw();return;}
 
- if(p==='Alertas'){agregarVista.html=tabla(['Referencia','Motivo'],repartos.filter(r=>!r.conductor_id||!r.principal_id).map(r=>[esc(r.despacho),esc(!r.conductor_id?'Sin conductor asignado':'Sin vehículo asignado')]).concat(pedidos.filter(p=>p.latitud==null||p.longitud==null).map(p=>[esc(p.codigo_cliente),'Cliente sin coordenadas o sin vínculo de empresa'])));return;}
+ if(p==='Alertas'){
+  agregarVista.html='<div class="panel"><h3>Alertas del conductor</h3><button id="alertas-refrescar">Actualizar</button><div id="alertas-historial"></div><h3>Controles operativos</h3></div>';
+  agregarVista.html=tabla(['Referencia','Motivo'],repartos.filter(r=>!r.conductor_id||!r.principal_id).map(r=>[esc(r.despacho),esc(!r.conductor_id?'Sin conductor asignado':'Sin vehículo asignado')]).concat(pedidos.filter(p=>p.latitud==null||p.longitud==null).map(p=>[esc(p.codigo_cliente),'Cliente sin coordenadas o sin vínculo de empresa'])));
+  const refresh=async()=>{const as=await api('/alertas-conductor');$('#alertas-historial').innerHTML=tabla(['Fecha','Tipo','Conductor','Despacho','Estado','Acción'],as.map(a=>[esc(new Date(a.creada_en).toLocaleString('es-AR')),esc((a.es_prueba?'PRUEBA · ':'')+a.tipo),esc(a.conductor),esc(a.despacho||''),esc(a.estado),a.estado==='CONFIRMADA'?'<button data-resolver="'+esc(a.id)+'">Resolver</button>':a.estado==='ENVIADA'?'<button data-confirmar="'+esc(a.id)+'">Confirmar</button>':'—']));$('#alertas-historial').querySelectorAll('[data-resolver],[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+(b.dataset.resolver||b.dataset.confirmar)+'/'+(b.dataset.resolver?'resolver':'confirmar'),{method:'POST'});await refresh();await consultarAlertasOficina();})());};$('#alertas-refrescar').onclick=run(refresh);await refresh();return;
+ }
 
  // La asignación se muestra arriba con filtro de fecha.
 
@@ -210,6 +233,21 @@ let gpsWatch=null;
 function fechaHoy(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
 
 async function conductor(){
+
+ agregarVista.html='<div class="panel" id="panel-alerta-conductor"><h3>Seguridad y asistencia</h3><button id="alerta-robo" type="button" style="background:#b91c1c;color:#fff;padding:14px;margin:4px">ALERTA DE ROBO</button><button id="alerta-mecanico" type="button" style="background:#d97706;color:#fff;padding:14px;margin:4px">PEDIR MECÁNICO</button><label><input id="alerta-prueba" type="checkbox"> Modo PRUEBA (no es una emergencia real)</label><p id="alerta-estado" aria-live="polite">Sin alertas enviadas.</p></div>';
+ const enviarAlerta=async tipo=>{
+   const prueba=$('#alerta-prueba').checked;
+   if(!confirm((prueba?'ENVIAR ALERTA DE PRUEBA: ':'CONFIRMAR ALERTA REAL: ')+(tipo==='ROBO'?'ROBO':'PEDIDO DE MECÁNICO')+'?'))return;
+   const boton=tipo==='ROBO'?$('#alerta-robo'):$('#alerta-mecanico');boton.disabled=true;
+   try{
+    const gps=typeof ultimaUbicacion!=='undefined'?ultimaUbicacion:null;
+    const d=await api('/alertas-conductor',{method:'POST',body:JSON.stringify({tipo,es_prueba:prueba,latitud:gps?.latitud??null,longitud:gps?.longitud??null})});
+    $('#alerta-estado').textContent='Alerta '+(prueba?'DE PRUEBA ':'')+'recibida por el servidor. Esperando confirmación humana. N.º '+d.id;
+   }catch(e){$('#alerta-estado').textContent='NO se confirmó el envío: '+e.message+'. Reintentar o llamar a la oficina.';}
+   finally{boton.disabled=false;}
+ };
+ $('#alerta-robo').onclick=()=>enviarAlerta('ROBO');
+ $('#alerta-mecanico').onclick=()=>enviarAlerta('MECANICO');
 
  if(usuario?.rol!=='CONDUCTOR'){
    agregarVista.html='<div class="panel"><h3>Ingresar como conductor</h3><p>Como en Comercial, podés ingresar con el legajo del conductor sin cerrar tu sesión administrativa. La App Conductor se abrirá en otra pestaña.</p><form id="acceso-conductor-legajo"><label>Legajo del conductor<input name="legajo" inputmode="numeric" autocomplete="off" required placeholder="Ej.: 164"></label><button type="submit">Abrir App Conductor</button></form></div>';

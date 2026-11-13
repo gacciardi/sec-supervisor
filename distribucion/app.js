@@ -36,9 +36,38 @@ function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
 
  if(p==='Rendición de Viaje'){
-  agregarVista.html='<div class="panel"><label>Fecha de entrega <input id="rendicion-fecha" type="date" value="'+fechaHoy()+'"></label><button id="rendicion-actualizar">Actualizar</button><p id="rendicion-nota">Primera etapa: control de mercadería por estado de entrega. La rendición de cobros se habilitará al incorporar los medios de pago.</p><div id="rendicion-resumen"></div><div id="rendicion-detalle"></div></div>';
+  agregarVista.html='<div class="panel"><label>Fecha de entrega <input id="rendicion-fecha" type="date" value="'+fechaHoy()+'"></label> <button id="rendicion-actualizar">Actualizar</button><p>Control de mercadería. Los cobros, motivos de rechazo y conciliación de caja aún no están disponibles.</p><button id="rendicion-tab-operaciones" type="button">Operaciones</button> <button id="rendicion-tab-indicadores" type="button">Indicadores</button><div id="rendicion-operaciones"><div id="rendicion-resumen"></div><div id="rendicion-detalle"></div></div><div id="rendicion-indicadores" hidden><p>Indicadores preliminares por estado registrado; no equivalen todavía a rechazos confirmados con motivo.</p><div id="rendicion-ranking"></div></div></div>';
   const pesos=n=>Number(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
-  const refrescar=async()=>{const fecha=$('#rendicion-fecha').value;if(!fecha)return;const [ps,vs]=await Promise.all([api('/pedidos?fecha='+encodeURIComponent(fecha)),api('/visitas?fecha='+encodeURIComponent(fecha))]);const estado=new Map(vs.map(v=>[String(v.reparto_id)+'|'+String(v.codigo_cliente),v.estado]));const viajes=new Map();for(const p of ps){const key=String(p.reparto_id),v=viajes.get(key)||{despacho:p.despacho,conductor:p.conductor_nombre||'',total:0,entregado:0,noEntregado:0,pendiente:0,pedidos:0};const importe=Number(p.importe)||0;v.total+=importe;v.pedidos++;const e=estado.get(key+'|'+p.codigo_cliente);if(e==='ENTREGADO')v.entregado+=importe;else if(e==='CERRADO'||e==='INCIDENCIA')v.noEntregado+=importe;else v.pendiente+=importe;viajes.set(key,v);}const filas=[...viajes.values()];const sum=k=>filas.reduce((a,v)=>a+v[k],0);$('#rendicion-resumen').innerHTML=tabla(['Total despachado','Entregado','No entregado / incidencia','Pendiente'],[[pesos(sum('total')),pesos(sum('entregado')),pesos(sum('noEntregado')),pesos(sum('pendiente'))]]);$('#rendicion-detalle').innerHTML=tabla(['Despacho','Conductor','Pedidos','Despachado','Entregado','No entregado','Pendiente'],filas.map(v=>[esc(v.despacho),esc(v.conductor),String(v.pedidos),pesos(v.total),pesos(v.entregado),pesos(v.noEntregado),pesos(v.pendiente)]));};
+  const activar=tab=>{const ind=tab==='indicadores';$('#rendicion-operaciones').hidden=ind;$('#rendicion-indicadores').hidden=!ind;};
+  $('#rendicion-tab-operaciones').onclick=()=>activar('operaciones');
+  $('#rendicion-tab-indicadores').onclick=()=>activar('indicadores');
+  const refrescar=async()=>{
+    const fecha=$('#rendicion-fecha').value;if(!fecha)return;
+    const [ps,vs]=await Promise.all([api('/pedidos?fecha='+encodeURIComponent(fecha)),api('/visitas?fecha='+encodeURIComponent(fecha))]);
+    const estado=new Map(vs.map(v=>[String(v.reparto_id)+'|'+String(v.codigo_cliente),v.estado]));
+    const viajes=new Map(),clientes=new Map();
+    for(const p of ps){
+      const key=String(p.reparto_id),v=viajes.get(key)||{despacho:p.despacho,conductor:p.conductor_nombre||'',total:0,entregado:0,noEntregado:0,pendiente:0,pedidos:0};
+      const importe=Number(p.importe)||0;v.total+=importe;v.pedidos++;
+      const clienteKey=key+'|'+String(p.codigo_cliente),e=estado.get(clienteKey);
+      if(e==='ENTREGADO')v.entregado+=importe;
+      else if(e==='CERRADO'||e==='INCIDENCIA')v.noEntregado+=importe;
+      else v.pendiente+=importe;
+      viajes.set(key,v);
+      if(!clientes.has(clienteKey))clientes.set(clienteKey,{conductor:v.conductor,despacho:v.despacho,estado:e||'PENDIENTE'});
+    }
+    const filas=[...viajes.values()],sum=k=>filas.reduce((a,v)=>a+v[k],0);
+    $('#rendicion-resumen').innerHTML=tabla(['Total despachado','Entregado','No entregado / incidencia','Pendiente'],[[pesos(sum('total')),pesos(sum('entregado')),pesos(sum('noEntregado')),pesos(sum('pendiente'))]]);
+    $('#rendicion-detalle').innerHTML=tabla(['Despacho','Conductor','Pedidos','Despachado','Entregado','No entregado','Pendiente'],filas.map(v=>[esc(v.despacho),esc(v.conductor),String(v.pedidos),pesos(v.total),pesos(v.entregado),pesos(v.noEntregado),pesos(v.pendiente)]));
+    const ranking=new Map();
+    for(const c of clientes.values()){
+      const key=c.conductor+'|'+c.despacho,x=ranking.get(key)||{conductor:c.conductor,despacho:c.despacho,atendidos:0,incidencias:0,entregados:0};
+      if(c.estado!=='PENDIENTE'&&c.estado!=='VISITADO'){x.atendidos++;if(c.estado==='CERRADO'||c.estado==='INCIDENCIA')x.incidencias++;if(c.estado==='ENTREGADO')x.entregados++;}
+      ranking.set(key,x);
+    }
+    const datos=[...ranking.values()].filter(x=>x.atendidos).sort((a,b)=>(b.incidencias/b.atendidos)-(a.incidencias/a.atendidos));
+    $('#rendicion-ranking').innerHTML=tabla(['Conductor','Despacho','Atendidos','Entregados','Cerrados / incidencias','% incidencias'],datos.map(x=>[esc(x.conductor),esc(x.despacho),String(x.atendidos),String(x.entregados),String(x.incidencias),(100*x.incidencias/x.atendidos).toFixed(1)+'%']));
+  };
   $('#rendicion-actualizar').onclick=run(refrescar);await refrescar();return;
  }
  if(p==='ABM de usuarios'){

@@ -31,7 +31,7 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
 
 async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>(usuario?.rol!=='CONDUCTOR'||[1,2,12].includes(i))&&(![4,6].includes(i)||['ADMIN','ADMINISTRADOR'].includes(usuario?.rol))).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
-let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set();
+let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set(),secAlertasPendientes=0,secAudioHabilitado=false;
 const secDireccionesCache=new Map();
 async function direccionDeCoordenadas(lat,lon){
  const key=Number(lat).toFixed(6)+','+Number(lon).toFixed(6);
@@ -54,32 +54,57 @@ async function direccionDeCoordenadas(lat,lon){
  return direccion;
 }
 function sonarAlerta(){
- try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;const ctx=new AudioContext(),osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='square';osc.frequency.value=750;gain.gain.value=0.08;osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.22);osc.onended=()=>ctx.close();}catch(_){}
+ if(!secAlertasPendientes)return;
+ try{
+  const AudioContext=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContext)return;
+  const ctx=secAlertaSonido||(secAlertaSonido=new AudioContext());
+  if(ctx.state==='suspended'){ctx.resume().catch(()=>{});return;}
+  const inicio=ctx.currentTime;
+  [0,0.3,0.6].forEach((offset,i)=>{
+   const osc=ctx.createOscillator(),gain=ctx.createGain();
+   osc.type='square';osc.frequency.value=i===1?620:880;
+   gain.gain.setValueAtTime(0.0001,inicio+offset);
+   gain.gain.exponentialRampToValueAtTime(0.16,inicio+offset+0.02);
+   gain.gain.exponentialRampToValueAtTime(0.0001,inicio+offset+0.22);
+   osc.connect(gain);gain.connect(ctx.destination);
+   osc.start(inicio+offset);osc.stop(inicio+offset+0.24);
+  });
+ }catch(e){console.warn('Audio de alerta:',e.message);}
+}
+function habilitarSonidoAlertas(){
+ secAudioHabilitado=true;
+ try{
+  const AudioContext=window.AudioContext||window.webkitAudioContext;
+  if(AudioContext){secAlertaSonido=secAlertaSonido||new AudioContext();secAlertaSonido.resume().then(()=>sonarAlerta()).catch(()=>{});}
+ }catch(_){}
 }
 async function consultarAlertasOficina(){
  if(!usuario||!['ADMIN','SUPERVISOR'].includes(usuario.rol))return;
  try{
   const todas=await api('/alertas-conductor'),pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.estado!=='RESUELTA'&&!secAlertasOcultadas.has(String(x.id)));
   const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
-  if(nuevas.length&&secAlertasInicializadas)sonarAlerta();
+  secAlertasPendientes=pendientes.length;
+  if(nuevas.length&&secAlertasInicializadas&&secAudioHabilitado)sonarAlerta();
   secAlertasInicializadas=true;secAlertasConocidas=new Set(pendientes.map(x=>String(x.id)));
   let panel=document.getElementById('sec-alertas-emergentes');
-  if(!panel){panel=document.createElement('div');panel.id='sec-alertas-emergentes';panel.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;top:12px;max-width:620px;margin:auto;max-height:70vh;overflow:auto;background:#fff;color:#111;border:3px solid #b91c1c;border-radius:12px;padding:12px;box-shadow:0 5px 28px #0007';document.body.appendChild(panel);}
+  if(!panel){panel=document.createElement('div');panel.id='sec-alertas-emergentes';panel.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;top:16px;width:calc(100% - 24px);max-width:860px;margin:auto;max-height:82vh;overflow:auto;background:#fff1f2;color:#111827;border:6px solid #b91c1c;border-radius:18px;padding:22px;box-shadow:0 10px 45px #0009;font-size:18px;line-height:1.45';document.body.appendChild(panel);}
   panel.hidden=!visibles.length;
-  const firma=visibles.map(a=>[a.id,a.estado].join(':')).join('|');
+  const firma=visibles.map(a=>[a.id,a.estado].join(':')).join('|')+'|audio:'+secAudioHabilitado;
   if(panel.dataset.firma===firma)return;
   panel.dataset.firma=firma;
-  panel.innerHTML=visibles.map(a=>{
+  panel.innerHTML=(pendientes.length&&!secAudioHabilitado?'<div style="background:#7f1d1d;color:white;padding:12px;border-radius:8px;margin-bottom:12px"><strong>¡ALERTA PENDIENTE!</strong> <button type="button" data-activar-audio style="font-size:17px;padding:10px;background:#fff;color:#7f1d1d;border:2px solid #fff;border-radius:8px;font-weight:bold">Activar alarma sonora</button><div style="font-size:13px">El navegador puede bloquear el sonido hasta que hagas clic.</div></div>':'')+visibles.map(a=>{
    const tieneGps=a.latitud!=null&&a.longitud!=null;
    const mapa=tieneGps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'';
-   return '<div style="border-bottom:1px solid #ddd;padding:10px"><strong style="color:#b91c1c">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+'<p>'+(a.estado==='ENVIADA'?'<button type="button" data-confirmar="'+esc(a.id)+'">Confirmar lectura</button>':'<strong>Lectura confirmada por oficina</strong> <button type="button" data-ocultar="'+esc(a.id)+'">Cerrar aviso en esta pantalla</button>')+'</p></div>';
+   return '<div style="border-bottom:2px solid #b91c1c;padding:14px;background:#fff;border-radius:10px;margin-bottom:10px"><strong style="display:block;background:#b91c1c;color:white;padding:12px;border-radius:8px;font-size:26px">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+'<p>'+(a.estado==='ENVIADA'?'<button type="button" data-confirmar="'+esc(a.id)+'" style="background:#166534;color:white;font-size:20px;font-weight:bold;padding:14px 20px;border:0;border-radius:9px">✓ CONFIRMAR LECTURA Y SILENCIAR</button>':'<strong style="color:#166534">✓ Lectura confirmada por oficina</strong> <button type="button" data-ocultar="'+esc(a.id)+'" style="margin-left:12px;background:#e5e7eb;color:#111827;padding:10px;border:1px solid #9ca3af;border-radius:8px">Cerrar aviso en esta pantalla</button>')+'</p></div>';
   }).join('');
   visibles.forEach(a=>{if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
+  panel.querySelectorAll('[data-activar-audio]').forEach(b=>b.onclick=()=>{habilitarSonidoAlertas();panel.dataset.firma='';consultarAlertasOficina();});
   panel.querySelectorAll('[data-ocultar]').forEach(b=>b.onclick=()=>{secAlertasOcultadas.add(b.dataset.ocultar);panel.dataset.firma='';consultarAlertasOficina();});
   panel.querySelectorAll('[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();})());
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }
-function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);}}
+function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';

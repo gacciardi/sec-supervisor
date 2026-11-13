@@ -378,6 +378,24 @@ async function conductor(){
 
  const entregados=stops.filter(entregado).length,visitadosSinEntrega=stops.filter(p=>['RECHAZADO','NO_ENTREGADO','VISITADO'].includes(estadoCliente(p))).length;
 
+ const formatoDinero=n=>Number(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS'});
+ agregarVista.html='<div class="panel" id="mi-cobranza"><button id="mi-cobranza-toggle" type="button">💰 Mi cobranza · Ver resumen</button><div id="mi-cobranza-detalle" hidden><p>Importes registrados para los despachos de hoy. Cuenta corriente y saldos pendientes no son dinero recibido.</p><div id="mi-cobranza-cifras">Seleccioná Ver resumen.</div><button type="button" id="mi-cobranza-actualizar">Actualizar importes</button></div></div>';
+ const mostrarCobranza=async()=>{
+  const caja=$('#mi-cobranza-cifras');if(!caja)return;caja.textContent='Consultando cobranzas...';
+  try{
+   const [cobros,entregas]=await Promise.all([api('/rendicion/cobros?fecha='+encodeURIComponent(fecha)),api('/rendicion/entregas?fecha='+encodeURIComponent(fecha))]);
+   const clasificar=x=>{const n=String(x.medio_nombre||'').toUpperCase(),c=String(x.medio_clasificacion||'').toUpperCase();if(/CUENTA\\s*CORRIENTE|C\\.?C\\.?|CREDITO|CRÉDITO/.test(n))return 'cuenta';if(/QR|MERCADO\\s*PAGO|TRANSFER|BILLETERA/.test(n)||c==='DIGITAL')return 'digital';if(c==='EFECTIVO'||/EFECTIVO/.test(n))return 'efectivo';return 'otros';};
+   const grupos={efectivo:0,digital:0,cuenta:0,otros:0};const detalles={};
+   for(const x of cobros){const g=clasificar(x),importe=Math.round(Number(x.importe||0)*100);grupos[g]+=importe;const k=String(x.medio_nombre||'Otro medio');detalles[k]=(detalles[k]||0)+importe;}
+   const totalEntregado=entregas.reduce((n,x)=>n+Math.round(Number(x.importe_entregado||0)*100),0);
+   const totalRegistrado=Object.values(grupos).reduce((a,b)=>a+b,0);
+   const pendiente=Math.max(0,totalEntregado-totalRegistrado);
+   const fila=(nombre,centavos)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #ddd"><span>'+esc(nombre)+'</span><strong>'+esc(formatoDinero(centavos/100))+'</strong></div>';
+   caja.innerHTML=fila('Efectivo',grupos.efectivo)+fila('QR / transferencias',grupos.digital)+fila('Cuenta corriente registrada',grupos.cuenta)+fila('Otros medios',grupos.otros)+fila('Total cobrado (sin cuenta corriente)',grupos.efectivo+grupos.digital+grupos.otros)+fila('Saldo sin medio registrado',pendiente)+(Object.keys(detalles).length?'<details><summary>Detalle por medio de pago</summary>'+Object.entries(detalles).sort((a,b)=>a[0].localeCompare(b[0])).map(([n,v])=>fila(n,v)).join('')+'</details>':'<p>Aún no hay cobranzas registradas.</p>');
+  }catch(e){caja.textContent='No se pudo consultar la cobranza: '+e.message;}
+ };
+ $('#mi-cobranza-toggle').onclick=()=>{const d=$('#mi-cobranza-detalle');d.hidden=!d.hidden;if(!d.hidden)mostrarCobranza();};
+ $('#mi-cobranza-actualizar').onclick=mostrarCobranza;
  agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${visitadosSinEntrega}</strong><span>No entregados / visitados</span></div><div><strong>${stops.length-entregados-visitadosSinEntrega}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="sugerir-ruta" type="button">Sugerir ruta</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 
  agregarVista.html='<div class="conductor-entregas" id="ruta-sugerida" hidden></div>';

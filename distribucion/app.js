@@ -73,11 +73,22 @@ function sonarAlerta(){
  }catch(e){console.warn('Audio de alerta:',e.message);}
 }
 function habilitarSonidoAlertas(){
- secAudioHabilitado=true;
  try{
   const AudioContext=window.AudioContext||window.webkitAudioContext;
-  if(AudioContext){secAlertaSonido=secAlertaSonido||new AudioContext();secAlertaSonido.resume().then(()=>sonarAlerta()).catch(()=>{});}
- }catch(_){}
+  if(!AudioContext)return;
+  const ctx=secAlertaSonido||(secAlertaSonido=new AudioContext());
+  if(ctx.state==='running'){secAudioHabilitado=true;return;}
+  ctx.resume().then(()=>{secAudioHabilitado=ctx.state==='running';if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();}).catch(()=>{secAudioHabilitado=false;});
+ }catch(e){console.warn('Audio no disponible:',e.message);}
+}
+function prepararAudioAlertas(){
+ if(window.secAudioAutoPreparado)return;
+ window.secAudioAutoPreparado=true;
+ // El primer clic o tecla de oficina desbloquea WebAudio sin mostrar otro botón.
+ const activar=()=>{habilitarSonidoAlertas();};
+ document.addEventListener('pointerdown',activar,{capture:true});
+ document.addEventListener('keydown',activar,{capture:true});
+ habilitarSonidoAlertas();
 }
 async function consultarAlertasOficina(){
  if(!usuario||!['ADMIN','SUPERVISOR'].includes(usuario.rol))return;
@@ -93,17 +104,16 @@ async function consultarAlertasOficina(){
   const firma=visibles.map(a=>[a.id,a.estado].join(':')).join('|')+'|audio:'+secAudioHabilitado;
   if(panel.dataset.firma===firma)return;
   panel.dataset.firma=firma;
-  panel.innerHTML=(pendientes.length&&!secAudioHabilitado?'<div style="background:#7f1d1d;color:white;padding:12px;border-radius:8px;margin-bottom:12px"><strong>¡ALERTA PENDIENTE!</strong> <button type="button" data-activar-audio style="font-size:17px;padding:10px;background:#fff;color:#7f1d1d;border:2px solid #fff;border-radius:8px;font-weight:bold">Activar alarma sonora</button><div style="font-size:13px">El navegador puede bloquear el sonido hasta que hagas clic.</div></div>':'')+visibles.map(a=>{
+  panel.innerHTML=visibles.map(a=>{
    const tieneGps=a.latitud!=null&&a.longitud!=null;
    const mapa=tieneGps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'';
    return '<div style="border-bottom:2px solid #b91c1c;padding:14px;background:#fff;border-radius:10px;margin-bottom:10px"><strong style="display:block;background:#b91c1c;color:white;padding:12px;border-radius:8px;font-size:26px">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+'<p><button type="button" data-confirmar="'+esc(a.id)+'" style="background:#166534;color:white;font-size:20px;font-weight:bold;padding:14px 20px;border:0;border-radius:9px">✓ CONFIRMAR LECTURA Y SILENCIAR</button></p></div>';
   }).join('');
   visibles.forEach(a=>{if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
-  panel.querySelectorAll('[data-activar-audio]').forEach(b=>b.onclick=()=>{habilitarSonidoAlertas();panel.dataset.firma='';consultarAlertasOficina();});
   panel.querySelectorAll('[data-confirmar]').forEach(b=>{b.onclick=run(async()=>{b.disabled=true;try{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();}catch(e){b.disabled=false;throw e;}});});
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }
-function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}
+function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){prepararAudioAlertas();consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';

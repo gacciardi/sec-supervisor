@@ -384,7 +384,7 @@ async function conductor(){
   const caja=$('#mi-cobranza-cifras');if(!caja)return;caja.textContent='Consultando cobranzas...';
   try{
    const [cobros,entregas]=await Promise.all([api('/rendicion/cobros?fecha='+encodeURIComponent(fecha)),api('/rendicion/entregas?fecha='+encodeURIComponent(fecha))]);
-   const clasificar=x=>{const n=String(x.medio_nombre||'').toUpperCase(),c=String(x.medio_clasificacion||'').toUpperCase();if(/CUENTA\\s*CORRIENTE|C\\.?C\\.?|CREDITO|CRÉDITO/.test(n))return 'cuenta';if(/QR|MERCADO\\s*PAGO|TRANSFER|BILLETERA/.test(n)||c==='DIGITAL')return 'digital';if(c==='EFECTIVO'||/EFECTIVO/.test(n))return 'efectivo';return 'otros';};
+   const clasificar=x=>{const n=String(x.medio_nombre||'').toUpperCase(),c=String(x.medio_clasificacion||'').toUpperCase();if(/CUENTA\s*CORRIENTE|C\.?C\.?|CREDITO|CRÉDITO/.test(n))return 'cuenta';if(/QR|MERCADO\s*PAGO|TRANSFER|BILLETERA/.test(n)||c==='DIGITAL')return 'digital';if(c==='EFECTIVO'||/EFECTIVO/.test(n))return 'efectivo';return 'otros';};
    const grupos={efectivo:0,digital:0,cuenta:0,otros:0};const detalles={};
    for(const x of cobros){const g=clasificar(x),importe=Math.round(Number(x.importe||0)*100);grupos[g]+=importe;const k=String(x.medio_nombre||'Otro medio');detalles[k]=(detalles[k]||0)+importe;}
    const totalEntregado=entregas.reduce((n,x)=>n+Math.round(Number(x.importe_entregado||0)*100),0);

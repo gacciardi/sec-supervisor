@@ -32,6 +32,27 @@ function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$(
 async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${secciones.map(([p,desc],i)=>`<button class="menu-card" data-section="${i}"><h3>${esc(p)}</h3><p>${esc(desc)}</p></button>`).filter((_,i)=>(usuario?.rol!=='CONDUCTOR'||[1,2,12].includes(i))&&(![4,6].includes(i)||['ADMIN','ADMINISTRADOR'].includes(usuario?.rol))).join('')}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
 let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false;
+const secDireccionesCache=new Map();
+async function direccionDeCoordenadas(lat,lon){
+ const key=Number(lat).toFixed(6)+','+Number(lon).toFixed(6);
+ if(secDireccionesCache.has(key))return secDireccionesCache.get(key);
+ let direccion='';
+ try{
+  if(window.google?.maps?.Geocoder){
+   const geocoder=new google.maps.Geocoder();
+   const respuesta=await geocoder.geocode({location:{lat:Number(lat),lng:Number(lon)}});
+   direccion=respuesta.results?.[0]?.formatted_address||'';
+  }
+ }catch(_){}
+ if(!direccion){
+  try{
+   const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),4500);
+   try{const resp=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=18&addressdetails=1',{signal:ctrl.signal,headers:{'Accept':'application/json'}});if(resp.ok){const data=await resp.json();direccion=data.display_name||'';}}finally{clearTimeout(timeout);}
+  }catch(_){}
+ }
+ if(direccion)secDireccionesCache.set(key,direccion);
+ return direccion;
+}
 function sonarAlerta(){
  try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;const ctx=new AudioContext(),osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='square';osc.frequency.value=750;gain.gain.value=0.08;osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.22);osc.onended=()=>ctx.close();}catch(_){}
 }
@@ -45,7 +66,12 @@ async function consultarAlertasOficina(){
   let panel=document.getElementById('sec-alertas-emergentes');
   if(!panel){panel=document.createElement('div');panel.id='sec-alertas-emergentes';panel.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;top:12px;max-width:620px;margin:auto;max-height:70vh;overflow:auto;background:#fff;color:#111;border:3px solid #b91c1c;border-radius:12px;padding:12px;box-shadow:0 5px 28px #0007';document.body.appendChild(panel);}
   panel.hidden=!pendientes.length;
-  panel.innerHTML=pendientes.map(a=>'<div style="border-bottom:1px solid #ddd;padding:10px"><strong style="color:#b91c1c">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+(a.latitud!=null?' · GPS: '+esc(a.latitud)+', '+esc(a.longitud):' · Sin GPS')+'</p><button type="button" data-confirmar="'+esc(a.id)+'">Confirmar lectura</button></div>').join('');
+  panel.innerHTML=pendientes.map(a=>{
+   const tieneGps=a.latitud!=null&&a.longitud!=null;
+   const mapa=tieneGps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'';
+   return '<div style="border-bottom:1px solid #ddd;padding:10px"><strong style="color:#b91c1c">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+'<p><button type="button" data-confirmar="'+esc(a.id)+'">Confirmar lectura</button></p></div>';
+  }).join('');
+  pendientes.forEach(a=>{if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
   panel.querySelectorAll('[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();})());
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }

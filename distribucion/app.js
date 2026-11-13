@@ -101,7 +101,7 @@ async function consultarAlertasOficina(){
   visibles.forEach(a=>{if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
   panel.querySelectorAll('[data-activar-audio]').forEach(b=>b.onclick=()=>{habilitarSonidoAlertas();panel.dataset.firma='';consultarAlertasOficina();});
   panel.querySelectorAll('[data-ocultar]').forEach(b=>b.onclick=()=>{secAlertasOcultadas.add(b.dataset.ocultar);panel.dataset.firma='';consultarAlertasOficina();});
-  panel.querySelectorAll('[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();})());
+  panel.querySelectorAll('[data-confirmar]').forEach(b=>{b.onclick=run(async()=>{b.disabled=true;try{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();}catch(e){b.disabled=false;throw e;}});});
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }
 function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}

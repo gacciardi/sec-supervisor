@@ -240,14 +240,16 @@ async function conductor(){
    if(!confirm((prueba?'ENVIAR ALERTA DE PRUEBA: ':'CONFIRMAR ALERTA REAL: ')+(tipo==='ROBO'?'ROBO':'PEDIDO DE MECÁNICO')+'?'))return;
    const boton=tipo==='ROBO'?$('#alerta-robo'):$('#alerta-mecanico');boton.disabled=true;
    try{
-    const gps=typeof ultimaUbicacion!=='undefined'?ultimaUbicacion:null;
+    let gps=null;try{if(navigator.geolocation)gps=await new Promise(resolve=>navigator.geolocation.getCurrentPosition(p=>resolve({latitud:p.coords.latitude,longitud:p.coords.longitude}),()=>resolve(null),{enableHighAccuracy:true,timeout:3500,maximumAge:30000}));}catch(_){}
     const d=await api('/alertas-conductor',{method:'POST',body:JSON.stringify({tipo,es_prueba:prueba,latitud:gps?.latitud??null,longitud:gps?.longitud??null})});
-    $('#alerta-estado').textContent='Alerta '+(prueba?'DE PRUEBA ':'')+'recibida por el servidor. Esperando confirmación humana. N.º '+d.id;
+    $('#alerta-estado').textContent='Alerta '+(prueba?'DE PRUEBA ':'')+'recibida por el servidor. Esperando confirmación humana. N.º '+d.id;sessionStorage.setItem('sec-alerta-pendiente',String(d.id));
    }catch(e){$('#alerta-estado').textContent='NO se confirmó el envío: '+e.message+'. Reintentar o llamar a la oficina.';}
    finally{boton.disabled=false;}
  };
  $('#alerta-robo').onclick=()=>enviarAlerta('ROBO');
  $('#alerta-mecanico').onclick=()=>enviarAlerta('MECANICO');
+ const consultarConfirmacion=async()=>{const id=sessionStorage.getItem('sec-alerta-pendiente');if(!id||!document.getElementById('alerta-estado'))return;try{const as=await api('/alertas-conductor');const a=as.find(x=>String(x.id)===id);if(a&&a.estado!=='ENVIADA'){$('#alerta-estado').textContent='Alerta N.º '+id+' · '+(a.estado==='CONFIRMADA'?'CONFIRMADA POR OFICINA':'RESUELTA')+'.';sessionStorage.removeItem('sec-alerta-pendiente');}}catch(_){}};await consultarConfirmacion();if(window.secConfirmacionTimer)clearInterval(window.secConfirmacionTimer);window.secConfirmacionTimer=setInterval(consultarConfirmacion,12000);
+
 
  if(usuario?.rol!=='CONDUCTOR'){
    agregarVista.html='<div class="panel"><h3>Ingresar como conductor</h3><p>Como en Comercial, podés ingresar con el legajo del conductor sin cerrar tu sesión administrativa. La App Conductor se abrirá en otra pestaña.</p><form id="acceso-conductor-legajo"><label>Legajo del conductor<input name="legajo" inputmode="numeric" autocomplete="off" required placeholder="Ej.: 164"></label><button type="submit">Abrir App Conductor</button></form></div>';

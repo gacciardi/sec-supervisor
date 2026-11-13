@@ -299,6 +299,15 @@ function fechaHoy(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Ar
 async function conductor(){
 
  agregarVista.html='<div class="panel" id="panel-alerta-conductor"><h3>Seguridad y asistencia</h3><button id="alerta-robo" type="button" style="background:#b91c1c;color:#fff;padding:14px;margin:4px">ALERTA DE ROBO</button><button id="alerta-mecanico" type="button" style="background:#d97706;color:#fff;padding:14px;margin:4px">PEDIR MECÁNICO</button><label><input id="alerta-prueba" type="checkbox"> Modo PRUEBA (no es una emergencia real)</label><p id="alerta-estado" aria-live="polite">Sin alertas enviadas.</p></div>';
+ agregarVista.html='<div class="panel"><h3>Mantenimiento preventivo</h3><button id="informar-anomalia" type="button" style="background:#475569;color:white;padding:12px;margin:4px">Informar anomalía del vehículo</button><div id="form-anomalia-panel" hidden><form id="form-anomalia"><label>Tipo de anomalía<select name="tipo" required><option value="LUCES">Luces</option><option value="FRENOS">Frenos</option><option value="NEUMATICOS">Neumáticos</option><option value="MOTOR">Motor</option><option value="ELECTRICO">Sistema eléctrico</option><option value="CARROCERIA">Carrocería</option><option value="OTRO">Otro</option></select></label><label>Qué sucede<textarea name="descripcion" required minlength="5" maxlength="1500" placeholder="Ej.: No enciende la luz trasera derecha"></textarea></label><label>Prioridad<select name="prioridad"><option value="NORMAL">Revisar al regresar</option><option value="URGENTE">Urgente: requiere atención</option></select></label><button type="submit">Enviar a mantenimiento</button></form><p id="anomalia-estado"></p></div></div>';
+ $('#informar-anomalia').onclick=()=>{$('#form-anomalia-panel').hidden=!$('#form-anomalia-panel').hidden;};
+ $('#form-anomalia').onsubmit=e=>{e.preventDefault();run(async()=>{
+  const b=Object.fromEntries(new FormData(e.target));
+  if(!confirm('¿Enviar esta anomalía a Mantenimiento?'))return;
+  const x=await api('/anomalias-vehiculo',{method:'POST',body:JSON.stringify(b)});
+  $('#anomalia-estado').textContent='Anomalía N.º '+x.id+' registrada. Mantenimiento podrá verla antes del regreso.';
+  e.target.reset();
+ })();};
  const enviarAlerta=async tipo=>{
    const prueba=$('#alerta-prueba').checked;
    if(!confirm((prueba?'ENVIAR ALERTA DE PRUEBA: ':'CONFIRMAR ALERTA REAL: ')+(tipo==='ROBO'?'ROBO':'PEDIDO DE MECÁNICO')+'?'))return;
@@ -316,6 +325,13 @@ async function conductor(){
 
 
  if(usuario?.rol!=='CONDUCTOR'){
+   agregarVista.html='<div class="panel"><h3>Anomalías de vehículos · Mantenimiento</h3><button type="button" id="ver-anomalias">Consultar anomalías</button><div id="lista-anomalias"></div></div>';
+   $('#ver-anomalias').onclick=()=>run(async()=>{
+    const datos=await api('/anomalias-vehiculo'),caja=$('#lista-anomalias');
+    caja.innerHTML=datos.length?datos.map(x=>'<div class="panel"><strong>#'+esc(x.id)+' · '+esc(x.tipo)+' · '+esc(x.estado)+'</strong><p>Conductor: '+esc(x.conductor_nombre+' '+x.conductor_apellido)+' · '+esc(new Date(x.creado_en).toLocaleString('es-AR'))+'</p><p>'+esc(x.descripcion)+'</p><p>Prioridad: '+esc(x.prioridad)+'</p><label>Seguimiento<select data-anomalia-id="'+esc(x.id)+'"><option value="PENDIENTE">Pendiente</option><option value="EN_REVISION">En revisión</option><option value="RESUELTA">Resuelta</option></select></label><label>Observación<textarea data-anomalia-nota="'+esc(x.id)+'">'+esc(x.observacion_mantenimiento||'')+'</textarea></label><button type="button" data-guardar-anomalia="'+esc(x.id)+'">Guardar seguimiento</button></div>').join(''):'<p>Sin anomalías registradas.</p>';
+    datos.forEach(x=>{const sel=document.querySelector('[data-anomalia-id="'+x.id+'"]');if(sel)sel.value=x.estado;});
+    document.querySelectorAll('[data-guardar-anomalia]').forEach(btn=>btn.onclick=()=>run(async()=>{const id=btn.dataset.guardarAnomalia;await api('/anomalias-vehiculo/'+id,{method:'PATCH',body:JSON.stringify({estado:document.querySelector('[data-anomalia-id="'+id+'"]').value,observacion_mantenimiento:document.querySelector('[data-anomalia-nota="'+id+'"]').value})});mensaje('Seguimiento actualizado.');$('#ver-anomalias').click();})());
+   })();
    agregarVista.html='<div class="panel"><h3>Ingresar como conductor</h3><p>Como en Comercial, podés ingresar con el legajo del conductor sin cerrar tu sesión administrativa. La App Conductor se abrirá en otra pestaña.</p><form id="acceso-conductor-legajo"><label>Legajo del conductor<input name="legajo" inputmode="numeric" autocomplete="off" required placeholder="Ej.: 164"></label><button type="submit">Abrir App Conductor</button></form></div>';
    $('#acceso-conductor-legajo').onsubmit=async e=>{
      e.preventDefault();

@@ -336,15 +336,17 @@ async function conductor(){
    return;
  }
 
- const fecha=fechaHoy(),ps=await api('/pedidos?fecha='+fecha),vs=await api('/visitas?fecha='+fecha),seen=new Set();
+ const fecha=fechaHoy(),[ps,vs,rendiciones]=await Promise.all([api('/pedidos?fecha='+fecha),api('/visitas?fecha='+fecha),api('/rendicion/entregas?fecha='+fecha)]),seen=new Set();
  const stops=ps.filter(p=>{const key=p.reparto_id+'|'+p.codigo_cliente;if(seen.has(key))return false;seen.add(key);return true;});
  const despachos=[...new Set(stops.map(p=>String(p.despacho??'Sin despacho')))];let despachoActivo=despachos[0];const enDespacho=p=>String(p.despacho??'Sin despacho')===despachoActivo;const coloresDespacho=['#c62828','#1565c0','#7b1fa2','#ef6c00','#008577','#795548','#455a64'];const colorDespacho=p=>coloresDespacho[Math.max(0,despachos.indexOf(String(p.despacho??'Sin despacho')))%coloresDespacho.length];
  const coordValida=p=>p&&p.latitud!=null&&p.longitud!=null&&Number.isFinite(Number(p.latitud))&&Number.isFinite(Number(p.longitud))&&Math.abs(Number(p.latitud))<=90&&Math.abs(Number(p.longitud))<=180;
  const abrirMaps=p=>{if(!coordValida(p)){mensaje('Este cliente no tiene coordenadas válidas para navegar.');return;}const destino=Number(p.latitud)+','+Number(p.longitud);window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving','_blank','noopener,noreferrer');};
  let ultimaUbicacion=null,ordenSugerido=[];
- const entregado=p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado));
+ const estadoCliente=p=>{const r=rendiciones.find(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente));if(r?.estado==='RECHAZADO')return 'RECHAZADO';if(r?.estado==='PARCIAL')return 'PARCIAL';if(r?.estado==='ENTREGADO')return 'ENTREGADO';const v=vs.find(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente));return ['ENTREGADO','CERRADO'].includes(v?.estado)?'ENTREGADO':v?.estado==='INCIDENCIA'?'NO_ENTREGADO':v?.estado==='VISITADO'?'VISITADO':'PENDIENTE';};
+ const atendido=p=>estadoCliente(p)!=='PENDIENTE';
+ const entregado=p=>['ENTREGADO','PARCIAL'].includes(estadoCliente(p));
  const distancia=(a,b)=>{const rad=Math.PI/180,dlat=(Number(b.latitud)-Number(a.latitud))*rad,dlon=(Number(b.longitud)-Number(a.longitud))*rad,x=Math.sin(dlat/2)**2+Math.cos(Number(a.latitud)*rad)*Math.cos(Number(b.latitud)*rad)*Math.sin(dlon/2)**2;return 6371*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));};
- const sugerirOrden=()=>{const disponibles=stops.filter(p=>enDespacho(p)&&coordValida(p)&&!entregado(p));const sinCoordenadas=stops.filter(p=>enDespacho(p)&&!coordValida(p)&&!entregado(p));const pendientes=[...disponibles];let actual=ultimaUbicacion||pendientes[0];const orden=[];while(pendientes.length){let indice=0;if(actual){let mejor=Infinity;pendientes.forEach((p,i)=>{const d=distancia(actual,p);if(d<mejor){mejor=d;indice=i;}});}const siguiente=pendientes.splice(indice,1)[0];orden.push(siguiente);actual=siguiente;}ordenSugerido=orden;return {orden,sinCoordenadas};};
+ const sugerirOrden=()=>{const disponibles=stops.filter(p=>enDespacho(p)&&coordValida(p)&&!atendido(p));const sinCoordenadas=stops.filter(p=>enDespacho(p)&&!coordValida(p)&&!entregado(p));const pendientes=[...disponibles];let actual=ultimaUbicacion||pendientes[0];const orden=[];while(pendientes.length){let indice=0;if(actual){let mejor=Infinity;pendientes.forEach((p,i)=>{const d=distancia(actual,p);if(d<mejor){mejor=d;indice=i;}});}const siguiente=pendientes.splice(indice,1)[0];orden.push(siguiente);actual=siguiente;}ordenSugerido=orden;return {orden,sinCoordenadas};};
  let mapaGoogle=null,marcadoresGoogle=[],lineasGoogle=[],gpsGoogle=null,ultimaRuta=null,temporizadorRuta=null,calculandoRuta=false;
  const cargarGoogle=async()=>{if(window.google?.maps)return;const cfg=await api('/mapa-google/configuracion');if(!cfg.api_key)throw Error('Falta GOOGLE_MAPS_BROWSER_API_KEY en Render');await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(cfg.api_key)+'&v=weekly';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar Google Maps JavaScript API'));document.head.appendChild(script);});};
  const dibujarRutaGoogle=async respuesta=>{
@@ -374,9 +376,9 @@ async function conductor(){
  };
  const mostrarResumenRuta=r=>{const caja=$('#ruta-sugerida');if(!caja)return;caja.innerHTML='<strong>Despacho '+esc(despachoActivo)+' · Próxima entrega: '+esc(ordenSugerido[0]?.nombre_cliente||'Sin pendientes')+'</strong><p>'+Math.round(r.distancia_metros/1000)+' km · '+Math.round(r.duracion_segundos/60)+' min estimados de conducción · Actualizado '+new Date().toLocaleTimeString('es-AR')+'</p><button id="recalcular-manual" type="button">Recalcular ahora</button><p class="muted">'+esc(r.nota||'')+(ordenSugerido.length?' · '+ordenSugerido.length+' paradas':'')+(ordenSugerido.length>25?' · Revisión manual recomendada':'')+'</p>';$('#recalcular-manual').onclick=()=>mostrarSugerencia(false);};
 
- const entregados=stops.filter(p=>vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado))).length;
+ const entregados=stops.filter(entregado).length,visitadosSinEntrega=stops.filter(p=>['RECHAZADO','NO_ENTREGADO','VISITADO'].includes(estadoCliente(p))).length;
 
- agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${stops.length-entregados}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="sugerir-ruta" type="button">Sugerir ruta</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
+ agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${visitadosSinEntrega}</strong><span>No entregados / visitados</span></div><div><strong>${stops.length-entregados-visitadosSinEntrega}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="sugerir-ruta" type="button">Sugerir ruta</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 
  agregarVista.html='<div class="conductor-entregas" id="ruta-sugerida" hidden></div>';
  $('#sugerir-ruta').onclick=()=>mostrarSugerencia(false);
@@ -395,8 +397,8 @@ async function conductor(){
      if(clientesVistos.has(k))return;clientesVistos.add(k);
      const lat=Number(p.latitud),lng=Number(p.longitud);
      if(p.latitud==null||p.longitud==null||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){clientesSinGps.push(p);return;}
-     const entregado=vs.some(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente&&['ENTREGADO','CERRADO'].includes(v.estado));
-     const color=entregado?'#16a34a':colorDespacho(p);
+     const estado=estadoCliente(p);
+     const color=['ENTREGADO','PARCIAL'].includes(estado)?'#16a34a':estado!=='PENDIENTE'?'#9333ea':colorDespacho(p);
      const icon=L.divIcon({className:'',html:'<div class="conductor-pin" style="background:'+color+'">'+(i+1)+'</div>',iconSize:[30,30],iconAnchor:[15,15]});
      L.marker([lat,lng],{icon}).addTo(mapaConductor).bindPopup('<strong>Parada '+(i+1)+' · Cliente '+esc(p.codigo_cliente)+' · '+esc(p.nombre_cliente)+'</strong><p>Despacho '+esc(p.despacho)+'</p><button type="button" class="abrir-entrega" data-stop="'+i+'">Registrar entrega</button><button type="button" class="navegar-entrega" data-nav="'+i+'">Navegar con Maps</button>');
      puntos.push([lat,lng]);
@@ -431,7 +433,7 @@ async function conductor(){
 
  if(window.SECAndroid&&sessionStorage.getItem('sec-dist-apk-gps'))$('#gpsin').onclick();
 
- agregarVista.html=`<div class="conductor-entregas"><h3>Mis entregas de hoy</h3>${stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente);return `<div class="conductor-cliente"><div><strong><span class="conductor-punto-despacho" style="background:${colorDespacho(p)}"></span>Cliente ${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</strong><small>Despacho ${esc(p.despacho)} · ${esc(v?.estado||'Pendiente')}</small></div><div class="conductor-acciones"><button data-stop="${i}">Registrar</button><button data-nav="${i}" class="btn-maps">Navegar</button></div></div>`;}).join('')}</div>`;
+ agregarVista.html=`<div class="conductor-entregas"><h3>Mis entregas de hoy</h3>${stops.map((p,i)=>{const v=vs.find(v=>v.reparto_id===p.reparto_id&&v.codigo_cliente===p.codigo_cliente),estado=estadoCliente(p),color=['ENTREGADO','PARCIAL'].includes(estado)?'#16a34a':estado!=='PENDIENTE'?'#9333ea':'transparent';return `<div class="conductor-cliente" style="border-left:6px solid ${color};background:${color==='#9333ea'?'#f3e8ff':color==='#16a34a'?'#f0fdf4':'transparent'}"><div><strong><span class="conductor-punto-despacho" style="background:${colorDespacho(p)}"></span>Cliente ${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</strong><small>Despacho ${esc(p.despacho)} · ${esc(estado==='NO_ENTREGADO'?'NO ENTREGADO':estado==='VISITADO'?'VISITADO':estado==='RECHAZADO'?'RECHAZADO':estado==='PARCIAL'?'ENTREGA PARCIAL':estado==='ENTREGADO'?'ENTREGADO':'Pendiente')}</small></div><div class="conductor-acciones"><button data-stop="${i}">Registrar</button><button data-nav="${i}" class="btn-maps">Navegar</button></div></div>`;}).join('')}</div>`;
  const abrirEntrega=i=>run(()=>resultado(stops[i]))();
  document.querySelectorAll('[data-stop]').forEach(b=>b.onclick=()=>abrirEntrega(+b.dataset.stop));
  document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>abrirMaps(stops[+b.dataset.nav]));

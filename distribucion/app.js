@@ -91,7 +91,7 @@ function prepararAudioAlertas(){
  habilitarSonidoAlertas();
 }
 async function consultarAlertasOficina(){
- if(!usuario||!['ADMIN','SUPERVISOR'].includes(usuario.rol))return;
+ if(!usuario||!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol))return;
  try{
   const todas=await api('/alertas-conductor'),pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=pendientes;
   const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
@@ -113,7 +113,7 @@ async function consultarAlertasOficina(){
   panel.querySelectorAll('[data-confirmar]').forEach(b=>{b.onclick=run(async()=>{b.disabled=true;try{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();}catch(e){b.disabled=false;throw e;}});});
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }
-function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR'].includes(usuario.rol)){prepararAudioAlertas();consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}
+function iniciarMonitorAlertas(){if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);secAlertasPendientes=0;if(usuario&&['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol)){prepararAudioAlertas();consultarAlertasOficina();secAlertasTimer=setInterval(consultarAlertasOficina,12000);window.secAlarmaInterval=setInterval(()=>{if(secAudioHabilitado&&secAlertasPendientes)sonarAlerta();},5000);}}
 function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</table>${rows.length?'':'<p>No hay registros.</p>'}</div>`;}
 
 async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
@@ -570,7 +570,7 @@ function agregarVolverAdmin(){
 
  if(!vista || !usuario ||
 
-    !['ADMIN','SUPERVISOR'].includes(usuario.rol) ||
+    !['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol) ||
 
     vista.querySelector('.menu-principal') ||
 

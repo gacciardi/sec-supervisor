@@ -121,7 +121,7 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
  if(p==='Configuración de rendiciones'){
   if(usuario?.rol!=='ADMIN'){agregarVista.html='<div class="panel"><p>Solo el administrador puede modificar los catálogos.</p></div>';return;}
   agregarVista.html='<div class="panel"><h3>Motivos de rechazo</h3><div id="rend-motivos"></div><h3>Medios de cobranza</h3><div id="rend-medios"></div><p>Las opciones desactivadas se conservan en los movimientos históricos.</p></div>';
-  const catalogos=[{tipo:'motivos',target:'rend-motivos',titulo:'Motivo',campo:'area_responsable',opciones:['COMERCIAL','DISTRIBUCION','CLIENTE','OTROS']},{tipo:'medios',target:'rend-medios',titulo:'Medio de cobro',campo:'clasificacion',opciones:['EFECTIVO','DIGITAL','CHEQUE','OTRO']}];
+  const catalogos=[{tipo:'motivos',target:'rend-motivos',titulo:'Motivo',campo:'area_responsable',opciones:['COMERCIAL','DISTRIBUCION','BODEGA','CLIENTE','OTROS']},{tipo:'medios',target:'rend-medios',titulo:'Medio de cobro',campo:'clasificacion',opciones:['EFECTIVO','DIGITAL','CHEQUE','OTRO']}];
   const render=async c=>{
     const datos=await api('/rendicion/catalogos/'+c.tipo);
     const div=document.getElementById(c.target);

@@ -379,7 +379,7 @@ async function conductor(){
  const entregados=stops.filter(entregado).length,visitadosSinEntrega=stops.filter(p=>['RECHAZADO','NO_ENTREGADO','VISITADO'].includes(estadoCliente(p))).length;
 
  const formatoDinero=n=>Number(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS'});
- agregarVista.html='<div class="panel" id="mi-cobranza"><button id="mi-cobranza-toggle" type="button">💰 Mi cobranza · Ver resumen</button><div id="mi-cobranza-detalle" hidden><p>Importes registrados para los despachos de hoy. Cuenta corriente y saldos pendientes no son dinero recibido.</p><div id="mi-cobranza-cifras">Seleccioná Ver resumen.</div><button type="button" id="mi-cobranza-actualizar">Actualizar importes</button></div></div>';
+ agregarVista.html='<div class="panel" id="mi-cobranza"><button id="mi-cobranza-toggle" type="button">💰 Mi cobranza · Ver resumen</button><div id="mi-cobranza-detalle" hidden><p>Importes registrados para los despachos de hoy. Cuenta corriente y saldos pendientes no son dinero recibido.</p><div id="mi-cobranza-cifras">Seleccioná Ver resumen.</div><button type="button" id="mi-cobranza-actualizar">Actualizar importes</button><hr><h3>Cierre de caja</h3><p>Contá el efectivo físico y comparalo con el sistema. Una vez confirmado, el cierre no se puede editar desde la APK.</p><div id="mi-cobranza-cierre">Consultando cierre...</div></div></div>';
  const mostrarCobranza=async()=>{
   const caja=$('#mi-cobranza-cifras');if(!caja)return;caja.textContent='Consultando cobranzas...';
   try{
@@ -394,7 +394,22 @@ async function conductor(){
    caja.innerHTML=fila('Efectivo',grupos.efectivo)+fila('QR / transferencias',grupos.digital)+fila('Cuenta corriente registrada',grupos.cuenta)+fila('Otros medios',grupos.otros)+fila('Total cobrado (sin cuenta corriente)',grupos.efectivo+grupos.digital+grupos.otros)+fila('Saldo sin medio registrado',pendiente)+(Object.keys(detalles).length?'<details><summary>Detalle por medio de pago</summary>'+Object.entries(detalles).sort((a,b)=>a[0].localeCompare(b[0])).map(([n,v])=>fila(n,v)).join('')+'</details>':'<p>Aún no hay cobranzas registradas.</p>');
   }catch(e){caja.textContent='No se pudo consultar la cobranza: '+e.message;}
  };
- $('#mi-cobranza-toggle').onclick=()=>{const d=$('#mi-cobranza-detalle');d.hidden=!d.hidden;if(!d.hidden)mostrarCobranza();};
+ const mostrarCierre=async()=>{
+  const caja=$('#mi-cobranza-cierre');if(!caja)return;
+  try{
+   const cierre=await api('/rendicion/cierre-caja?fecha='+encodeURIComponent(fecha));
+   if(cierre){caja.innerHTML='<p><strong>Caja cerrada</strong> · '+esc(new Date(cierre.cerrado_en).toLocaleString('es-AR'))+'</p><p>Efectivo sistema: '+esc(formatoDinero(cierre.efectivo_sistema))+' · Declarado: '+esc(formatoDinero(cierre.efectivo_declarado))+'</p><p><strong>Diferencia: '+esc(formatoDinero(cierre.diferencia))+'</strong></p><p>'+esc(cierre.observacion||'Sin observaciones')+'</p>';return;}
+   caja.innerHTML='<form id="form-cierre-caja"><label>Efectivo contado ($)<input name="efectivo_declarado" type="number" min="0" step="0.01" required placeholder="Ingresar efectivo real"></label><label>Observación (si hay diferencia)<textarea name="observacion" maxlength="1000"></textarea></label><button type="submit">Confirmar cierre de caja</button></form>';
+   $('#form-cierre-caja').onsubmit=e=>{e.preventDefault();run(async()=>{
+    const f=Object.fromEntries(new FormData(e.target)),importe=Number(f.efectivo_declarado);
+    if(!Number.isFinite(importe)||importe<0)throw Error('Ingresá el efectivo contado.');
+    if(!confirm('¿Confirmás el cierre de caja de hoy? No se podrá editar desde la APK.'))return;
+    await api('/rendicion/cierre-caja',{method:'POST',body:JSON.stringify({fecha,efectivo_declarado:importe,observacion:f.observacion||''})});
+    await mostrarCierre();await mostrarCobranza();mensaje('Cierre de caja registrado.');
+   })();};
+  }catch(e){caja.textContent='No se pudo consultar el cierre: '+e.message;}
+ };
+ $('#mi-cobranza-toggle').onclick=()=>{const d=$('#mi-cobranza-detalle');d.hidden=!d.hidden;if(!d.hidden){mostrarCobranza();mostrarCierre();}};
  $('#mi-cobranza-actualizar').onclick=mostrarCobranza;
  agregarVista.html=`<div class="conductor-resumen"><div><strong>${stops.length}</strong><span>Clientes</span></div><div><strong>${entregados}</strong><span>Entregados</span></div><div><strong>${visitadosSinEntrega}</strong><span>No entregados / visitados</span></div><div><strong>${stops.length-entregados-visitadosSinEntrega}</strong><span>Pendientes</span></div></div><div class="conductor-controles"><button id="gpsin">Iniciar recorrido</button><button id="navproximo" type="button">Navegar al próximo</button><button id="sugerir-ruta" type="button">Sugerir ruta</button><button id="gpsout">Detener recorrido</button><p id="gpsestado" aria-live="polite">GPS: sin iniciar</p></div>`;
 

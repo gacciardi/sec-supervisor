@@ -52,4 +52,12 @@
  .sec-mapa-expandido .conductor-elegir-despacho{display:grid;grid-template-columns:1fr}
  .sec-mapa-expandido .conductor-siguiente button{font-size:12px}
 }
+
+/* Alineación exclusiva del formulario de Mantenimiento de Flota */
+#flota-trabajo{display:flex;flex-direction:column;gap:12px;max-width:700px;margin-top:14px}
+#flota-trabajo label{display:grid;grid-template-columns:220px minmax(0,420px);gap:14px;align-items:center;margin:0;font-weight:500}
+#flota-trabajo input,#flota-trabajo select,#flota-trabajo textarea{box-sizing:border-box;width:100%;min-width:0;max-width:100%;margin:0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111827;font:inherit}
+#flota-trabajo textarea{min-height:90px;resize:vertical}
+#flota-trabajo button{align-self:flex-start;margin:6px 0 0 234px;padding:12px 18px;background:#071b3a;color:white;border:0}
+@media(max-width:650px){#flota-trabajo label{grid-template-columns:minmax(0,1fr);gap:5px}#flota-trabajo button{align-self:stretch;margin-left:0}}
 </style></head><body><header class="header-sec"><img src="../assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa"><div><h1>SEC - Distribución</h1><p>Sistema de Ejecución Comercial</p></div></header><nav id="nav"></nav><div class="container"><div id="mensaje" role="status"></div><div id="vista"></div></div><script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><script src="app.js?v=20261113-alertas-compactas-1"></script></body></html>

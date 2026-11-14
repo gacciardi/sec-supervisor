@@ -643,7 +643,14 @@ async function inicio(){
 
  }
 
- $('#nav').innerHTML='<button id="home">Volver a mis entregas</button><button id="foto-menu" type="button">📷 Foto</button><button id="galeria-menu" type="button">🖼️ Galería</button><button id="salir">Cerrar sesión</button>';
+ if(!document.getElementById('sec-conductor-nav-style')){
+  const estilo=document.createElement('style');
+  estilo.id='sec-conductor-nav-style';
+  estilo.textContent='#nav.sec-conductor-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 10px;background:#142034;box-sizing:border-box}#nav.sec-conductor-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;width:100%;min-height:76px;margin:0;padding:9px 3px;border:1px solid #42536a;border-radius:12px;background:#2b3d56;color:#fff;font-size:clamp(10px,2.6vw,13px);font-weight:600;line-height:1.2;text-align:center;white-space:normal;cursor:pointer}#nav.sec-conductor-nav button:active{background:#3b5272}#nav.sec-conductor-nav .sec-nav-icon{font-size:23px;line-height:1.1}';
+  document.head.appendChild(estilo);
+ }
+ $('#nav').classList.add('sec-conductor-nav');
+ $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="galeria-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">🖼️</span><span>Galería</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
  $('#foto-menu').onclick=()=>abrirFotoMenu('camara');
  $('#galeria-menu').onclick=()=>abrirFotoMenu('galeria');
 

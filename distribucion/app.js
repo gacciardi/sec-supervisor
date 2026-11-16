@@ -10,6 +10,13 @@ const API='https://sec-backend-gg4j.onrender.com/distribucion';
 
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+function importeEnCentavosSEC(valor){
+ if(typeof valor!=='string'&&typeof valor!=='number')return null;
+ const texto=String(valor).trim();if(!/^\d+(?:\.\d{1,2})?$/.test(texto))return null;
+ const [entero,decimal='']=texto.split('.');const centavos=Number(entero)*100+Number(decimal.padEnd(2,'0'));
+ return Number.isSafeInteger(centavos)?centavos:null;
+}
+
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
@@ -25,7 +32,7 @@ async function api(path,options={}){const h={Authorization:'Bearer '+token,...op
 
 function run(fn){return async()=>{mensaje('');try{await fn();}catch(e){mensaje(e.message);}};}
 
-function login(){token='';sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
+function login(){if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();token='';sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
 
  $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await inicio();})()};
 
@@ -41,7 +48,7 @@ function tarjetasMenuDistribucion(){
   .sort((a,b)=>a.orden-b.orden).map(s=>`<button class="menu-card" data-section="${s.i}"><h3><span aria-hidden="true">${iconosSecciones[s.i]||"📁"}</span> ${esc(s.nombre)}</h3><p>${esc(s.desc)}</p></button>`).join('');
 }
 
-async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
+async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
 let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set(),secAlertasPendientes=0,secAudioHabilitado=false;
 const secDireccionesCache=new Map();
@@ -105,7 +112,7 @@ function prepararAudioAlertas(){
 async function consultarAlertasOficina(){
  if(!usuario||!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol))return;
  try{
-  const todas=await api('/alertas-conductor'),pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=pendientes;
+  const emergencias=await api('/alertas-conductor');let oficina={solicitudes:[],respuestas:[]};if(typeof cargarAlertasOficina==='function'){try{oficina=await cargarAlertasOficina();}catch(e){console.warn('Comunicación oficina:',e.message);}}const todas=[...emergencias,...oficina.solicitudes],pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.tipo==='OFICINA'?['ENVIADA','CONFIRMADA'].includes(x.estado):x.estado==='ENVIADA');
   let mecanicos=[];try{mecanicos=await api('/mantenimiento/mecanicos');}catch(e){console.warn('Agenda de mecánicos:',e.message);}
   const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
   secAlertasPendientes=pendientes.length;
@@ -114,15 +121,19 @@ async function consultarAlertasOficina(){
   let panel=document.getElementById('sec-alertas-emergentes');
   if(!panel){panel=document.createElement('div');panel.id='sec-alertas-emergentes';panel.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;top:16px;width:calc(100% - 24px);max-width:860px;margin:auto;max-height:82vh;overflow:auto;background:#fff1f2;color:#111827;border:6px solid #b91c1c;border-radius:18px;padding:22px;box-shadow:0 10px 45px #0009;font-size:18px;line-height:1.45';document.body.appendChild(panel);}
   panel.hidden=!visibles.length;
-  const firma=visibles.map(a=>[a.id,a.estado].join(':')).join('|')+'|audio:'+secAudioHabilitado+'|mecanicos:'+JSON.stringify(mecanicos);
+  const firma=visibles.map(a=>[a.id,a.estado].join(':')).join('|')+'|audio:'+secAudioHabilitado+'|mecanicos:'+JSON.stringify(mecanicos)+'|oficina:'+JSON.stringify(oficina.respuestas);
   if(panel.dataset.firma===firma)return;
+  if(panel.querySelector('[data-oficina-responder][data-enviando]'))return;
   panel.dataset.firma=firma;
+  if(typeof guardarBorradoresOficina==='function')guardarBorradoresOficina(panel);
   panel.innerHTML=visibles.map(a=>{
+   if(a.tipo==='OFICINA')return tarjetaAlertaOficina(a,oficina.respuestas);
    const tieneGps=a.latitud!=null&&a.longitud!=null;
    const mapa=tieneGps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'';
    return '<div style="border-bottom:2px solid #b91c1c;padding:14px;background:#fff;border-radius:10px;margin-bottom:10px"><strong style="display:block;background:#b91c1c;color:white;padding:12px;border-radius:8px;font-size:26px">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+(a.tipo==='MECANICO'?'<div style="padding:12px;background:#eff6ff;border-radius:8px"><label>Derivar a mecánico <select data-mecanico-alerta="'+esc(a.id)+'" style="width:100%;padding:10px"><option value="">Seleccionar mecánico disponible...</option>'+mecanicos.filter(m=>m.activo).map(m=>'<option value="'+esc(m.id)+'">'+esc(m.nombre)+' · '+esc(m.telefono)+'</option>').join('')+'</select></label><p style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-whatsapp-mecanico="'+esc(a.id)+'">Enviar por WhatsApp</button><button type="button" data-llamar-mecanico="'+esc(a.id)+'">Llamar</button></p></div>':'')+'<p><button type="button" data-confirmar="'+esc(a.id)+'" style="background:#166534;color:white;font-size:20px;font-weight:bold;padding:14px 20px;border:0;border-radius:9px">✓ CONFIRMAR LECTURA Y SILENCIAR</button></p></div>';
   }).join('');
-  visibles.forEach(a=>{if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
+  if(typeof activarRespuestasOficina==='function')activarRespuestasOficina(panel);
+  visibles.forEach(a=>{if(a.tipo==='OFICINA')return;if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
   panel.querySelectorAll('[data-whatsapp-mecanico],[data-llamar-mecanico]').forEach(b=>{b.onclick=()=>{
    const id=b.dataset.whatsappMecanico||b.dataset.llamarMecanico,select=Array.from(panel.querySelectorAll('[data-mecanico-alerta]')).find(x=>x.dataset.mecanicoAlerta===id),m=mecanicos.find(x=>String(x.id)===select?.value),a=visibles.find(x=>String(x.id)===id);
    if(!m||!a){alert('Seleccionar un mecánico disponible.');return;}
@@ -297,7 +308,7 @@ async function abrir(p){if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista'
   const cargarControles=async()=>{panelControles.textContent='Consultando…';try{const datos=await api('/alertas-operativas?'+new URLSearchParams(new FormData(formControles)));panelControles.innerHTML=datos.alertas.length?tabla(['Tipo','Referencia','Detalle'],datos.alertas.map(a=>[esc(a.tipo),esc(a.referencia),esc(a.detalle)])):'Sin alertas operativas detectadas. Revisado: '+esc(new Date(datos.generado_en).toLocaleString('es-AR'));}catch(e){panelControles.textContent='No se pudieron consultar los controles: '+e.message;}};
   formControles.onsubmit=e=>{e.preventDefault();if(formControles.reportValidity()){try{localStorage.setItem(claveControles,JSON.stringify(Object.fromEntries(new FormData(formControles))));}catch{mensaje('No se pudieron guardar las preferencias del navegador. Los valores se aplican a esta consulta.');}cargarControles();}};
 
-  const refresh=async()=>{const as=await api('/alertas-conductor');$('#alertas-historial').innerHTML=tabla(['Fecha','Tipo','Conductor','Despacho','Estado','Acción'],as.map(a=>[esc(new Date(a.creada_en).toLocaleString('es-AR')),esc((a.es_prueba?'PRUEBA · ':'')+a.tipo),esc(a.conductor),esc(a.despacho||''),esc(a.estado),a.estado==='CONFIRMADA'?'<button data-resolver="'+esc(a.id)+'">Resolver</button>':a.estado==='ENVIADA'?'<button data-confirmar="'+esc(a.id)+'">Confirmar</button>':'—']));$('#alertas-historial').querySelectorAll('[data-resolver],[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+(b.dataset.resolver||b.dataset.confirmar)+'/'+(b.dataset.resolver?'resolver':'confirmar'),{method:'POST'});await refresh();await consultarAlertasOficina();}));};$('#alertas-refrescar').onclick=run(async()=>{await refresh();await cargarControles();});await refresh();await cargarControles();return;
+  const refresh=async()=>{const as=await api('/alertas-conductor');$('#alertas-historial').innerHTML=tabla(['Fecha','Tipo','Conductor','Despacho','Estado','Acción'],as.map(a=>[esc(new Date(a.creada_en).toLocaleString('es-AR')),esc((a.es_prueba?'PRUEBA · ':'')+a.tipo),esc(a.conductor),esc(a.despacho||''),esc(a.estado),a.estado==='CONFIRMADA'?'<button data-resolver="'+esc(a.id)+'">Resolver</button>':a.estado==='ENVIADA'?'<button data-confirmar="'+esc(a.id)+'">Confirmar</button>':'—']));$('#alertas-historial').querySelectorAll('[data-resolver],[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+(b.dataset.resolver||b.dataset.confirmar)+'/'+(b.dataset.resolver?'resolver':'confirmar'),{method:'POST'});await refresh();await consultarAlertasOficina();}));};$('#alertas-refrescar').onclick=run(async()=>{await refresh();await cargarControles();});await refresh();await cargarControles();if(typeof mostrarHistorialOficina==='function')await mostrarHistorialOficina();return;
  }
 
  // La asignación se muestra arriba con filtro de fecha.
@@ -549,7 +560,7 @@ async function resultado(p){
   api('/rendicion/entregas?fecha='+encodeURIComponent(fechaHoy())),
   api('/rendicion/cobros?fecha='+encodeURIComponent(fechaHoy()))
  ]);
- const total=pedidosCliente.filter(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente)).reduce((sum,x)=>sum+Number(x.importe||0),0);
+ const totalCentavos=pedidosCliente.filter(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente)).reduce((sum,x)=>{const c=importeEnCentavosSEC(x.importe);if(c===null)throw Error('Un pedido tiene un importe original inválido. Revisar con oficina.');return sum+c;},0);if(!Number.isSafeInteger(totalCentavos))throw Error('Importe original fuera de rango');const total=totalCentavos/100;
  const previa=rendiciones.find(x=>String(x.reparto_id)===String(p.reparto_id)&&String(x.codigo_cliente)===String(p.codigo_cliente));
  const pagosPrevios=previa?cobrosPrevios.filter(x=>String(x.rendicion_entrega_id)===String(previa.id)):[];
  const opciones=motivos.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
@@ -582,9 +593,9 @@ async function resultado(p){
    const importe=estado==='RECHAZADO'?0:estado==='ENTREGADO'?total:Number(form.importe_entregado);
    if(estado==='PARCIAL'&&!(importe>0&&importe<total))throw Error('El importe parcial debe ser mayor a cero y menor al pedido');
    const pagos=estado==='RECHAZADO'?[]:[...document.querySelectorAll('#resultado-pagos .panel')].map(f=>({medio_cobranza_id:f.querySelector('.pago-medio').value,importe:Number(f.querySelector('.pago-importe').value),referencia:f.querySelector('.pago-referencia').value})).filter(x=>x.medio_cobranza_id||x.importe);
-   if(pagos.some(x=>!x.medio_cobranza_id||!Number.isFinite(x.importe)||x.importe<=0||Math.round(x.importe*100)!==x.importe*100))throw Error('Revisá las formas de pago y los importes.');
-   const suma=pagos.reduce((n,x)=>n+Math.round(x.importe*100),0);
-   if(suma>Math.round(importe*100))throw Error('Los cobros superan el importe entregado.');
+   if(pagos.some(x=>!x.medio_cobranza_id||!Number.isFinite(x.importe)||x.importe<=0||importeEnCentavosSEC(x.importe)===null))throw Error('Revisá las formas de pago y los importes.');
+   const suma=pagos.reduce((n,x)=>n+importeEnCentavosSEC(x.importe),0);
+   if(!Number.isSafeInteger(suma)||suma>Math.round(importe*100))throw Error('Los cobros superan el importe entregado.');
    if(previa&&!confirm('Esta entrega ya tiene una rendición guardada. Al continuar se reemplazarán sus cobros anteriores. ¿Confirmás la corrección?'))return;
    await api('/rendicion/entregas',{method:'POST',body:JSON.stringify({reparto_id:p.reparto_id,codigo_cliente:p.codigo_cliente,estado,importe_entregado:importe,motivo_rechazo_id:estado==='ENTREGADO'?null:form.motivo_rechazo_id,cobros:pagos,observacion:form.observacion})});
   }
@@ -679,11 +690,13 @@ async function inicio(){
  if(!document.getElementById('sec-conductor-nav-style')){
   const estilo=document.createElement('style');
   estilo.id='sec-conductor-nav-style';
-  estilo.textContent='#nav.sec-conductor-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 10px;background:#142034;box-sizing:border-box}#nav.sec-conductor-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;width:100%;min-height:76px;margin:0;padding:9px 3px;border:1px solid #42536a;border-radius:12px;background:#2b3d56;color:#fff;font-size:clamp(10px,2.6vw,13px);font-weight:600;line-height:1.2;text-align:center;white-space:normal;cursor:pointer}#nav.sec-conductor-nav button:active{background:#3b5272}#nav.sec-conductor-nav .sec-nav-icon{font-size:23px;line-height:1.1}';
+  estilo.textContent='#nav.sec-conductor-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:12px 8px;background:#142034;box-sizing:border-box}#nav.sec-conductor-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;width:100%;min-height:76px;margin:0;padding:9px 3px;border:1px solid #42536a;border-radius:12px;background:#2b3d56;color:#fff;font-size:clamp(10px,2.6vw,13px);font-weight:600;line-height:1.2;text-align:center;white-space:normal;cursor:pointer}#nav.sec-conductor-nav button:active{background:#3b5272}#nav.sec-conductor-nav .sec-nav-icon{font-size:23px;line-height:1.1}@media(max-width:550px){#nav.sec-conductor-nav{grid-template-columns:repeat(3,minmax(0,1fr))}}';
   document.head.appendChild(estilo);
  }
  $('#nav').classList.add('sec-conductor-nav');
- $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="galeria-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">🖼️</span><span>Galería</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
+ $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="llamar-oficina" type="button"><span class="sec-nav-icon" aria-hidden="true">☎️</span><span>Llamar oficina</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="galeria-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">🖼️</span><span>Galería</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
+ $('#llamar-oficina').onclick=()=>llamarOficina();
+ if(typeof iniciarMensajesOficina==='function')iniciarMensajesOficina();
  $('#foto-menu').onclick=()=>abrirFotoMenu('camara');
  $('#galeria-menu').onclick=()=>abrirFotoMenu('galeria');
 
@@ -693,7 +706,7 @@ async function inicio(){
 
   detenerGps();
 
-  await api('/logout',{method:'POST'});
+  await api('/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();
 
   sessionStorage.removeItem('sec-dist-apk-gps');
 

@@ -571,7 +571,7 @@ async function resultado(p){
  const opciones=motivos.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
  const opcionesMedios=medios.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
  document.body.classList.add('sec-resultado-activo');
- $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel resultado-panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}" value="${esc(total.toFixed(2))}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><label>📷 Sacar foto<input id="foto-camara" type="file" accept="image/jpeg,image/png,image/*" capture="environment"></label><label>🖼️ Biblioteca<input id="foto-biblioteca" type="file" accept="image/jpeg,image/png,image/*"></label></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><div class="resultado-acciones"><button type="submit" class="resultado-guardar">Guardar</button></div></form></div>`;
+ $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel resultado-panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}" value="${esc(total.toFixed(2))}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><button id="tomar-foto-entrega" type="button">📷 Sacar foto</button><input id="foto-camara" type="file" accept="image/*" capture="environment" hidden></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><div class="resultado-acciones"><button type="submit" class="resultado-guardar">Guardar</button></div></form></div>`;
  const importeObjetivo=()=>$('#resultado [name=estado]').value==='PARCIAL'?Number($('#resultado [name=importe_entregado]').value||0):total;
  const cent=n=>Math.round(Number(n||0)*100);
  const totalPagos=()=>[...document.querySelectorAll('.pago-importe')].reduce((n,x)=>n+cent(x.value),0);
@@ -591,7 +591,7 @@ async function resultado(p){
  $('#resultado [name=estado]').onchange=()=>{actualizar();const pagos=[...document.querySelectorAll('.pago-importe')];if(!previa&&pagos.length===1)pagos[0].value=importeObjetivo().toFixed(2);resumirCobro();};
  $('#resultado [name=importe_entregado]').oninput=()=>{const pagos=[...document.querySelectorAll('.pago-importe')];if(!previa&&pagos.length===1)pagos[0].value=importeObjetivo().toFixed(2);resumirCobro();};actualizar();resumirCobro();
  $('#resultado').onsubmit=e=>{e.preventDefault();run(async()=>{
-  const form=Object.fromEntries(new FormData(e.target)),file=$('#foto-camara').files[0]||$('#foto-biblioteca').files[0];
+  const form=Object.fromEntries(new FormData(e.target)),file=$('#foto-camara').files[0];
   if(file&&file.size>5*1024*1024)throw Error('La foto supera 5 MB');
   const estado=form.estado;
   if(estado!=='VISITADO'){
@@ -610,8 +610,8 @@ async function resultado(p){
   if(file){const f=new FormData();f.append('archivo',file);try{await api('/visitas/'+v.id+'/foto',{method:'POST',body:f});}catch(err){throw Error('Resultado guardado; la foto no se guardó: '+err.message);}}
   await abrir('App Conductor');mensaje('Resultado guardado.');
  })();};
- $('#foto-camara').onchange=()=>{if($('#foto-camara').files.length)$('#foto-biblioteca').value='';$('#foto-elegida').textContent=$('#foto-camara').files[0]?.name||'Sin foto seleccionada';};
- $('#foto-biblioteca').onchange=()=>{if($('#foto-biblioteca').files.length)$('#foto-camara').value='';$('#foto-elegida').textContent=$('#foto-biblioteca').files[0]?.name||'Sin foto seleccionada';};
+ $('#tomar-foto-entrega').onclick=()=>$('#foto-camara').click();
+ $('#foto-camara').onchange=()=>{$('#foto-elegida').textContent=$('#foto-camara').files.length?'Foto tomada, lista para guardar.':'Sin foto seleccionada';};
 }
 
 async function dashboardConductores(){
@@ -654,9 +654,10 @@ async function recorridos(){
 
 
 async function abrirFotoMenu(origen){
+ origen='camara';
  const anterior=$('#foto-menu-panel');if(anterior)anterior.remove();
  const panel=document.createElement('div');panel.id='foto-menu-panel';panel.className='panel';
- panel.innerHTML='<h3>Foto del recorrido</h3><p>Seleccioná un cliente detectado por geocerca o «Foto libre».</p><input id="foto-menu-archivo" type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Elegí una imagen.</p><label>Asociación <select id="foto-menu-cliente"><option value="">Foto libre (sin cliente)</option></select></label><button id="foto-menu-guardar" type="button" disabled>Guardar fotografía</button><button id="foto-menu-cerrar" type="button">Cancelar</button>';
+ panel.innerHTML='<h3>Foto del recorrido</h3><p>Seleccioná un cliente detectado por geocerca o «Foto libre».</p><input id="foto-menu-archivo" hidden type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Elegí una imagen.</p><label>Asociación <select id="foto-menu-cliente"><option value="">Foto libre (sin cliente)</option></select></label><button id="foto-menu-guardar" type="button" disabled>Guardar fotografía</button><button id="foto-menu-cerrar" type="button">Cancelar</button>';
  $('#vista').prepend(panel);const estado=panel.querySelector('#foto-menu-estado'),archivo=panel.querySelector('#foto-menu-archivo'),sel=panel.querySelector('#foto-menu-cliente'),guardar=panel.querySelector('#foto-menu-guardar');
  panel.querySelector('#foto-menu-cerrar').onclick=()=>panel.remove();
  let gps=null,candidatos=[],captura=null,stream=null;
@@ -674,7 +675,7 @@ async function abrirFotoMenu(origen){
   else estado.textContent='Sin GPS disponible. Podés guardar foto libre.';
  };
  archivo.onchange=()=>{captura=null;procesarArchivo(archivo.files[0]);};
- guardar.onclick=run(async()=>{const f=captura||archivo.files[0];if(!f){estado.textContent='Primero sacá una foto o elegí una imagen de la galería.';estado.scrollIntoView({block:'center'});return;}guardar.disabled=true;guardar.textContent='Guardando…';estado.textContent='Guardando fotografía…';estado.scrollIntoView({block:'center'});try{const form=new FormData();form.append('archivo',f);form.append('origen',origen);if(gps)Object.entries(gps).forEach(([k,v])=>form.append(k,String(v)));const elegido=candidatos[Number(sel.value)-1];if(elegido){form.append('reparto_id',elegido.reparto_id);form.append('codigo_cliente',elegido.codigo_cliente);}await api('/fotos-recorrido',{method:'POST',body:form});estado.textContent='Fotografía guardada'+(elegido?' para cliente '+elegido.codigo_cliente:' como foto libre')+'.';guardar.textContent='Fotografía guardada ✓';archivo.value='';captura=null;}catch(e){guardar.disabled=false;guardar.textContent='Reintentar guardado';estado.textContent='No se pudo guardar: '+e.message;alert('No se pudo guardar la fotografía: '+e.message);}});
+ guardar.onclick=run(async()=>{const f=captura||archivo.files[0];if(!f){estado.textContent='Primero sacá una foto.';estado.scrollIntoView({block:'center'});return;}guardar.disabled=true;guardar.textContent='Guardando…';estado.textContent='Guardando fotografía…';estado.scrollIntoView({block:'center'});try{const form=new FormData();form.append('archivo',f);form.append('origen',origen);if(gps)Object.entries(gps).forEach(([k,v])=>form.append(k,String(v)));const elegido=candidatos[Number(sel.value)-1];if(elegido){form.append('reparto_id',elegido.reparto_id);form.append('codigo_cliente',elegido.codigo_cliente);}await api('/fotos-recorrido',{method:'POST',body:form});estado.textContent='Fotografía guardada'+(elegido?' para cliente '+elegido.codigo_cliente:' como foto libre')+'.';guardar.textContent='Fotografía guardada ✓';archivo.value='';captura=null;}catch(e){guardar.disabled=false;guardar.textContent='Reintentar guardado';estado.textContent='No se pudo guardar: '+e.message;alert('No se pudo guardar la fotografía: '+e.message);}});
  if(origen==='camara'){try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cámara web no disponible en esta APK');stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});if(!panel.isConnected){detenerCamara();return;}camaraVista.hidden=false;video.srcObject=stream;await video.play();estado.textContent='Enfocá y presioná Tomar fotografía.';}catch(e){detenerCamara();camaraVista.hidden=true;estado.textContent='La APK no permitió abrir la cámara directamente. Se intentará con la cámara del sistema.';archivo.click();}}else{camaraVista.remove();archivo.click();}
 }
 
@@ -700,11 +701,11 @@ async function inicio(){
   document.head.appendChild(estilo);
  }
  $('#nav').classList.add('sec-conductor-nav');
- $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="llamar-oficina" type="button"><span class="sec-nav-icon" aria-hidden="true">☎️</span><span>Llamar oficina</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="galeria-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">🖼️</span><span>Galería</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
+ $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="llamar-oficina" type="button"><span class="sec-nav-icon" aria-hidden="true">☎️</span><span>Llamar oficina</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
  $('#llamar-oficina').onclick=()=>llamarOficina();
  if(typeof iniciarMensajesOficina==='function')iniciarMensajesOficina();
  $('#foto-menu').onclick=()=>abrirFotoMenu('camara');
- $('#galeria-menu').onclick=()=>abrirFotoMenu('galeria');
+
 
  $('#home').onclick=run(inicio);
 

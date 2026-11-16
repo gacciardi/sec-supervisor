@@ -37,6 +37,26 @@ function leerCobrosSEC(filas){
  });
 }
 
+// Captura en vivo: evita el selector nativo cuya carpeta temporal falla en la APK.
+async function tomarFotoEntregaSEC(host){
+ if(host.querySelector('.sec-camara-viva'))return null;
+ const panel=document.createElement('div');panel.className='sec-camara-viva';
+ const video=document.createElement('video');video.autoplay=true;video.playsInline=true;video.muted=true;video.style.cssText='display:block;width:100%;max-height:45vh;object-fit:contain;background:#111';
+ const tomar=document.createElement('button');tomar.type='button';tomar.textContent='Tomar fotografía';tomar.disabled=true;
+ const cancelar=document.createElement('button');cancelar.type='button';cancelar.textContent='Cancelar cámara';
+ const estado=document.createElement('p');estado.textContent='Abriendo cámara…';estado.setAttribute('role','status');
+ panel.append(video,tomar,cancelar,estado);host.append(panel);panel.scrollIntoView({block:'center'});
+ return new Promise(resolve=>{
+  let stream=null,terminado=false,observador=null;
+  const cerrar=foto=>{if(terminado)return;terminado=true;if(stream)stream.getTracks().forEach(t=>t.stop());observador?.disconnect();window.removeEventListener('pagehide',salir);panel.remove();resolve(foto);};
+  const salir=()=>cerrar(null);window.addEventListener('pagehide',salir,{once:true});
+  observador=new MutationObserver(()=>{if(!panel.isConnected)cerrar(null);});observador.observe(document.body,{childList:true,subtree:true});
+  cancelar.onclick=salir;
+  tomar.onclick=()=>{if(!video.videoWidth)return;tomar.disabled=true;const canvas=document.createElement('canvas'),escala=Math.min(1,1600/Math.max(video.videoWidth,video.videoHeight));canvas.width=Math.round(video.videoWidth*escala);canvas.height=Math.round(video.videoHeight*escala);canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);canvas.toBlob(blob=>{if(!blob){estado.textContent='No se pudo tomar la foto. Intentá nuevamente.';tomar.disabled=false;return;}cerrar(new File([blob],'entrega-'+Date.now()+'.jpg',{type:'image/jpeg'}));},'image/jpeg',0.8);};
+  (async()=>{try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cámara no disponible');stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});if(terminado||!panel.isConnected){stream.getTracks().forEach(t=>t.stop());cerrar(null);return;}video.srcObject=stream;await video.play();if(terminado)return;estado.textContent='Enfocá y presioná Tomar fotografía.';tomar.disabled=false;}catch(e){if(terminado)return;if(stream)stream.getTracks().forEach(t=>t.stop());estado.textContent='No se pudo abrir la cámara. Revisá el permiso de cámara de SEC en el teléfono. Podés cancelar y usar Biblioteca.';}})();
+ });
+}
+
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
@@ -215,14 +235,18 @@ async function abrir(p){document.body.classList.remove('sec-resultado-activo');i
   for(const c of catalogos)await render(c);return;
  }
  if(p==='Rendición de Viaje'){
-  agregarVista.html='<div class="panel"><label>Fecha de entrega <input id="rendicion-fecha" type="date" value="'+fechaHoy()+'"></label> <button id="rendicion-actualizar">Actualizar</button><p>Control de mercadería. Los cobros, motivos de rechazo y conciliación de caja aún no están disponibles.</p><button id="rendicion-tab-operaciones" type="button">Operaciones</button> <button id="rendicion-tab-indicadores" type="button">Indicadores</button><div id="rendicion-operaciones"><div id="rendicion-resumen"></div><div id="rendicion-detalle"></div></div><div id="rendicion-indicadores" hidden><p>Indicadores preliminares por estado registrado; no equivalen todavía a rechazos confirmados con motivo.</p><div id="rendicion-ranking"></div></div></div>';
+  agregarVista.html='<div class="panel"><label>Fecha de entrega <input id="rendicion-fecha" type="date" value="'+fechaHoy()+'"></label> <label>Chofer <select id="rendicion-conductor"><option value="">Todos los choferes</option></select></label> <button id="rendicion-actualizar">Actualizar</button><p>Control de mercadería. Los cobros, motivos de rechazo y conciliación de caja aún no están disponibles.</p><button id="rendicion-tab-operaciones" type="button">Operaciones</button> <button id="rendicion-tab-indicadores" type="button">Indicadores</button><div id="rendicion-operaciones"><div id="rendicion-resumen"></div><div id="rendicion-detalle"></div></div><div id="rendicion-indicadores" hidden><p>Indicadores preliminares por estado registrado; no equivalen todavía a rechazos confirmados con motivo.</p><div id="rendicion-ranking"></div></div></div>';
   const pesos=n=>Number(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
   const activar=tab=>{const ind=tab==='indicadores';$('#rendicion-operaciones').hidden=ind;$('#rendicion-indicadores').hidden=!ind;};
   $('#rendicion-tab-operaciones').onclick=()=>activar('operaciones');
   $('#rendicion-tab-indicadores').onclick=()=>activar('indicadores');
   const refrescar=async()=>{
     const fecha=$('#rendicion-fecha').value;if(!fecha)return;
-    const [ps,vs]=await Promise.all([api('/pedidos?fecha='+encodeURIComponent(fecha)),api('/visitas?fecha='+encodeURIComponent(fecha))]);
+    const [todosPedidos,vs,repartosFecha]=await Promise.all([api('/pedidos?fecha='+encodeURIComponent(fecha)),api('/visitas?fecha='+encodeURIComponent(fecha)),api('/repartos?fecha='+encodeURIComponent(fecha))]);
+    const selector=$('#rendicion-conductor'),seleccion=selector.value,choferes=new Map(repartosFecha.filter(r=>r.conductor_id).map(r=>[String(r.conductor_id),r.conductor||'Conductor sin nombre']));
+    selector.innerHTML='<option value="">Todos los choferes</option>'+[...choferes].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,nombre])=>'<option value="'+esc(id)+'">'+esc(nombre)+'</option>').join('');selector.value=choferes.has(seleccion)?seleccion:'';
+    const viajesChofer=new Set(repartosFecha.filter(r=>!selector.value||String(r.conductor_id)===selector.value).map(r=>String(r.id)));
+    const ps=todosPedidos.filter(p=>!selector.value||viajesChofer.has(String(p.reparto_id)));
     const estado=new Map(vs.map(v=>[String(v.reparto_id)+'|'+String(v.codigo_cliente),v.estado]));
     const viajes=new Map(),clientes=new Map();
     for(const p of ps){
@@ -247,7 +271,7 @@ async function abrir(p){document.body.classList.remove('sec-resultado-activo');i
     const datos=[...ranking.values()].filter(x=>x.atendidos).sort((a,b)=>(b.incidencias/b.atendidos)-(a.incidencias/a.atendidos));
     $('#rendicion-ranking').innerHTML=tabla(['Conductor','Despacho','Atendidos','Entregados','Cerrados / incidencias','% incidencias'],datos.map(x=>[esc(x.conductor),esc(x.despacho),String(x.atendidos),String(x.entregados),String(x.incidencias),(100*x.incidencias/x.atendidos).toFixed(1)+'%']));
   };
-  $('#rendicion-actualizar').onclick=run(refrescar);await refrescar();return;
+  $('#rendicion-actualizar').onclick=run(refrescar);$('#rendicion-conductor').onchange=run(refrescar);await refrescar();return;
  }
  if(p==='ABM de usuarios'){
   if(usuario?.rol!=='ADMIN'&&usuario?.rol!=='ADMINISTRADOR'){agregarVista.html='<div class="panel"><p>Solo el administrador puede gestionar usuarios.</p></div>';return;}
@@ -592,7 +616,7 @@ async function resultado(p){
  const opciones=motivos.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
  const opcionesMedios=medios.filter(x=>x.activo).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+'</option>').join('');
  document.body.classList.add('sec-resultado-activo');
- $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel resultado-panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}" value="${esc(total.toFixed(2))}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><button id="tomar-foto-entrega" type="button">📷 Sacar foto</button><input id="foto-camara" type="file" accept="image/*" capture="environment" hidden></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><div class="resultado-acciones"><button type="submit" class="resultado-guardar">Guardar</button></div></form></div>`;
+ $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel resultado-panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}" value="${esc(total.toFixed(2))}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><button id="tomar-foto-entrega" type="button">📷 Sacar foto</button><button id="biblioteca-entrega" type="button">🖼️ Biblioteca</button><input id="foto-biblioteca" type="file" accept="image/*" hidden></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><div class="resultado-acciones"><button type="submit" class="resultado-guardar">Guardar</button></div></form></div>`;
  const importeObjetivo=()=>$('#resultado [name=estado]').value==='PARCIAL'?Number($('#resultado [name=importe_entregado]').value||0):total;
  const cent=n=>Math.round(Number(n||0)*100);
  const totalPagos=()=>[...document.querySelectorAll('.pago-importe')].reduce((n,x)=>n+(centavosCobranzaSEC(x.value)||0),0);
@@ -611,8 +635,9 @@ async function resultado(p){
  const actualizar=()=>{const estado=$('#resultado [name=estado]').value,requiere=estado==='RECHAZADO'||estado==='PARCIAL';$('#resultado-motivo').hidden=!requiere;$('#resultado-cobranza').hidden=estado==='VISITADO'||estado==='RECHAZADO';$('#resultado-parcial').hidden=estado!=='PARCIAL';$('#resultado [name=motivo_rechazo_id]').required=requiere;$('#resultado [name=importe_entregado]').required=estado==='PARCIAL';};
  $('#resultado [name=estado]').onchange=()=>{actualizar();const pagos=[...document.querySelectorAll('.pago-importe')];if(!previa&&pagos.length===1)pagos[0].value=importeObjetivo().toFixed(2);resumirCobro();};
  $('#resultado [name=importe_entregado]').oninput=()=>{const pagos=[...document.querySelectorAll('.pago-importe')];if(!previa&&pagos.length===1)pagos[0].value=importeObjetivo().toFixed(2);resumirCobro();};actualizar();resumirCobro();
+ let fotoEntrega=null;
  $('#resultado').onsubmit=e=>{e.preventDefault();run(async()=>{
-  const form=Object.fromEntries(new FormData(e.target)),file=$('#foto-camara').files[0];
+  const form=Object.fromEntries(new FormData(e.target)),file=fotoEntrega;
   if(file&&file.size>5*1024*1024)throw Error('La foto supera 5 MB');
   const estado=form.estado;
   if(estado!=='VISITADO'){
@@ -630,8 +655,9 @@ async function resultado(p){
   if(file){const f=new FormData();f.append('archivo',file);try{await api('/visitas/'+v.id+'/foto',{method:'POST',body:f});}catch(err){throw Error('Resultado guardado; la foto no se guardó: '+err.message);}}
   await abrir('App Conductor');mensaje('Resultado guardado.');
  })();};
- $('#tomar-foto-entrega').onclick=()=>$('#foto-camara').click();
- $('#foto-camara').onchange=()=>{$('#foto-elegida').textContent=$('#foto-camara').files.length?'Foto tomada, lista para guardar.':'Sin foto seleccionada';};
+ $('#tomar-foto-entrega').onclick=async()=>{const boton=$('#tomar-foto-entrega');boton.disabled=true;try{const foto=await tomarFotoEntregaSEC($('#resultado'));if(foto&&$('#resultado')){fotoEntrega=foto;$('#foto-biblioteca').value='';$('#foto-elegida').textContent='Foto tomada, lista para guardar.';}}finally{boton.disabled=false;}};
+ $('#biblioteca-entrega').onclick=()=>$('#foto-biblioteca').click();
+ $('#foto-biblioteca').onchange=()=>{const foto=$('#foto-biblioteca').files[0];if(foto){fotoEntrega=foto;$('#foto-elegida').textContent='Imagen de Biblioteca: '+foto.name;}};
 }
 
 async function dashboardConductores(){
@@ -674,7 +700,6 @@ async function recorridos(){
 
 
 async function abrirFotoMenu(origen){
- origen='camara';
  const anterior=$('#foto-menu-panel');if(anterior)anterior.remove();
  const panel=document.createElement('div');panel.id='foto-menu-panel';panel.className='panel';
  panel.innerHTML='<h3>Foto del recorrido</h3><p>Seleccioná un cliente detectado por geocerca o «Foto libre».</p><input id="foto-menu-archivo" hidden type="file" accept="image/jpeg,image/png,image/*" '+(origen==='camara'?'capture="environment"':'')+'><p id="foto-menu-estado" class="muted">Elegí una imagen.</p><label>Asociación <select id="foto-menu-cliente"><option value="">Foto libre (sin cliente)</option></select></label><button id="foto-menu-guardar" type="button" disabled>Guardar fotografía</button><button id="foto-menu-cerrar" type="button">Cancelar</button>';
@@ -696,7 +721,7 @@ async function abrirFotoMenu(origen){
  };
  archivo.onchange=()=>{captura=null;procesarArchivo(archivo.files[0]);};
  guardar.onclick=run(async()=>{const f=captura||archivo.files[0];if(!f){estado.textContent='Primero sacá una foto.';estado.scrollIntoView({block:'center'});return;}guardar.disabled=true;guardar.textContent='Guardando…';estado.textContent='Guardando fotografía…';estado.scrollIntoView({block:'center'});try{const form=new FormData();form.append('archivo',f);form.append('origen',origen);if(gps)Object.entries(gps).forEach(([k,v])=>form.append(k,String(v)));const elegido=candidatos[Number(sel.value)-1];if(elegido){form.append('reparto_id',elegido.reparto_id);form.append('codigo_cliente',elegido.codigo_cliente);}await api('/fotos-recorrido',{method:'POST',body:form});estado.textContent='Fotografía guardada'+(elegido?' para cliente '+elegido.codigo_cliente:' como foto libre')+'.';guardar.textContent='Fotografía guardada ✓';archivo.value='';captura=null;}catch(e){guardar.disabled=false;guardar.textContent='Reintentar guardado';estado.textContent='No se pudo guardar: '+e.message;alert('No se pudo guardar la fotografía: '+e.message);}});
- if(origen==='camara'){try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cámara web no disponible en esta APK');stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});if(!panel.isConnected){detenerCamara();return;}camaraVista.hidden=false;video.srcObject=stream;await video.play();estado.textContent='Enfocá y presioná Tomar fotografía.';}catch(e){detenerCamara();camaraVista.hidden=true;estado.textContent='La APK no permitió abrir la cámara directamente. Se intentará con la cámara del sistema.';archivo.click();}}else{camaraVista.remove();archivo.click();}
+ if(origen==='camara'){try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cámara web no disponible en esta APK');stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});if(!panel.isConnected){detenerCamara();return;}camaraVista.hidden=false;video.srcObject=stream;await video.play();estado.textContent='Enfocá y presioná Tomar fotografía.';}catch(e){detenerCamara();camaraVista.hidden=true;estado.textContent='No se pudo abrir la cámara. Revisá el permiso de cámara de SEC o usá Biblioteca desde el menú.';}}else{camaraVista.remove();archivo.click();}
 }
 
 async function fotosRecorrido(){
@@ -721,10 +746,11 @@ async function inicio(){
   document.head.appendChild(estilo);
  }
  $('#nav').classList.add('sec-conductor-nav');
- $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="llamar-oficina" type="button"><span class="sec-nav-icon" aria-hidden="true">☎️</span><span>Llamar oficina</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
+ $('#nav').innerHTML='<button id="home" type="button"><span class="sec-nav-icon" aria-hidden="true">🚚</span><span>Volver Entregas</span></button><button id="llamar-oficina" type="button"><span class="sec-nav-icon" aria-hidden="true">☎️</span><span>Llamar oficina</span></button><button id="foto-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">📷</span><span>Foto</span></button><button id="galeria-menu" type="button"><span class="sec-nav-icon" aria-hidden="true">🖼️</span><span>Biblioteca</span></button><button id="salir" type="button"><span class="sec-nav-icon" aria-hidden="true">↪</span><span>Salir</span></button>';
  $('#llamar-oficina').onclick=()=>llamarOficina();
  if(typeof iniciarMensajesOficina==='function')iniciarMensajesOficina();
  $('#foto-menu').onclick=()=>abrirFotoMenu('camara');
+ $('#galeria-menu').onclick=()=>abrirFotoMenu('galeria');
 
 
  $('#home').onclick=run(inicio);

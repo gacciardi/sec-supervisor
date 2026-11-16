@@ -380,7 +380,7 @@ if(token)run(async()=>{usuario=await api('/me');await inicio();if(window.SECAndr
 
 let gpsWatch=null;
 
-function fechaHoy(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
+function fechaHoy(){const partes=new Intl.DateTimeFormat('en-US',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const valor=tipo=>partes.find(p=>p.type===tipo).value;return valor('year')+'-'+valor('month')+'-'+valor('day');}
 
 async function conductor(){
 
@@ -491,8 +491,9 @@ async function conductor(){
    const totalEntregado=entregas.reduce((n,x)=>n+Math.round(Number(x.importe_entregado||0)*100),0);
    const totalRegistrado=Object.values(grupos).reduce((a,b)=>a+b,0);
    const pendiente=Math.max(0,totalEntregado-totalRegistrado);
+   const saldoClientes=entregas.map(e=>{const registrado=cobros.filter(c=>String(c.rendicion_entrega_id)===String(e.id)).reduce((n,c)=>n+Math.round(Number(c.importe||0)*100),0);const saldo=Math.max(0,Math.round(Number(e.importe_entregado||0)*100)-registrado);const cliente=stops.find(p=>String(p.codigo_cliente)===String(e.codigo_cliente)&&String(p.reparto_id)===String(e.reparto_id));return {nombre:e.codigo_cliente+' · '+(cliente?.nombre_cliente||'Cliente'),saldo};}).filter(e=>e.saldo>0);
    const fila=(nombre,centavos)=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #ddd"><span>'+esc(nombre)+'</span><strong>'+esc(formatoDinero(centavos/100))+'</strong></div>';
-   caja.innerHTML=fila('Efectivo',grupos.efectivo)+fila('QR / transferencias',grupos.digital)+fila('Cuenta corriente registrada',grupos.cuenta)+fila('Otros medios',grupos.otros)+fila('Total cobrado (sin cuenta corriente)',grupos.efectivo+grupos.digital+grupos.otros)+fila('Saldo sin medio registrado',pendiente)+(Object.keys(detalles).length?'<details><summary>Detalle por medio de pago</summary>'+Object.entries(detalles).sort((a,b)=>a[0].localeCompare(b[0])).map(([n,v])=>fila(n,v)).join('')+'</details>':'<p>Aún no hay cobranzas registradas.</p>');
+   caja.innerHTML=fila('Efectivo',grupos.efectivo)+fila('QR / transferencias',grupos.digital)+fila('Cuenta corriente registrada',grupos.cuenta)+fila('Otros medios',grupos.otros)+fila('Total cobrado (sin cuenta corriente)',grupos.efectivo+grupos.digital+grupos.otros)+fila('Saldo pendiente de registrar',pendiente)+'<p class="muted">Mercadería entregada menos pagos y cuenta corriente registrados. Puede ser cobranza pendiente o un pago aún sin cargar; no equivale a faltante de efectivo.</p>'+(saldoClientes.length?'<details><summary>Ver clientes con saldo pendiente</summary>'+saldoClientes.map(e=>fila(e.nombre,e.saldo)).join('')+'</details>':'')+(Object.keys(detalles).length?'<details><summary>Detalle por medio de pago</summary>'+Object.entries(detalles).sort((a,b)=>a[0].localeCompare(b[0])).map(([n,v])=>fila(n,v)).join('')+'</details>':'<p>Aún no hay cobranzas registradas.</p>');
   }catch(e){caja.textContent='No se pudo consultar la cobranza: '+e.message;}
  };
  const mostrarCierre=async()=>{

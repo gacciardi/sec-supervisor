@@ -32,7 +32,7 @@ async function api(path,options={}){const h={Authorization:'Bearer '+token,...op
 
 function run(fn){return async()=>{mensaje('');try{await fn();}catch(e){mensaje(e.message);}};}
 
-function login(){if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();token='';sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
+function login(){if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();token='';usuario=null;secAlertasPendientes=0;if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);document.getElementById('sec-alertas-emergentes')?.remove();sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
 
  $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await inicio();})()};
 
@@ -50,6 +50,7 @@ function tarjetasMenuDistribucion(){
 
 async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML='<a href="../index.html">Comercial</a><button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
+let secEmergenciasCache=[],secEmergenciasActor='';
 let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set(),secAlertasPendientes=0,secAudioHabilitado=false;
 const secDireccionesCache=new Map();
 async function direccionDeCoordenadas(lat,lon){
@@ -110,10 +111,14 @@ function prepararAudioAlertas(){
  habilitarSonidoAlertas();
 }
 async function consultarAlertasOficina(){
- if(!usuario||!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol))return;
+ if(!token||!usuario||!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol))return;
  try{
-  const emergencias=await api('/alertas-conductor');let oficina={solicitudes:[],respuestas:[]};if(typeof cargarAlertasOficina==='function'){try{oficina=await cargarAlertasOficina();}catch(e){console.warn('Comunicación oficina:',e.message);}}const todas=[...emergencias,...oficina.solicitudes],pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.tipo==='OFICINA'?['ENVIADA','CONFIRMADA'].includes(x.estado):x.estado==='ENVIADA');
-  let mecanicos=[];try{mecanicos=await api('/mantenimiento/mecanicos');}catch(e){console.warn('Agenda de mecánicos:',e.message);}
+  const actor=usuario.empresa_id+'|'+usuario.id;if(secEmergenciasActor!==actor){secEmergenciasActor=actor;secEmergenciasCache=[];}
+  const leer=typeof leerOficinaConPlazo==='function'?leerOficinaConPlazo:api;
+  const resultados=await Promise.allSettled([leer('/alertas-conductor'),typeof cargarAlertasOficina==='function'?cargarAlertasOficina():Promise.resolve({solicitudes:[],respuestas:[]}),leer('/mantenimiento/mecanicos')]);
+  if(resultados[0].status==='fulfilled')secEmergenciasCache=resultados[0].value;else console.warn('Alertas de seguridad:',resultados[0].reason?.message);
+  const oficina=resultados[1].status==='fulfilled'?resultados[1].value:{solicitudes:[],respuestas:[]},mecanicos=resultados[2].status==='fulfilled'?resultados[2].value:[];
+  const todas=[...secEmergenciasCache,...oficina.solicitudes],pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.tipo==='OFICINA'?['ENVIADA','CONFIRMADA'].includes(x.estado):x.estado==='ENVIADA');
   const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
   secAlertasPendientes=pendientes.length;
   if(nuevas.length&&secAlertasInicializadas&&secAudioHabilitado)sonarAlerta();

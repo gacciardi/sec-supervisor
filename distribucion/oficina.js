@@ -1,5 +1,5 @@
 "use strict";
-let oficinaRespuestasTimer=null,oficinaConsultando=false,oficinaAlertaOpciones=[],oficinaVersionCatalogo='',oficinaBorradores=new Map();
+let oficinaRespuestasTimer=null,oficinaConsultando=false,oficinaAlertaOpciones=[],oficinaVersionCatalogo='',oficinaBorradores=new Map(),oficinaPanelMinimizado=true,oficinaRespuestasVistas=new Set(),oficinaSolicitudesCache=[],oficinaCacheActor='';
 const oficinaMotivos={MERCADERIA:'Mercadería',COBRANZA:'Cobranza',OTRO:'Otro problema'};
 const oficinaFecha=v=>v?new Date(v).toLocaleString('es-AR'):'—';
 function claveSolicitudOficina(){
@@ -27,10 +27,19 @@ async function llamarOficina(){
   };
  }catch(e){if(d.isConnected)d.querySelector('[data-oficina-estado]').textContent='No se pudo preparar la consulta: '+e.message;}
 }
+function estadoMonitorOficina(texto,error=false){
+ let estado=document.getElementById('sec-monitor-oficina');if(!estado){estado=document.createElement('p');estado.id='sec-monitor-oficina';const nav=document.getElementById('nav');nav?.insertAdjacentElement('afterend',estado);}estado.textContent=texto;estado.className=error?'oficina-monitor-error':'oficina-monitor-ok';estado.setAttribute('role','status');
+}
+async function leerOficinaConPlazo(ruta){const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),8000);try{return await api(ruta,{signal:ctrl.signal});}finally{clearTimeout(timer);}}
 async function cargarAlertasOficina(){
- if(!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario?.rol))return {solicitudes:[],respuestas:[]};
- const [solicitudes,opciones]=await Promise.all([api('/oficina/solicitudes?pendientes=1'),api('/oficina/respuestas')]);oficinaAlertaOpciones=opciones.filter(o=>o.activo);oficinaVersionCatalogo=JSON.stringify(oficinaAlertaOpciones);
- return {solicitudes:solicitudes.map(s=>({...s,oficina_id:s.id,id:'oficina-'+s.id,tipo:'OFICINA'})),respuestas:oficinaAlertaOpciones};
+ if(!token||!['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario?.rol))return {solicitudes:[],respuestas:[]};
+ const actor=usuario.empresa_id+'|'+usuario.id;if(oficinaCacheActor!==actor){oficinaCacheActor=actor;oficinaSolicitudesCache=[];oficinaAlertaOpciones=[];oficinaBorradores.clear();}
+ const [solicitudes,opciones]=await Promise.allSettled([leerOficinaConPlazo('/oficina/solicitudes?pendientes=1'),leerOficinaConPlazo('/oficina/respuestas')]);
+ if(solicitudes.status==='fulfilled')oficinaSolicitudesCache=solicitudes.value;
+ if(opciones.status==='fulfilled'){oficinaAlertaOpciones=opciones.value.filter(o=>o.activo);oficinaVersionCatalogo=JSON.stringify(oficinaAlertaOpciones);}
+ const errores=[solicitudes.status==='rejected'?'No se pudo actualizar la recepción de avisos.':null,opciones.status==='rejected'?'No se pudieron actualizar las opciones de respuesta.':null].filter(Boolean);
+ estadoMonitorOficina(errores.length?errores.join(' ')+' Se reintentará automáticamente.':'Recepción de oficina activa · '+oficinaSolicitudesCache.length+' consulta(s) pendiente(s) · Actualizado '+new Date().toLocaleTimeString('es-AR'),!!errores.length);
+ return {solicitudes:oficinaSolicitudesCache.map(s=>({...s,oficina_id:s.id,id:'oficina-'+s.id,tipo:'OFICINA'})),respuestas:oficinaAlertaOpciones};
 }
 function guardarBorradoresOficina(panel){panel.querySelectorAll('[data-oficina-responder]').forEach(f=>{oficinaBorradores.set(f.dataset.oficinaResponder,{respuesta:f.elements.namedItem('respuesta_id').value,observacion:f.elements.namedItem('observacion').value});});}
 function tarjetaAlertaOficina(a,respuestas){
@@ -47,15 +56,16 @@ function activarRespuestasOficina(panel){
   };
  });
 }
-function detenerMensajesOficina(){if(oficinaRespuestasTimer)clearInterval(oficinaRespuestasTimer);oficinaRespuestasTimer=null;document.getElementById('sec-oficina-respuestas')?.remove();document.getElementById('sec-oficina-dialogo')?.remove();}
+function detenerMensajesOficina(){if(oficinaRespuestasTimer)clearInterval(oficinaRespuestasTimer);oficinaRespuestasTimer=null;oficinaPanelMinimizado=true;oficinaRespuestasVistas.clear();oficinaCacheActor='';oficinaSolicitudesCache=[];oficinaAlertaOpciones=[];oficinaBorradores.clear();document.getElementById('sec-monitor-oficina')?.remove();document.getElementById('sec-oficina-respuestas')?.remove();document.getElementById('sec-oficina-dialogo')?.remove();}
 function iniciarMensajesOficina(){if(oficinaRespuestasTimer)clearInterval(oficinaRespuestasTimer);consultarRespuestasOficina();oficinaRespuestasTimer=setInterval(consultarRespuestasOficina,12000);}
 async function consultarRespuestasOficina(){
  if(!token||usuario?.rol!=='CONDUCTOR'){detenerMensajesOficina();return;}if(oficinaConsultando)return;oficinaConsultando=true;
  try{const rows=await api('/oficina/solicitudes?pendientes=1');if(!token||usuario?.rol!=='CONDUCTOR')return;
   let panel=document.getElementById('sec-oficina-respuestas');if(!panel){panel=document.createElement('aside');panel.id='sec-oficina-respuestas';panel.className='oficina-respuestas-conductor';panel.setAttribute('aria-label','Comunicaciones con oficina');document.body.appendChild(panel);}panel.hidden=!rows.length;
   const firma=JSON.stringify(rows.map(x=>[x.id,x.estado,x.respuesta_nombre,x.respuesta_observacion,x.leida_conductor_en]));if(panel.dataset.firma===firma)return;panel.dataset.firma=firma;
-  panel.innerHTML='<h3>Comunicación con oficina</h3>'+rows.map(x=>'<article class="oficina-respuesta '+(x.estado==='RESPONDIDA'?'respondida':'')+'"><strong>Cliente '+esc(x.codigo_cliente)+' · '+esc(x.nombre_cliente)+'</strong><p>Despacho '+esc(x.despacho)+' · '+esc(oficinaMotivos[x.motivo]||x.motivo)+'</p>'+(x.estado==='RESPONDIDA'?'<p class="oficina-instruccion">'+esc(x.respuesta_nombre)+'</p><p>'+esc(x.respuesta_observacion||'')+'</p><small>'+esc(x.respondida_nombre||'Oficina')+' · '+esc(oficinaFecha(x.respondida_en))+'</small><p><button type="button" data-oficina-leida="'+esc(x.id)+'">Entendido · confirmar lectura</button></p>':'<p>'+esc(x.estado==='CONFIRMADA'?'La oficina leyó tu aviso. Esperando instrucciones.':'Aviso enviado. Esperando que la oficina lo lea.')+'</p>')+'</article>').join('')+'<p data-oficina-estado role="status"></p>';
-  panel.insertAdjacentHTML('afterbegin','<button type="button" class="oficina-minimizar" aria-expanded="true">Minimizar</button>');panel.classList.remove('oficina-minimizada');panel.querySelector('.oficina-minimizar').onclick=e=>{const min=panel.classList.toggle('oficina-minimizada');e.target.textContent=min?'Ver comunicaciones':'Minimizar';e.target.setAttribute('aria-expanded',String(!min));};
+  const respuestasAhora=new Set(rows.filter(x=>x.estado==='RESPONDIDA').map(x=>String(x.id)));if([...respuestasAhora].some(id=>!oficinaRespuestasVistas.has(id)))oficinaPanelMinimizado=false;oficinaRespuestasVistas=respuestasAhora;
+  panel.innerHTML='<h3>Oficina · '+rows.length+' aviso(s)</h3><p class="oficina-espera-mini">'+(respuestasAhora.size?'Hay respuestas pendientes de leer':'Esperando respuesta de oficina')+'</p>'+rows.map(x=>'<article class="oficina-respuesta '+(x.estado==='RESPONDIDA'?'respondida':'')+'"><strong>Cliente '+esc(x.codigo_cliente)+' · '+esc(x.nombre_cliente)+'</strong><p>Despacho '+esc(x.despacho)+' · '+esc(oficinaMotivos[x.motivo]||x.motivo)+'</p>'+(x.estado==='RESPONDIDA'?'<p class="oficina-instruccion">'+esc(x.respuesta_nombre)+'</p><p>'+esc(x.respuesta_observacion||'')+'</p><small>'+esc(x.respondida_nombre||'Oficina')+' · '+esc(oficinaFecha(x.respondida_en))+'</small><p><button type="button" data-oficina-leida="'+esc(x.id)+'">Entendido · confirmar lectura</button></p>':'<p>'+esc(x.estado==='CONFIRMADA'?'La oficina leyó tu aviso. Esperando instrucciones.':'Aviso enviado. Esperando que la oficina lo lea.')+'</p>')+'</article>').join('')+'<p data-oficina-estado role="status"></p>';
+  panel.insertAdjacentHTML('afterbegin','<button type="button" class="oficina-minimizar" aria-expanded="true">Minimizar</button>');panel.classList.toggle('oficina-minimizada',oficinaPanelMinimizado);const control=panel.querySelector('.oficina-minimizar');control.textContent=oficinaPanelMinimizado?'Ver comunicaciones':'Minimizar';control.setAttribute('aria-expanded',String(!oficinaPanelMinimizado));control.onclick=e=>{const min=panel.classList.toggle('oficina-minimizada');oficinaPanelMinimizado=min;e.target.textContent=min?'Ver comunicaciones':'Minimizar';e.target.setAttribute('aria-expanded',String(!min));};
   panel.querySelectorAll('[data-oficina-leida]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api('/oficina/solicitudes/'+b.dataset.oficinaLeida+'/leida',{method:'POST'});panel.dataset.firma='';await consultarRespuestasOficina();}catch(e){panel.querySelector('[data-oficina-estado]').textContent=e.message;b.disabled=false;}});
  }catch(e){const p=document.querySelector('#sec-oficina-respuestas [data-oficina-estado]');if(p)p.textContent='No se pudo actualizar la respuesta: '+e.message;}finally{oficinaConsultando=false;}
 }
@@ -71,3 +81,17 @@ async function editarCatalogoOficina(){
  panel.innerHTML='<p>Las modificaciones se aplican a futuras respuestas. Las instrucciones ya enviadas se conservan.</p><form data-oficina-alta><label>Nueva opción<input name="nombre" maxlength="120" required placeholder="Instrucción para el chofer"></label><button>Agregar opción</button><p data-oficina-estado role="status"></p></form>'+rows.map(x=>'<form class="oficina-opcion" data-oficina-opcion="'+esc(x.id)+'"><label>Texto de la respuesta<input name="nombre" maxlength="120" required value="'+esc(x.nombre)+'"></label><label class="oficina-check"><input name="activo" type="checkbox" '+(x.activo?'checked':'')+'> Disponible en el desplegable</label><button>Guardar</button><p data-oficina-estado role="status"></p></form>').join('');
  panel.querySelectorAll('form').forEach(f=>f.onsubmit=async e=>{e.preventDefault();if(!f.reportValidity())return;const b=Object.fromEntries(new FormData(f)),id=f.dataset.oficinaOpcion,boton=f.querySelector('button');boton.disabled=true;try{await api('/oficina/respuestas'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify({nombre:b.nombre,...(id?{activo:f.elements.namedItem('activo').checked}:{})})});await editarCatalogoOficina();const alerta=document.getElementById('sec-alertas-emergentes');if(alerta)alerta.dataset.firma='';await consultarAlertasOficina();}catch(e){f.querySelector('[data-oficina-estado]').textContent=e.message;boton.disabled=false;}});
 }
+
+// Avisa cuando la página abierta quedó usando archivos anteriores. Nunca recarga formularios automáticamente.
+let oficinaVersionConsultando=false;
+async function comprobarVersionSEC(){
+ if(oficinaVersionConsultando||document.visibilityState==='hidden')return;oficinaVersionConsultando=true;const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),6000);
+ try{
+  const propias=urls=>urls.map(u=>new URL(u,location.href)).filter(u=>u.origin===location.origin&&/\/(?:app|oficina|estadisticas)\.js$/.test(u.pathname)).map(u=>u.pathname+u.search).sort();
+  const actuales=propias(Array.from(document.scripts,s=>s.src).filter(Boolean));if(!actuales.length)return;
+  const r=await fetch('index.html?sec_version='+Date.now(),{cache:'no-store',signal:ctrl.signal});if(!r.ok)return;const html=await r.text();
+  const publicadas=propias(Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi),m=>m[1]));if(!publicadas.length||JSON.stringify(actuales)===JSON.stringify(publicadas))return;
+  if(document.getElementById('sec-actualizacion-disponible'))return;const aviso=document.createElement('div');aviso.id='sec-actualizacion-disponible';aviso.className='oficina-actualizacion';aviso.innerHTML='<strong>SEC tiene una actualización disponible.</strong> Guardá cualquier dato en edición y recargá para recibir las funciones y alertas nuevas. <button type="button">Actualizar SEC</button>';document.body.insertAdjacentElement('afterbegin',aviso);aviso.querySelector('button').onclick=()=>location.reload();
+ }catch{}finally{clearTimeout(timer);oficinaVersionConsultando=false;}
+}
+setInterval(comprobarVersionSEC,120000);window.addEventListener?.('focus',comprobarVersionSEC);

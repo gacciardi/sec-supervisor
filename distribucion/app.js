@@ -17,6 +17,26 @@ function importeEnCentavosSEC(valor){
  return Number.isSafeInteger(centavos)?centavos:null;
 }
 
+// Entrada monetaria del conductor: admite coma decimal y el formato argentino.
+function centavosCobranzaSEC(valor){
+ const t=String(valor??'').trim();
+ if(/^\d+(?:[.,]\d{1,2})?$/.test(t))return importeEnCentavosSEC(t.replace(',','.'));
+ if(/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(t))return importeEnCentavosSEC(t.replaceAll('.','').replace(',','.'));
+ return null;
+}
+function leerCobrosSEC(filas){
+ return filas.flatMap((fila,i)=>{
+  const medio=fila.querySelector('.pago-medio'),campo=fila.querySelector('.pago-importe'),ref=fila.querySelector('.pago-referencia');
+  const texto=campo.value.trim(),referencia=ref.value.trim();
+  if(!medio.value&&!texto&&!referencia)return [];
+  const error=(control,mensaje)=>{control.setAttribute('aria-invalid','true');control.scrollIntoView({block:'center'});control.focus({preventScroll:true});throw Error('Pago '+(i+1)+': '+mensaje);};
+  if(!medio.value)error(medio,'seleccioná la forma de pago para este importe.');
+  const centavos=centavosCobranzaSEC(texto);
+  if(centavos===null||centavos<=0)error(campo,'ingresá un importe mayor a cero, con hasta dos decimales (ejemplo: 1250,50).');
+  return [{medio_cobranza_id:medio.value,importe:centavos/100,referencia}];
+ });
+}
+
 let fechaAsignacion=null;
 let usuario=null,token=sessionStorage.getItem('sec-distribucion-token')||'',conductores=[],vehiculos=[],repartos=[],pedidos=[],mapa=null;
 
@@ -574,13 +594,13 @@ async function resultado(p){
  $('#vista').innerHTML=`<h2>${esc(p.codigo_cliente+' · '+p.nombre_cliente)}</h2><div class="panel resultado-panel"><form id="resultado"><label>Resultado<select name="estado"><option value="ENTREGADO">ENTREGADO</option><option value="RECHAZADO">RECHAZADO</option><option value="PARCIAL">ENTREGA PARCIAL</option><option value="VISITADO">VISITADO</option></select></label><div id="resultado-motivo" hidden><label>Motivo de rechazo<select name="motivo_rechazo_id"><option value="">Seleccionar motivo</option>${opciones}</select></label><label id="resultado-parcial" hidden>Importe entregado ($)<input name="importe_entregado" type="number" min="0.01" step="0.01" max="${esc(total)}" value="${esc(total.toFixed(2))}"></label><p>Importe original del cliente: ${Number(total).toLocaleString('es-AR',{style:'currency',currency:'ARS'})}</p></div><div id="resultado-cobranza" hidden><h3>Cobranza</h3><p>Elegí los medios y los importes efectivamente cobrados. Si queda saldo pendiente, no lo registres como cobrado.</p><div id="resultado-pagos"></div><button id="resultado-agregar-pago" type="button">+ Agregar forma de pago</button><p id="resultado-total-cobrado"></p></div><label>Observación<textarea name="observacion" maxlength="3000"></textarea></label><div><strong>Foto de la entrega (opcional)</strong><div class="acciones"><button id="tomar-foto-entrega" type="button">📷 Sacar foto</button><input id="foto-camara" type="file" accept="image/*" capture="environment" hidden></div><p id="foto-elegida" class="muted">Sin foto seleccionada</p></div><div class="resultado-acciones"><button type="submit" class="resultado-guardar">Guardar</button></div></form></div>`;
  const importeObjetivo=()=>$('#resultado [name=estado]').value==='PARCIAL'?Number($('#resultado [name=importe_entregado]').value||0):total;
  const cent=n=>Math.round(Number(n||0)*100);
- const totalPagos=()=>[...document.querySelectorAll('.pago-importe')].reduce((n,x)=>n+cent(x.value),0);
+ const totalPagos=()=>[...document.querySelectorAll('.pago-importe')].reduce((n,x)=>n+(centavosCobranzaSEC(x.value)||0),0);
  const agregarPago=(medio='',importe='',referencia='')=>{
   const fila=document.createElement('div');fila.className='panel';fila.style.margin='8px 0';
-  fila.innerHTML='<label>Forma de pago<select class="pago-medio"><option value="">Seleccionar forma de pago</option>'+opcionesMedios+'</select></label><label>Importe cobrado ($)<input class="pago-importe" type="number" min="0.01" step="0.01"></label><label>Referencia (opcional)<input class="pago-referencia" maxlength="150"></label><button type="button" class="pago-quitar">Quitar</button>';
+  fila.innerHTML='<label>Forma de pago<select class="pago-medio"><option value="">Seleccionar forma de pago</option>'+opcionesMedios+'</select></label><label>Importe cobrado ($)<input class="pago-importe" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label><label>Referencia (opcional)<input class="pago-referencia" maxlength="150"></label><button type="button" class="pago-quitar">Quitar</button>';
   $('#resultado-pagos').appendChild(fila);fila.querySelector('.pago-medio').value=String(medio);fila.querySelector('.pago-importe').value=String(importe);fila.querySelector('.pago-referencia').value=referencia;
   fila.querySelector('.pago-quitar').onclick=()=>{fila.remove();resumirCobro();};
-  fila.querySelector('.pago-importe').oninput=resumirCobro;resumirCobro();
+  fila.querySelector('.pago-importe').oninput=()=>{fila.querySelector('.pago-importe').removeAttribute('aria-invalid');resumirCobro();};fila.querySelector('.pago-medio').onchange=()=>fila.querySelector('.pago-medio').removeAttribute('aria-invalid');resumirCobro();
  };
  const resumirCobro=()=>{const suma=totalPagos()/100,saldo=(cent(importeObjetivo())-totalPagos())/100;const destino=$('#resultado-total-cobrado');if(destino)destino.textContent='Total cobrado: '+suma.toLocaleString('es-AR',{style:'currency',currency:'ARS'})+' · '+(saldo<0?'Excede en: ':'Saldo pendiente: ')+Math.abs(saldo).toLocaleString('es-AR',{style:'currency',currency:'ARS'});};
  $('#resultado-agregar-pago').onclick=()=>{if(document.querySelectorAll('#resultado-pagos .panel').length>=8){mensaje('Máximo ocho medios por entrega.');return;}agregarPago('',(Math.max(0,cent(importeObjetivo())-totalPagos())/100).toFixed(2));};
@@ -598,8 +618,7 @@ async function resultado(p){
    if(!Number.isFinite(total)||total<=0)throw Error('No se puede rendir sin importe original válido');
    const importe=estado==='RECHAZADO'?0:estado==='ENTREGADO'?total:Number(form.importe_entregado);
    if(estado==='PARCIAL'&&!(importe>0&&importe<total))throw Error('El importe parcial debe ser mayor a cero y menor al pedido');
-   const pagos=estado==='RECHAZADO'?[]:[...document.querySelectorAll('#resultado-pagos .panel')].map(f=>({medio_cobranza_id:f.querySelector('.pago-medio').value,importe:Number(f.querySelector('.pago-importe').value),referencia:f.querySelector('.pago-referencia').value})).filter(x=>x.medio_cobranza_id||x.importe);
-   if(pagos.some(x=>!x.medio_cobranza_id||!Number.isFinite(x.importe)||x.importe<=0||importeEnCentavosSEC(x.importe)===null))throw Error('Revisá las formas de pago y los importes.');
+   const pagos=estado==='RECHAZADO'?[]:leerCobrosSEC([...document.querySelectorAll('#resultado-pagos .panel')]);
    const suma=pagos.reduce((n,x)=>n+importeEnCentavosSEC(x.importe),0);
    if(!Number.isSafeInteger(suma)||suma>Math.round(importe*100))throw Error('Los cobros superan el importe entregado.');
    if(previa&&!confirm('Esta entrega ya tiene una rendición guardada. Al continuar se reemplazarán sus cobros anteriores. ¿Confirmás la corrección?'))return;

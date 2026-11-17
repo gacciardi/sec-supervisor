@@ -293,7 +293,7 @@ async function abrir(p){document.body.classList.remove('sec-resultado-activo');i
 
  if(p==='Conductores'){conductores=await api('/conductores');abm();agregarVinculoConductor();return;}
 
- if(p==='Auditoría'){const rows=await api('/auditoria');agregarVista.html=tabla(['Fecha','Usuario','Acción','Detalle'],rows.map(r=>[esc(new Date(r.fecha).toLocaleString('es-AR')),esc((r.nombre||'')+' '+(r.apellido||'')),esc(r.accion),esc(JSON.stringify(r.detalle))]));return;}
+ if(p==='Auditoría'){await mostrarAuditoriaSEC();return;}
 
  if(['Importar pedidos','Vehículos'].includes(p)){const isV=p==='Vehículos';agregarVista.html=`<div class="panel"><p>${isV?'Columnas: INTERNO, PATENTE, TIPO (camion, tractor, semi).':'COD_CLI identifica al cliente. Indicá la fecha real de entrega; el Excel puede corresponder a un día de preparación anterior.'}</p>${isV?'':`<label>Fecha real de entrega <input id="fechaentregareal" type="date" required value="${fechaHoy()}"></label><p class="muted">Primero validá el archivo sin grabar. Después confirmá la importación.</p>`}<input id="archivo" type="file" accept=".xlsx,.xls,.csv"><button id="validar-importacion">${isV?'Importar':'Validar archivo (sin grabar)'}</button>${isV?'':'<button id="confirmar-importacion" disabled>Confirmar importación</button><p id="resultado-validacion"></p>'}</div>`;
  let validado=null;const archivo=$('#archivo'),fechaInput=$('#fechaentregareal');const invalidar=()=>{validado=null;if($('#confirmar-importacion'))$('#confirmar-importacion').disabled=true;if($('#resultado-validacion'))$('#resultado-validacion').textContent=''};archivo.onchange=invalidar;if(fechaInput)fechaInput.onchange=invalidar;

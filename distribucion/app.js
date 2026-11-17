@@ -67,7 +67,7 @@ const iconoConductor='<svg xmlns="http://www.w3.org/2000/svg" width="24" height=
 const iconosSecciones=["👥","▶️","📷",iconoConductor,"👤","💰","⚙️","🗺️","📍","🖥️","📋","⚠️","🔎","📥","🕒","🚛","🔧","⛽","📱","🔄","📊"];
 
 function accesoComercialSEC(){return destinoComercialSEC()!==null;}
-function destinoComercialSEC(){if(typeof location==='undefined')return null;const p=new URLSearchParams(location.search);if(p.get('origen')!=='comercial')return null;return {rendicion:{nombre:'Rendición de Viaje',roles:['ADMIN','SUPERVISOR','OPERADOR']},estadisticas:{nombre:'Estadísticas',roles:['ADMIN','SUPERVISOR']}}[p.get('seccion')]||null;}
+function destinoComercialSEC(){if(typeof location==='undefined')return null;const p=new URLSearchParams(location.search);if(p.get('origen')!=='comercial')return null;return {rendicion:{nombre:'Rendición de Viaje',roles:['ADMIN','SUPERVISOR','OPERADOR']},estadisticas:{nombre:'Estadísticas',roles:['ADMIN','SUPERVISOR']},telefonos:{nombre:'Teléfonos de clientes',roles:['ADMIN','SUPERVISOR','OPERADOR']}}[p.get('seccion')]||null;}
 function volverComercialSEC(){return destinoComercialSEC()?.roles.includes(usuario?.rol)||false;}
 function configurarEncabezadoSEC(){const destino=destinoComercialSEC(),comercial=destino&&(!usuario||destino.roles.includes(usuario.rol)),titulo=document.querySelector('.header-sec h1');if(titulo)titulo.textContent=comercial?'SEC - Comercial':'SEC - Distribución';document.title=comercial?'SEC - '+destino.nombre:'SEC - Distribución';}
 async function entrarDestinoInicialSEC(){await inicio();const destino=destinoComercialSEC();if(!destino)return;if(destino.roles.includes(usuario?.rol))await abrir(destino.nombre);else mensaje('Tu perfil no tiene acceso a '+destino.nombre+'.');}
@@ -204,6 +204,7 @@ function tabla(head,rows){return `<div class="panel"><table><tr>${head.map(h=>`<
 
 async function abrir(p){if(usuario?.rol==='MECANICO'&&!['Vehículos','Mantenimiento de Flota','Combustible y Huella de Carbono'].includes(p)){mensaje('Tu perfil solo permite Vehículos, Mantenimiento y Combustible.');return;}document.body.classList.remove('sec-resultado-activo');if(mapa){mapa.remove();mapa=null;}mensaje('');$('#vista').innerHTML='<h2>'+esc(p)+'</h2>';
  if(p==='Estadísticas'){await estadisticasDistribucion();return;}
+ if(p==='Teléfonos de clientes'){await telefonosClientesSEC();return;}
 
  if(p==='Mantenimiento de Flota'){
   const [equipos,trabajos,anomalias]=await Promise.all([api('/vehiculos'),api('/mantenimiento/trabajos'),api('/anomalias-vehiculo')]);

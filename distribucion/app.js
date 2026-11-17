@@ -155,10 +155,10 @@ async function consultarAlertasOficina(){
  try{
   const actor=usuario.empresa_id+'|'+usuario.id;if(secEmergenciasActor!==actor){secEmergenciasActor=actor;secEmergenciasCache=[];}
   const leer=typeof leerOficinaConPlazo==='function'?leerOficinaConPlazo:api;
-  const resultados=await Promise.allSettled([leer('/alertas-conductor'),typeof cargarAlertasOficina==='function'?cargarAlertasOficina():Promise.resolve({solicitudes:[],respuestas:[]}),leer('/mantenimiento/mecanicos')]);
+  const resultados=await Promise.allSettled([leer('/alertas-conductor'),typeof cargarAlertasOficina==='function'?cargarAlertasOficina():Promise.resolve({solicitudes:[],respuestas:[]}),leer('/mantenimiento/mecanicos'),typeof cargarResultadosMecanicosSEC==='function'?cargarResultadosMecanicosSEC():Promise.resolve([])]);
   if(resultados[0].status==='fulfilled')secEmergenciasCache=resultados[0].value;else console.warn('Alertas de seguridad:',resultados[0].reason?.message);
   const oficina=resultados[1].status==='fulfilled'?resultados[1].value:{solicitudes:[],respuestas:[]},mecanicos=resultados[2].status==='fulfilled'?resultados[2].value:[];
-  const todas=[...secEmergenciasCache,...oficina.solicitudes],pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.tipo==='OFICINA'?['ENVIADA','CONFIRMADA'].includes(x.estado):x.estado==='ENVIADA');
+  const todas=[...secEmergenciasCache,...oficina.solicitudes,...(resultados[3].status==='fulfilled'?resultados[3].value:[])],pendientes=todas.filter(x=>x.estado==='ENVIADA'),visibles=todas.filter(x=>x.tipo==='OFICINA'?['ENVIADA','CONFIRMADA'].includes(x.estado):x.estado==='ENVIADA');
   const nuevas=pendientes.filter(x=>!secAlertasConocidas.has(String(x.id)));
   secAlertasPendientes=pendientes.length;
   if(nuevas.length&&secAlertasInicializadas&&secAudioHabilitado)sonarAlerta();
@@ -173,21 +173,21 @@ async function consultarAlertasOficina(){
   if(typeof guardarBorradoresOficina==='function')guardarBorradoresOficina(panel);
   panel.innerHTML=visibles.map(a=>{
    if(a.tipo==='OFICINA')return tarjetaAlertaOficina(a,oficina.respuestas);
+   if(a.tipo==='REPARACION')return tarjetaResultadoMecanicoSEC(a);
    const tieneGps=a.latitud!=null&&a.longitud!=null;
    const mapa=tieneGps?'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'';
    return '<div style="border-bottom:2px solid #b91c1c;padding:14px;background:#fff;border-radius:10px;margin-bottom:10px"><strong style="display:block;background:#b91c1c;color:white;padding:12px;border-radius:8px;font-size:26px">'+(a.es_prueba?'PRUEBA · ':'')+(a.tipo==='ROBO'?'ALERTA DE ROBO':'PEDIDO DE MECÁNICO')+'</strong><p>Conductor: '+esc(a.conductor)+' · Despacho: '+esc(a.despacho||'Sin despacho')+' · Vehículo: '+esc(a.interno||'Sin asignar')+'</p><p>'+esc(new Date(a.creada_en).toLocaleString('es-AR'))+'</p><p><strong>Ubicación:</strong> <span data-direccion="'+esc(a.id)+'">'+(tieneGps?'Buscando dirección…':'GPS no disponible; comunicarse con el conductor')+'</span></p>'+(tieneGps?'<p><a href="'+esc(mapa)+'" target="_blank" rel="noopener noreferrer">Abrir ubicación GPS exacta en Google Maps</a></p><small>Coordenadas: '+esc(a.latitud)+', '+esc(a.longitud)+'</small>':'')+(a.tipo==='MECANICO'?'<div style="padding:12px;background:#eff6ff;border-radius:8px"><label>Derivar a mecánico <select data-mecanico-alerta="'+esc(a.id)+'" style="width:100%;padding:10px"><option value="">Seleccionar mecánico disponible...</option>'+mecanicos.filter(m=>m.activo).map(m=>'<option value="'+esc(m.id)+'">'+esc(m.nombre)+' · '+esc(m.telefono)+'</option>').join('')+'</select></label><p style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-whatsapp-mecanico="'+esc(a.id)+'">Enviar por WhatsApp</button><button type="button" data-llamar-mecanico="'+esc(a.id)+'">Llamar</button></p></div>':'')+'<p><button type="button" data-confirmar="'+esc(a.id)+'" style="background:#166534;color:white;font-size:20px;font-weight:bold;padding:14px 20px;border:0;border-radius:9px">✓ CONFIRMAR LECTURA Y SILENCIAR</button></p></div>';
   }).join('');
   if(typeof activarRespuestasOficina==='function')activarRespuestasOficina(panel);
+  if(typeof activarResultadosMecanicosSEC==='function')activarResultadosMecanicosSEC(panel);
   visibles.forEach(a=>{if(a.tipo==='OFICINA')return;if(a.latitud==null||a.longitud==null)return;const elemento=panel.querySelector('[data-direccion="'+a.id+'"]');if(!elemento)return;direccionDeCoordenadas(a.latitud,a.longitud).then(d=>{if(elemento.isConnected)elemento.textContent=d||'Dirección postal no disponible; usar enlace al punto GPS';});});
-  panel.querySelectorAll('[data-whatsapp-mecanico],[data-llamar-mecanico]').forEach(b=>{b.onclick=()=>{
+  panel.querySelectorAll('[data-whatsapp-mecanico],[data-llamar-mecanico]').forEach(b=>{b.onclick=run(async()=>{
    const id=b.dataset.whatsappMecanico||b.dataset.llamarMecanico,select=Array.from(panel.querySelectorAll('[data-mecanico-alerta]')).find(x=>x.dataset.mecanicoAlerta===id),m=mecanicos.find(x=>String(x.id)===select?.value),a=visibles.find(x=>String(x.id)===id);
-   if(!m||!a){alert('Seleccionar un mecánico disponible.');return;}
-   const numero=String(m.telefono).replace(/\\D/g,'');if(numero.length<8){alert('Teléfono inválido. Corregirlo en Mantenimiento de Flota.');return;}
+   if(!m||!a)throw Error('Seleccionar un mecánico disponible.');
+   const numero=String(m.telefono).replace(/\D/g,'');if(numero.length<8)throw Error('Teléfono inválido. Corregirlo en Mantenimiento de Flota.');
    if(b.dataset.llamarMecanico){window.location.href='tel:+'+numero;return;}
-   const gps=a.latitud!=null&&a.longitud!=null?'\\nUbicación: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(a.latitud+','+a.longitud):'\\nUbicación GPS no disponible';
-   const mensaje='SEC Distribución - Pedido de mecánico #'+a.id+'\\nConductor: '+(a.conductor||'')+'\\nDespacho: '+(a.despacho||'Sin despacho')+'\\nVehículo: '+(a.interno||'Sin asignar')+' '+(a.patente||'')+'\\nFecha: '+new Date(a.creada_en).toLocaleString('es-AR')+gps;
-   window.open('https://wa.me/'+numero+'?text='+encodeURIComponent(mensaje),'_blank','noopener,noreferrer');
-  };});
+   await enviarCasoMecanicoSEC(a,m,b);
+  });});
   panel.querySelectorAll('[data-confirmar]').forEach(b=>{b.onclick=run(async()=>{b.disabled=true;try{await api('/alertas-conductor/'+b.dataset.confirmar+'/confirmar',{method:'POST'});await consultarAlertasOficina();}catch(e){b.disabled=false;throw e;}});});
  }catch(e){if(!String(e.message).includes('relation')&&!String(e.message).includes('does not exist'))console.warn('Alertas:',e.message);}
 }
@@ -207,6 +207,7 @@ async function abrir(p){document.body.classList.remove('sec-resultado-activo');i
   document.querySelectorAll('.editar-mecanico').forEach(f=>{f.onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(f));b.activo=f.querySelector('[name="activo"]').checked;await api('/mantenimiento/mecanicos/'+f.dataset.id,{method:'PUT',body:JSON.stringify(b)});await abrir(p);mensaje('Mecánico actualizado.');})();};});
   agregarVista.html='<div class="panel"><h3>Historial de trabajos</h3>'+tabla(['Fecha','Equipo','Tipo','Sistema','Trabajo','Costo'],trabajos.map(x=>[esc(x.fecha?.slice(0,10)),esc(x.interno),esc(x.tipo),esc(x.sistema),esc(x.trabajo_realizado),Number(x.costo).toLocaleString('es-AR',{style:'currency',currency:'ARS'})]))+'</div>';
   agregarVista.html='<div class="panel"><h3>Anomalías de conductores</h3>'+tabla(['Fecha','Conductor','Tipo','Descripción','Estado'],anomalias.map(x=>[esc(x.creado_en?.slice(0,10)),esc(x.conductor_nombre+' '+x.conductor_apellido),esc(x.tipo),esc(x.descripcion),esc(x.estado)]))+'</div>';
+  if(typeof mostrarAsistenciasMecanicasSEC==='function')await mostrarAsistenciasMecanicasSEC();
   $('#flota-trabajo').onsubmit=e=>{e.preventDefault();run(async()=>{await api('/mantenimiento/trabajos',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await abrir(p);mensaje('Trabajo guardado.');})();};return;
  }
  if(p==='Combustible y Huella de Carbono'){
@@ -357,7 +358,7 @@ async function abrir(p){document.body.classList.remove('sec-resultado-activo');i
   const cargarControles=async()=>{panelControles.textContent='Consultando…';try{const datos=await api('/alertas-operativas?'+new URLSearchParams(new FormData(formControles)));panelControles.innerHTML=datos.alertas.length?tabla(['Tipo','Referencia','Detalle'],datos.alertas.map(a=>[esc(a.tipo),esc(a.referencia),esc(a.detalle)])):'Sin alertas operativas detectadas. Revisado: '+esc(new Date(datos.generado_en).toLocaleString('es-AR'));}catch(e){panelControles.textContent='No se pudieron consultar los controles: '+e.message;}};
   formControles.onsubmit=e=>{e.preventDefault();if(formControles.reportValidity()){try{localStorage.setItem(claveControles,JSON.stringify(Object.fromEntries(new FormData(formControles))));}catch{mensaje('No se pudieron guardar las preferencias del navegador. Los valores se aplican a esta consulta.');}cargarControles();}};
 
-  const refresh=async()=>{const as=await api('/alertas-conductor');$('#alertas-historial').innerHTML=tabla(['Fecha','Tipo','Conductor','Despacho','Estado','Acción'],as.map(a=>[esc(new Date(a.creada_en).toLocaleString('es-AR')),esc((a.es_prueba?'PRUEBA · ':'')+a.tipo),esc(a.conductor),esc(a.despacho||''),esc(a.estado),a.estado==='CONFIRMADA'?'<button data-resolver="'+esc(a.id)+'">Resolver</button>':a.estado==='ENVIADA'?'<button data-confirmar="'+esc(a.id)+'">Confirmar</button>':'—']));$('#alertas-historial').querySelectorAll('[data-resolver],[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+(b.dataset.resolver||b.dataset.confirmar)+'/'+(b.dataset.resolver?'resolver':'confirmar'),{method:'POST'});await refresh();await consultarAlertasOficina();}));};$('#alertas-refrescar').onclick=run(async()=>{await refresh();await cargarControles();});await refresh();await cargarControles();if(typeof mostrarHistorialOficina==='function')await mostrarHistorialOficina();return;
+  const refresh=async()=>{const as=await api('/alertas-conductor');$('#alertas-historial').innerHTML=tabla(['Fecha','Tipo','Conductor','Despacho','Estado','Acción'],as.map(a=>[esc(new Date(a.creada_en).toLocaleString('es-AR')),esc((a.es_prueba?'PRUEBA · ':'')+a.tipo),esc(a.conductor),esc(a.despacho||''),esc(a.estado),a.estado==='CONFIRMADA'?'<button data-resolver="'+esc(a.id)+'">Resolver</button>':a.estado==='ENVIADA'?'<button data-confirmar="'+esc(a.id)+'">Confirmar</button>':'—']));$('#alertas-historial').querySelectorAll('[data-resolver],[data-confirmar]').forEach(b=>b.onclick=run(async()=>{await api('/alertas-conductor/'+(b.dataset.resolver||b.dataset.confirmar)+'/'+(b.dataset.resolver?'resolver':'confirmar'),{method:'POST'});await refresh();await consultarAlertasOficina();}));};$('#alertas-refrescar').onclick=run(async()=>{await refresh();await cargarControles();});await refresh();await cargarControles();if(typeof mostrarHistorialOficina==='function')await mostrarHistorialOficina();if(typeof mostrarAsistenciasMecanicasSEC==='function')await mostrarAsistenciasMecanicasSEC();return;
  }
 
  // La asignación se muestra arriba con filtro de fecha.

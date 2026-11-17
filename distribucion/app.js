@@ -219,7 +219,7 @@ async function abrir(p){if(usuario?.rol==='MECANICO'&&!['Vehículos','Mantenimie
   agregarVista.html='<div class="panel"><h3>Historial de trabajos</h3>'+tabla(['Fecha','Equipo','Tipo','Sistema','Trabajo','Costo'],trabajos.map(x=>[esc(x.fecha?.slice(0,10)),esc(x.interno),esc(x.tipo),esc(x.sistema),esc(x.trabajo_realizado),Number(x.costo).toLocaleString('es-AR',{style:'currency',currency:'ARS'})]))+'</div>';
   agregarVista.html='<div class="panel"><h3>Anomalías de conductores</h3>'+tabla(['Fecha','Conductor','Tipo','Descripción','Estado'],anomalias.map(x=>[esc(x.creado_en?.slice(0,10)),esc(x.conductor_nombre+' '+x.conductor_apellido),esc(x.tipo),esc(x.descripcion),esc(x.estado)]))+'</div>';
   if(usuario?.rol!=='MECANICO'&&typeof mostrarAsistenciasMecanicasSEC==='function')await mostrarAsistenciasMecanicasSEC();
-  $('#flota-trabajo').onsubmit=e=>{e.preventDefault();run(async()=>{await api('/mantenimiento/trabajos',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await abrir(p);mensaje('Trabajo guardado.');})();};return;
+  $('#flota-trabajo').onsubmit=e=>{e.preventDefault();run(async()=>{await api('/mantenimiento/trabajos',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await abrir(p);mensaje('Trabajo guardado.');})();};instalarPreventivoSEC(equipos);return;
  }
  if(p==='Combustible y Huella de Carbono'){
   const [equipos,cargas]=await Promise.all([api('/vehiculos'),api('/combustible/cargas')]);

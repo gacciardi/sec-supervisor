@@ -66,15 +66,21 @@ const secciones=[['Dashboard conductores','Estado GPS y entregas de todos los co
 const iconoConductor='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-round" style="vertical-align:middle"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>';
 const iconosSecciones=["👥","▶️","📷",iconoConductor,"👤","💰","⚙️","🗺️","📍","🖥️","📋","⚠️","🔎","📥","🕒","🚛","🔧","⛽","📱","🔄","📊"];
 
+function accesoRendicionComercialSEC(){if(typeof location==='undefined')return false;const p=new URLSearchParams(location.search);return p.get('seccion')==='rendicion'&&p.get('origen')==='comercial';}
+function volverComercialSEC(){return accesoRendicionComercialSEC()&&['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario?.rol);}
+function configurarEncabezadoSEC(){const comercial=accesoRendicionComercialSEC()&&(!usuario||['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario.rol)),titulo=document.querySelector('.header-sec h1');if(titulo)titulo.textContent=comercial?'SEC - Comercial':'SEC - Distribución';document.title=comercial?'SEC - Rendición de Viaje':'SEC - Distribución';}
+async function entrarDestinoInicialSEC(){await inicio();if(!accesoRendicionComercialSEC())return;if(['ADMIN','SUPERVISOR','OPERADOR'].includes(usuario?.rol))await abrir('Rendición de Viaje');else mensaje('Tu perfil no tiene acceso a Rendición de Viaje.');}
+function volverMenuSEC(){if(volverComercialSEC()){location.href='../index.html';return;}return inicio();}
+
 function mensaje(s){$('#mensaje').textContent=s;}
 
 async function api(path,options={}){const h={Authorization:'Bearer '+token,...options.headers};if(options.body&&!(options.body instanceof FormData))h['Content-Type']='application/json';const r=await fetch(API+path,{...options,headers:h});let d;try{d=await r.json();}catch{throw Error('El servidor todavía no tiene instalado el módulo Distribución o devolvió una respuesta inválida');}if(!r.ok)throw Error(d.error||'Error del servidor');return d;}
 
 function run(fn){return async()=>{mensaje('');try{await fn();}catch(e){mensaje(e.message);}};}
 
-function login(){document.body.classList.remove('sec-resultado-activo');if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();token='';usuario=null;secAlertasPendientes=0;if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);document.getElementById('sec-alertas-emergentes')?.remove();sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>Ingreso a Distribución</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
+function login(){document.body.classList.remove('sec-resultado-activo');if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();token='';usuario=null;configurarEncabezadoSEC();secAlertasPendientes=0;if(secAlertasTimer)clearInterval(secAlertasTimer);if(window.secAlarmaInterval)clearInterval(window.secAlarmaInterval);document.getElementById('sec-alertas-emergentes')?.remove();sessionStorage.removeItem('sec-distribucion-token');$('#nav').innerHTML='<a href="../index.html">Comercial</a>';$('#vista').innerHTML=`<div class="panel"><h2>${accesoRendicionComercialSEC()?'Ingreso a Rendición de Viaje':'Ingreso a Distribución'}</h2><form id="login"><label>Empresa<input name="empresa" value="rebesa" required autocomplete="organization"></label><label>Legajo<input name="legajo" required autocomplete="username"></label><label>Contraseña<input name="clave" type="password" required autocomplete="current-password"></label><button>Ingresar</button></form><details><summary>Inicialización del módulo — primera instalación</summary><p>Usar sólo después de ejecutar la migración en el servidor.</p><form id="init"><label>Clave de inicialización del servidor<input name="bootstrap" type="password" required></label><label>Empresa<input name="empresa" value="rebesa" required></label><label>Legajo administrador<input name="legajo" required maxlength="20"></label><label>Nombre<input name="nombre" required></label><label>Apellido<input name="apellido" required></label><label>Contraseña nueva<input name="clave" type="password" minlength="8" required></label><button>Crear primer administrador</button></form></details></div>`;
 
- $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await inicio();})()};
+ $('#login').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const d=await api('/login',{method:'POST',body:JSON.stringify(b)});token=d.token;usuario=d.usuario;sessionStorage.setItem('sec-distribucion-token',token);await entrarDestinoInicialSEC();})()};
 
  $('#init').onsubmit=e=>{e.preventDefault();run(async()=>{const b=Object.fromEntries(new FormData(e.target));const secret=b.bootstrap;delete b.bootstrap;await api('/inicializar',{method:'POST',headers:{Authorization:'Bearer '+secret},body:JSON.stringify(b)});e.target.reset();mensaje('Administrador creado. Ingresá arriba con su legajo y contraseña.');})()};
 
@@ -88,7 +94,7 @@ function tarjetasMenuDistribucion(){
   .sort((a,b)=>a.orden-b.orden).map(s=>`<button class="menu-card" data-section="${s.i}"><h3><span aria-hidden="true">${iconosSecciones[s.i]||"📁"}</span> ${esc(usuario?.rol==='MECANICO'?({'Mantenimiento de Flota':'Mantenimiento','Combustible y Huella de Carbono':'Combustible'}[s.nombre]||s.nombre):s.nombre)}</h3><p>${esc(s.desc)}</p></button>`).join('');
 }
 
-async function menuAdministrador(){iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML=(usuario?.rol==='MECANICO'?'':'<a href="../index.html">Comercial</a>')+'<button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').onclick=run(inicio);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
+async function menuAdministrador(){configurarEncabezadoSEC();iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML=(usuario?.rol==='MECANICO'?'':'<a href="../index.html">Comercial</a>')+'<button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').textContent=volverComercialSEC()?'Volver a Comercial':'Volver al menú principal';$('#home').onclick=run(volverMenuSEC);$('#salir').onclick=run(async()=>{detenerGps();await api('/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>Distribución</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));}
 
 let secEmergenciasCache=[],secEmergenciasActor='';
 let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set(),secAlertasPendientes=0,secAudioHabilitado=false;
@@ -403,7 +409,7 @@ async function reemplazosInasistencia(){
 
 // El token se conserva sólo durante la sesión del navegador.
 
-if(token)run(async()=>{usuario=await api('/me');await inicio();if(window.SECAndroid&&usuario.rol==='CONDUCTOR'&&sessionStorage.getItem('sec-dist-apk-gps'))await abrir('App Conductor');})();else login();
+if(token)run(async()=>{usuario=await api('/me');await entrarDestinoInicialSEC();if(window.SECAndroid&&usuario.rol==='CONDUCTOR'&&sessionStorage.getItem('sec-dist-apk-gps'))await abrir('App Conductor');})();else login();
 
 
 
@@ -823,13 +829,13 @@ function agregarVolverAdmin(){
 
  boton.type='button';
 
- boton.textContent='Volver al menú principal';
+ boton.textContent=volverComercialSEC()?'Volver a Comercial':'Volver al menú principal';
 
  boton.style.display='block';
 
  boton.style.margin='0 0 16px';
 
- boton.onclick=run(inicio);
+ boton.onclick=run(volverMenuSEC);
 
  titulo.insertAdjacentElement('afterend',boton);
 

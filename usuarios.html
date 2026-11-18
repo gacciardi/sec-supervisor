@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<script src="usuarios-acceso-sec.js?v=20261118-local-1"></script>
+<script src="usuarios-acceso-sec.js?v=20261118-sectores-2"></script><script src="sectores-usuarios-sec.js?v=20261118-1"></script>
   <meta charset="UTF-8">
   <title>SEC - Usuarios</title>
   <link rel="stylesheet" href="style.css">
@@ -12,7 +12,7 @@
   <img src="assets/logo-rebesa.jpg" alt="Empresa" class="logo-rebesa">
   <div>
     <h1><span class="nombre-empresa-sec">REBESA</span> - Usuarios</h1>
-    <p>Alta, baja y edición de vendedores</p>
+    <p>Usuarios, perfiles y sectores autorizados</p>
   </div>
 </header>
 
@@ -46,6 +46,7 @@
   <option value="ADMIN">ADMIN</option>
 </select>
 
+<fieldset><legend>Sectores autorizados</legend><label><input type="checkbox" name="sectores-alta" value="COMERCIAL" checked> Comercial</label><label><input type="checkbox" name="sectores-alta" value="DISTRIBUCION"> Distribución</label></fieldset>
 <input id="horaAlertaLogin" type="time" value="08:45">
 
 <select id="alertaLoginActiva">
@@ -64,7 +65,7 @@
         <th>Nombre</th>
         <th>Apellido</th>
         <th>Email</th>
-        <th>Rol</th>
+        <th>Rol</th><th>Sectores autorizados</th>
         <th>Legajo</th>
         <th>Activo</th>
         <th>Hora alerta login</th>
@@ -94,6 +95,7 @@ function formatearHora(valor) {
 }
 
 async function cargarUsuarios() {
+ const actor=await window.secUsuarioAdministracionLista;if(!actor)return;document.querySelectorAll('[name=sectores-alta]').forEach(i=>i.disabled=!actor.sectores.includes(i.value));
   const usuarios = await fetch(`${API}/usuarios/administracion`,{headers:headersUsuariosSEC()}).then(r => r.json());
 
   document.getElementById("tablaUsuarios").innerHTML =
@@ -109,10 +111,13 @@ async function cargarUsuarios() {
   <option value="TRADE_MARKETING" ${u.rol === "TRADE_MARKETING" ? "selected" : ""}>TRADE MARKETING</option>
   <option value="SUPERVISOR" ${u.rol === "SUPERVISOR" ? "selected" : ""}>SUPERVISOR</option>
   <option value="ADMIN" ${u.rol === "ADMIN" ? "selected" : ""}>ADMIN</option>
+<option value="CONDUCTOR" ${u.rol === "CONDUCTOR" ? "selected" : ""}>CONDUCTOR</option>
+<option value="MECANICO" ${u.rol === "MECANICO" ? "selected" : ""}>MECÁNICO</option>
+<option value="OPERADOR" ${u.rol === "OPERADOR" ? "selected" : ""}>OPERADOR</option>
 </select>
         </td>
 
-        <td><input id="legajo-${u.id}" value="${esc(u.legajo)}"></td>
+        <td>${formularioSectoresSEC(u,u.empresa_codigo||actor.empresa,actor.sectores)}</td><td><input id="legajo-${u.id}" value="${esc(u.legajo)}"></td>
 
         <td>
           <select id="activo-${u.id}">
@@ -142,6 +147,7 @@ async function cargarUsuarios() {
         </td>
       </tr>
     `).join("");
+ conectarFormulariosSectoresSEC(document.getElementById('tablaUsuarios'),async(path,options)=>{const r=await fetch(API+'/distribucion'+path,{...options,headers:{...headersUsuariosSEC(),'Content-Type':'application/json'}}),d=await r.json();if(!r.ok)throw Error(d.error||'No se pudo guardar sectores');return d;},async r=>{if(r.requiere_ingreso){location.href='index.html';return;}await cargarUsuarios();});
 }
 
 async function crearUsuario() {
@@ -150,6 +156,7 @@ async function crearUsuario() {
     apellido: document.getElementById("apellido").value,
     email: document.getElementById("email").value,
     rol: document.getElementById("rol").value,
+    sectores: [...document.querySelectorAll('[name=sectores-alta]:checked')].map(i=>i.value),
     legajo: document.getElementById("legajo").value,
     hora_alerta_login: document.getElementById("horaAlertaLogin").value || "08:45",
     alerta_login_activa: document.getElementById("alertaLoginActiva").value === "true"

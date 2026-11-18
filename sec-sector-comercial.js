@@ -1,0 +1,3 @@
+'use strict';
+document.documentElement.style.visibility='hidden';
+(async()=>{try{const t=sessionStorage.getItem('sec-unificado-token')||sessionStorage.getItem('sec-distribucion-token')||'',headers={Authorization:'Bearer '+t};if(sessionStorage.getItem('sec-master-global')==='1'&&sessionStorage.getItem('sec-master-empresa'))headers['X-SEC-Empresa']=sessionStorage.getItem('sec-master-empresa');const r=await fetch('https://sec-backend-gg4j.onrender.com/distribucion/acceso/me',{headers}),u=await r.json();if(!r.ok||!u.sectores?.includes('COMERCIAL')||!['ADMIN','SUPERVISOR','OPERADOR'].includes(u.rol)){location.replace('index.html');return;}document.documentElement.style.visibility='visible';}catch{location.replace('index.html');}})();

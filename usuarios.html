@@ -156,7 +156,7 @@ async function crearUsuario() {
 
   const respuesta = await fetch(`${API}/usuarios`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: {"Content-Type": "application/json",Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")},
     body: JSON.stringify(body)
   });
 
@@ -185,7 +185,7 @@ async function guardarUsuario(id) {
 
   const respuesta = await fetch(`${API}/usuarios/${id}`, {
     method: "PUT",
-    headers: {"Content-Type": "application/json"},
+    headers: {"Content-Type": "application/json",Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")},
     body: JSON.stringify(body)
   });
 
@@ -204,7 +204,7 @@ async function eliminarUsuario(id) {
   if (!confirm("¿Eliminar usuario?")) return;
 
   const respuesta = await fetch(`${API}/usuarios/${id}`, {
-    method: "DELETE"
+    method: "DELETE", headers:{Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")}
   });
 
   const datos = await respuesta.json();

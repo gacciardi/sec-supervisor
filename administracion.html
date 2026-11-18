@@ -8,9 +8,8 @@
 <body>
 
 <script>
-if (localStorage.getItem("esAdmin") !== "true") {
-  window.location = "admin-login.html";
-}
+document.documentElement.style.visibility='hidden';
+(async()=>{try{const r=await fetch('https://sec-backend-gg4j.onrender.com/distribucion/me',{headers:{Authorization:'Bearer '+(sessionStorage.getItem('sec-distribucion-token')||'')}}),u=await r.json();if(!r.ok||u.rol!=='ADMIN'||!u.es_master)throw Error('Ingresar');document.documentElement.style.visibility='visible';}catch{localStorage.removeItem('esAdmin');location.replace('admin-login.html');}})();
 </script>
 
 <header class="header-sec">
@@ -18,7 +17,7 @@ if (localStorage.getItem("esAdmin") !== "true") {
 
   <div>
     <h1 id="nombreEmpresa">REBESA</h1>
-    <p>Administración SEC</p>
+    <p>Configuración general de SEC · Administrador Master global</p>
   </div>
 </header>
 
@@ -101,7 +100,8 @@ async function guardarEmpresa() {
     const respuesta = await fetch(`${API}/configuracion`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization":"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")
       },
       body: JSON.stringify({
         nombre_empresa: nombre,
@@ -124,7 +124,9 @@ async function guardarEmpresa() {
   }
 }
 
-function cerrarAdmin() {
+async function cerrarAdmin() {
+  try{await fetch(`${API}/distribucion/logout`,{method:"POST",headers:{Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")}});}catch{}
+  sessionStorage.removeItem("sec-distribucion-token");
   localStorage.removeItem("esAdmin");
   window.location = "admin-login.html";
 }

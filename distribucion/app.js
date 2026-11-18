@@ -256,11 +256,22 @@ async function abrir(p){if(usuario?.rol==='MECANICO'&&!['Vehículos','Mantenimie
   visibilidadClavesSEC($('#form-usuario-sec'));await panelMasterUsuariosSEC($('#master-usuarios'));await cargar();return;
  }
  if(p==='Importar horarios'){
-  agregarVista.html='<div class="panel"><p><strong>Formato:</strong> CLIENTE, HORARIO. Ejemplo: 15118, 08:00-12:00 / 14:00-18:00.</p><p>Opcionales: DIA (LUNES a DOMINGO, o TODOS) y DESCARGA_MIN (por defecto 5). Si no hay DIA, se aplica a todos los días. Los clientes existentes no se borran.</p><input id="archivo-horarios" type="file" accept=".xlsx,.xls,.csv"><button id="validar-horarios">Validar sin grabar</button><button id="confirmar-horarios" disabled>Confirmar importación</button><p id="estado-horarios"></p></div>';
-  const archivo=$('#archivo-horarios'),confirmar=$('#confirmar-horarios'),estado=$('#estado-horarios');let validado=false;
-  archivo.onchange=()=>{validado=false;confirmar.disabled=true;estado.textContent='';};
-  const enviar=async(guardar)=>{const f=archivo.files[0];if(!f)throw Error('Seleccioná el archivo');const form=new FormData();form.append('archivo',f);form.append(guardar?'confirmar':'solo_validar',guardar?'SI':'1');const d=await api('/importar-horarios',{method:'POST',body:form});estado.textContent=guardar?'Importados '+d.clientes+' clientes y '+d.horarios+' horarios.':'Validado: '+d.clientes+' clientes y '+d.horarios+' horarios. Confirmá para guardar.';validado=!guardar;confirmar.disabled=!validado;};
-  $('#validar-horarios').onclick=run(()=>enviar(false));confirmar.onclick=run(async()=>{if(!validado)throw Error('Primero validá el archivo');await enviar(true);});return;
+  agregarVista.html='<div class="panel"><p><strong>Formato:</strong> CLIENTE, HORARIO. Ejemplo: 15118, 08:00-12:00 / 14:00-18:00.</p><p>Opcionales: DIA (LUNES a DOMINGO, o TODOS) y DESCARGA_MIN (por defecto 5). Si no hay DIA, se aplica a todos los días. Los clientes existentes no se borran.</p><input id="archivo-horarios" type="file" accept=".xlsx,.xls,.csv"><button id="validar-horarios">Validar sin grabar</button><button id="confirmar-horarios" disabled>Confirmar importación</button><p id="estado-horarios" role="status" aria-live="polite" style="margin-top:12px;font-weight:600"></p></div>';
+  const archivo=$('#archivo-horarios'),confirmar=$('#confirmar-horarios'),validar=$('#validar-horarios'),estado=$('#estado-horarios');let validado=null,ocupado=false;
+  archivo.onchange=()=>{validado=null;confirmar.disabled=true;estado.textContent='';};
+  const enviar=async guardar=>{
+   if(ocupado)return;
+   const f=archivo.files[0];if(!f){estado.textContent='Seleccioná el archivo';return;}
+   if(guardar&&validado?.file!==f){estado.textContent='Primero validá este archivo';return;}
+   const cantidad=validado?.horarios;ocupado=true;archivo.disabled=true;validar.disabled=true;confirmar.disabled=true;confirmar.textContent=guardar?'Importando…':'Confirmar importación';estado.setAttribute('aria-busy','true');
+   estado.textContent=guardar?'Importando '+Number(cantidad).toLocaleString('es-AR')+' horarios. Esperá la confirmación; no cierres esta pantalla.':'Validando archivo sin guardar…';estado.style.color='#174d85';
+   try{const form=new FormData();form.append('archivo',f);form.append(guardar?'confirmar':'solo_validar',guardar?'SI':'1');const d=await api('/importar-horarios',{method:'POST',body:form});
+    if(guardar){validado=null;estado.textContent='Importación completada: '+Number(d.clientes).toLocaleString('es-AR')+' clientes y '+Number(d.horarios).toLocaleString('es-AR')+' horarios guardados en SEC.';estado.style.color='#16753c';}
+    else{validado={file:f,horarios:d.horarios};estado.textContent='Validado: '+Number(d.clientes).toLocaleString('es-AR')+' clientes y '+Number(d.horarios).toLocaleString('es-AR')+' horarios. Confirmá para guardar.';}
+   }catch(e){validado=null;estado.textContent=(guardar?'No se pudo confirmar la importación: ':'No se pudo validar el archivo: ')+e.message+'. Volvé a validar antes de reintentar.';estado.style.color='#b42318';}
+   finally{ocupado=false;archivo.disabled=false;validar.disabled=false;confirmar.disabled=!validado;confirmar.textContent='Confirmar importación';estado.setAttribute('aria-busy','false');}
+  };
+  validar.onclick=()=>enviar(false);confirmar.onclick=()=>enviar(true);return;
  }
  if(p==='Reemplazos por inasistencia'){await reemplazosInasistencia();return;}
 

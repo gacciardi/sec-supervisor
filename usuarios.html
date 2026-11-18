@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script src="usuarios-acceso-sec.js?v=20261118-local-1"></script>
   <meta charset="UTF-8">
   <title>SEC - Usuarios</title>
   <link rel="stylesheet" href="style.css">
@@ -93,7 +94,7 @@ function formatearHora(valor) {
 }
 
 async function cargarUsuarios() {
-  const usuarios = await fetch(`${API}/usuarios`).then(r => r.json());
+  const usuarios = await fetch(`${API}/usuarios/administracion`,{headers:headersUsuariosSEC()}).then(r => r.json());
 
   document.getElementById("tablaUsuarios").innerHTML =
     usuarios.map(u => `
@@ -156,7 +157,7 @@ async function crearUsuario() {
 
   const respuesta = await fetch(`${API}/usuarios`, {
     method: "POST",
-    headers: {"Content-Type": "application/json",Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")},
+    headers: {...headersUsuariosSEC(),"Content-Type":"application/json"},
     body: JSON.stringify(body)
   });
 
@@ -185,7 +186,7 @@ async function guardarUsuario(id) {
 
   const respuesta = await fetch(`${API}/usuarios/${id}`, {
     method: "PUT",
-    headers: {"Content-Type": "application/json",Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")},
+    headers: {...headersUsuariosSEC(),"Content-Type":"application/json"},
     body: JSON.stringify(body)
   });
 
@@ -204,7 +205,7 @@ async function eliminarUsuario(id) {
   if (!confirm("¿Eliminar usuario?")) return;
 
   const respuesta = await fetch(`${API}/usuarios/${id}`, {
-    method: "DELETE", headers:{Authorization:"Bearer "+(sessionStorage.getItem("sec-distribucion-token")||"")}
+    method: "DELETE", headers:headersUsuariosSEC()
   });
 
   const datos = await respuesta.json();

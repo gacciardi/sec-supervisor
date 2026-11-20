@@ -1,6 +1,6 @@
 'use strict';
 // Identidad visual oficial proporcionada por el usuario.
-const SEC_IDENTIDAD={logo:'assets/logo-sec.png',duracionPresentacionMs:3800};
+const SEC_IDENTIDAD={logo:'assets/logo-sec-sin-b.png',duracionPresentacionMs:3800};
 function iniciarPresentacionSEC(identidad=SEC_IDENTIDAD){
  const presentacion=document.getElementById('presentacion-sec'),contenido=document.getElementById('contenido-sec');
  if(!presentacion||!contenido)return;

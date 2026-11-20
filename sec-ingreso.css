@@ -5,7 +5,7 @@
 /* Presentación inicial: se activa únicamente al configurar el logo oficial. */
 .logo-marca-sec{width:108px;height:108px;object-fit:contain;border-radius:14px;background:#070709}
 .presentacion-sec{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:16px;background:#070709;color:#c5bfd1;text-align:center;perspective:1000px}
-.logo-presentacion{display:block;width:min(76vw,460px);height:min(76vw,460px);object-fit:contain;animation:presentar-logo-sec 1.5s linear infinite}
+.logo-presentacion{display:block;width:min(76vw,460px);height:min(76vw,460px);object-fit:contain;animation:presentar-logo-sec .35s linear infinite}
 @keyframes presentar-logo-sec{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.logo-presentacion{animation:none}}
 

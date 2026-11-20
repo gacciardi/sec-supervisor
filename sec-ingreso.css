@@ -11,7 +11,7 @@
 
 /* Las letras caen desde el logo y se ordenan debajo formando SEC. */
 .escena-sec{--tam-logo:min(88vw,640px,calc(100vh - 170px));position:relative;width:var(--tam-logo);height:calc(var(--tam-logo) + 112px);flex-shrink:0}
-.escena-sec .logo-presentacion{position:absolute;top:0;left:0;width:var(--tam-logo);height:var(--tam-logo)}
+.escena-sec .logo-presentacion{mix-blend-mode:lighten;position:absolute;top:0;left:0;width:var(--tam-logo);height:var(--tam-logo)}
 .letra-sec{position:absolute;top:calc(var(--tam-logo)/2);left:50%;width:64px;line-height:1;font-size:clamp(44px,10vw,64px);font-weight:800;opacity:0;transform:translate(-50%,-50%) scale(.15);animation:caer-letra-sec 950ms cubic-bezier(.22,.7,.25,1) both;filter:drop-shadow(0 5px 14px #0008)}
 .letra-s{--destino-x:-64px;--salida-x:-110px;--arco-x:-150px;animation-delay:400ms;color:#ff5b3f}
 .letra-e{--destino-x:0px;--salida-x:110px;--arco-x:140px;animation-delay:1050ms;color:#b69aff}

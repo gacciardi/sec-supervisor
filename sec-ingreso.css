@@ -4,19 +4,17 @@
 
 /* Presentación inicial: se activa únicamente al configurar el logo oficial. */
 .logo-marca-sec{width:108px;height:108px;object-fit:contain;border-radius:14px;background:#070709}
-.presentacion-sec{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding:30px;background:#070709;color:#c5bfd1;text-align:center;perspective:1000px}
+.presentacion-sec{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:16px;background:#070709;color:#c5bfd1;text-align:center;perspective:1000px}
 .logo-presentacion{display:block;width:min(76vw,460px);height:min(76vw,460px);object-fit:contain;animation:presentar-logo-sec 1.5s linear infinite}
-.presentacion-sec p{font-size:clamp(14px,3vw,19px);margin:0}
 @keyframes presentar-logo-sec{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.logo-presentacion{animation:none}}
 
-/* Las letras salen del centro durante el giro y aterrizan formando SEC. */
-.escena-sec{--tam-logo:min(76vw,400px);position:relative;width:var(--tam-logo);height:calc(var(--tam-logo) + 112px);flex-shrink:0}
+/* Las letras caen desde el logo y se ordenan debajo formando SEC. */
+.escena-sec{--tam-logo:min(88vw,640px,calc(100vh - 170px));position:relative;width:var(--tam-logo);height:calc(var(--tam-logo) + 112px);flex-shrink:0}
 .escena-sec .logo-presentacion{position:absolute;top:0;left:0;width:var(--tam-logo);height:var(--tam-logo)}
-.letra-sec{position:absolute;top:calc(var(--tam-logo)/2);left:50%;width:64px;line-height:1;font-size:clamp(44px,10vw,64px);font-weight:800;opacity:0;transform:translate(-50%,-50%) scale(.15);animation:expulsar-letra-sec 950ms cubic-bezier(.22,.7,.25,1) both;filter:drop-shadow(0 5px 14px #0008)}
+.letra-sec{position:absolute;top:calc(var(--tam-logo)/2);left:50%;width:64px;line-height:1;font-size:clamp(44px,10vw,64px);font-weight:800;opacity:0;transform:translate(-50%,-50%) scale(.15);animation:caer-letra-sec 950ms cubic-bezier(.22,.7,.25,1) both;filter:drop-shadow(0 5px 14px #0008)}
 .letra-s{--destino-x:-64px;--salida-x:-110px;--arco-x:-150px;animation-delay:400ms;color:#ff5b3f}
 .letra-e{--destino-x:0px;--salida-x:110px;--arco-x:140px;animation-delay:1050ms;color:#b69aff}
 .letra-c{--destino-x:64px;--salida-x:100px;--arco-x:155px;animation-delay:1700ms;color:#f1edf7}
-@keyframes expulsar-letra-sec{0%{opacity:0;transform:translate(-50%,-50%) scale(.15) rotate(-90deg)}12%{opacity:1}42%{opacity:1;transform:translate(-50%,-50%) translate(var(--salida-x),calc(var(--tam-logo)*-.25)) scale(.85) rotate(25deg)}70%{opacity:1;transform:translate(-50%,-50%) translate(var(--arco-x),calc(var(--tam-logo)*.3)) scale(1.05) rotate(-12deg)}88%{opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 43px)) scale(1.03) rotate(0deg)}100%{opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 36px)) scale(1) rotate(0deg)}}
-@media(max-height:660px){.escena-sec{--tam-logo:min(58vw,280px)}.presentacion-sec{gap:10px;padding:18px}}
+@keyframes caer-letra-sec{0%{opacity:0;transform:translate(-50%,-50%) translateX(var(--destino-x)) scale(.15)}12%{opacity:1}78%{opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 45px)) scale(1.05)}90%{opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 29px)) scale(1)}100%{opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 36px)) scale(1)}}
 @media(prefers-reduced-motion:reduce){.letra-sec{animation:none;opacity:1;transform:translate(-50%,-50%) translate(var(--destino-x),calc(var(--tam-logo)*.5 + 36px))}.logo-presentacion{animation:none}}

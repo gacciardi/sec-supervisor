@@ -656,27 +656,7 @@ async function resultado(p){
  requestAnimationFrame(()=>document.getElementById('resultado-titulo')?.scrollIntoView({block:'start',behavior:'instant'}));
 }
 
-async function dashboardConductores(){
- agregarVista.html='<div class="panel"><label>Fecha <input id="dashfecha" type="date" value="'+fechaHoy()+'"></label><button id="dashactualizar">Actualizar</button><p class="muted">Actualización cada 30 segundos. «Con GPS reciente» significa posición recibida en los últimos 5 minutos, no confirma que la aplicación esté abierta.</p><div id="dashresumen"></div><div id="dashconductores"></div><div id="mapa"></div></div>';
- let activo=true,temporizador=null;
- const cargar=async()=>{
-  if(!document.querySelector('#dashfecha')){activo=false;if(temporizador)clearInterval(temporizador);return;}
-  const f=$('#dashfecha').value;
-  const [cs,rs,ps,vs,gps]=await Promise.all([api('/conductores'),api('/repartos?fecha='+f),api('/pedidos?fecha='+f),api('/visitas?fecha='+f),api('/gps?fecha='+f)]);
-  const ultimos=new Map();gps.forEach(g=>{const anterior=ultimos.get(g.conductor_id);if(!anterior||new Date(g.fecha)>new Date(anterior.fecha))ultimos.set(g.conductor_id,g);});
-  const ahora=Date.now(),hoy=f===fechaHoy();let recientes=0,asignados=0,entregas=0;
-  const rows=cs.map(c=>{
-   const repartosConductor=rs.filter(r=>r.conductor_id===c.id),ids=new Set(repartosConductor.map(r=>r.id)),pedidosConductor=ps.filter(p=>ids.has(p.reparto_id)),visitasConductor=vs.filter(v=>ids.has(v.reparto_id)),entregados=visitasConductor.filter(v=>['ENTREGADO','CERRADO'].includes(v.estado)).length,g=ultimos.get(c.id),reciente=!!(hoy&&g&&ahora-new Date(g.fecha).getTime()>=0&&ahora-new Date(g.fecha).getTime()<=300000);
-   if(reciente)recientes++;if(repartosConductor.length)asignados++;entregas+=entregados;
-   return [esc(c.legajo||''),esc((c.nombre||'')+' '+(c.apellido||'')),reciente?'🟢 GPS reciente':g?'⚪ Sin GPS reciente':'⚪ Sin GPS',esc(g?new Date(g.fecha).toLocaleString('es-AR'):'—'),esc(repartosConductor.map(r=>r.despacho).join(', ')||'—'),String(pedidosConductor.length),String(entregados),String(Math.max(0,pedidosConductor.length-entregados))];
-  });
-  $('#dashresumen').innerHTML='<div class="conductor-resumen"><div><strong>'+cs.length+'</strong><span>Conductores</span></div><div><strong>'+asignados+'</strong><span>Con reparto</span></div><div><strong>'+recientes+'</strong><span>GPS reciente</span></div><div><strong>'+entregas+'</strong><span>Entregados</span></div></div>';
-  $('#dashconductores').innerHTML=tabla(['Legajo','Conductor','Estado GPS','Última posición','Despachos','Clientes','Entregados','Pendientes'],rows);
-  if(mapa)mapa.remove();if(!window.L)return;mapa=L.map('mapa').setView([-34.65,-58.8],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(mapa);
-  const puntos=[];for(const c of cs){const g=ultimos.get(c.id);if(!g)continue;const lat=Number(g.latitud),lng=Number(g.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;const reciente=hoy&&ahora-new Date(g.fecha).getTime()<=300000&&ahora-new Date(g.fecha).getTime()>=0;L.circleMarker([lat,lng],{radius:9,color:reciente?'#16a34a':'#64748b',fillOpacity:.8}).addTo(mapa).bindPopup(esc(c.legajo+' · '+c.nombre+' '+c.apellido)+'<p>Último GPS: '+esc(new Date(g.fecha).toLocaleString('es-AR'))+'</p>');puntos.push([lat,lng]);}if(puntos.length)mapa.fitBounds(puntos,{padding:[25,25],maxZoom:15});
- };
- $('#dashactualizar').onclick=run(cargar);await cargar();temporizador=setInterval(()=>{if(!activo||!document.querySelector('#dashfecha')){clearInterval(temporizador);return;}run(cargar)();},30000);
-}
+async function dashboardConductores(){await dashboardSeguimientoSEC();}
 
 async function recorridos(){
 

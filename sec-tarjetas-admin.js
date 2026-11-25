@@ -10,11 +10,9 @@ function renombrar(t){
   ev.preventDefault();
   const titulo=f.elements.titulo.value.trim();
   if(titulo.length<2){estado.textContent='Ingresá al menos dos caracteres.';return;}
-  const sector_ids=t.sector_ids||sectoresEmpresa.filter(x=>x.activo&&t.sectores.includes(x.codigo.toUpperCase())&&(!t.empresa_id||x.empresa_id===t.empresa_id)).map(x=>x.id);
   boton.disabled=true;
   try{
-   const {descripcion,icono,destino,empresa_id,orden,activo,version}=t;
-   await pedir('/distribucion/acceso/tarjetas/admin/'+t.id,{method:'PUT',body:JSON.stringify({titulo,descripcion,icono,destino,empresa_id,sector_ids,orden,activo,version})});
+   await pedir('/distribucion/acceso/tarjetas/admin/'+t.id+'/nombre',{method:'PATCH',body:JSON.stringify({titulo,version:t.version})});
    await cargar();
    if(vigente())host.querySelector('[data-asignacion-estado]').textContent='Nombre actualizado.';
   }catch(error){estado.textContent=error.message;boton.disabled=false;}

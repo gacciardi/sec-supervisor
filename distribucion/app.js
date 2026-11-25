@@ -99,7 +99,72 @@ function tarjetasMenuDistribucion(){
  return tarjetas+documentacion;
 }
 
-async function menuAdministrador(){configurarEncabezadoSEC();document.querySelector('#master-contexto-empresa')?.remove();iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML=(usuario?.rol==='MECANICO'?'':'<a href="../index.html">Inicio SEC</a>')+'<button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').textContent=textoVolverMenuSEC();$('#home').onclick=run(volverMenuSEC);$('#salir').onclick=run(async()=>{detenerGps();await api('/acceso/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>${usuario?.es_master?'Administrador Master · Distribución':'Distribución'}</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));if(typeof cargarTarjetasMenuSEC==='function'&&!usuario?.consulta_comercial)await cargarTarjetasMenuSEC(document.querySelector('.menu-principal'),'DISTRIBUCION');}
+function ordenarTarjetasDistribucion(menu,boton,estado){
+ const tarjetas=()=>Array.from(menu.children).filter(n=>n.matches('.menu-card'));
+ const clave='sec-distribucion-orden:'+JSON.stringify([usuario?.empresa_id,usuario?.id??usuario?.legajo]);
+ const id=tarjeta=>tarjeta.dataset.section!==undefined
+  ? 'seccion:'+secciones[Number(tarjeta.dataset.section)][0]
+  : tarjeta.dataset.tarjetaSec?'asignada:'+tarjeta.dataset.tarjetaSec:'documentacion';
+ let ordenando=false,origen=null;
+ try{
+  const guardadas=JSON.parse(localStorage.getItem(clave)||'[]');
+  if(Array.isArray(guardadas)){
+   const porId=new Map(tarjetas().map(t=>[id(t),t]));
+   for(const key of guardadas){
+    const tarjeta=porId.get(key);
+    if(tarjeta){menu.insertBefore(tarjeta,menu.querySelector(':scope > [data-tarjeta-sec="estado"]'));porId.delete(key);}
+   }
+   for(const tarjeta of porId.values())menu.insertBefore(tarjeta,menu.querySelector(':scope > [data-tarjeta-sec="estado"]'));
+  }
+ }catch{}
+ function mover(tarjeta,destino){
+  const lista=tarjetas(),desde=lista.indexOf(tarjeta),hasta=lista.indexOf(destino);
+  if(desde<0||hasta<0||desde===hasta)return;
+  destino[desde<hasta?'after':'before'](tarjeta);
+  try{
+   localStorage.setItem(clave,JSON.stringify(tarjetas().map(id)));
+   estado.textContent='Orden guardado en este navegador.';
+  }catch{estado.textContent='El navegador no pudo guardar el orden.';}
+ }
+ boton.onclick=()=>{
+  ordenando=!ordenando;
+  boton.setAttribute('aria-pressed',String(ordenando));
+  boton.textContent=ordenando?'Terminar de ordenar':'Ordenar tarjetas';
+  menu.classList.toggle('ordenando-tarjetas',ordenando);
+  for(const tarjeta of tarjetas())tarjeta.draggable=ordenando;
+  estado.textContent=ordenando?'Arrastrá una tarjeta hasta su nueva posición. Con el teclado, enfocá una tarjeta y usá las flechas.':'';
+ };
+ const tarjetaDe=e=>e.target.closest('.menu-card');
+ menu.addEventListener('click',e=>{
+  if(ordenando&&tarjetaDe(e)){e.preventDefault();e.stopPropagation();}
+ },true);
+ menu.addEventListener('dragstart',e=>{
+  origen=ordenando?tarjetaDe(e):null;
+  if(!origen){e.preventDefault();return;}
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id(origen));
+  origen.classList.add('tarjeta-arrastrada');
+ });
+ menu.addEventListener('dragover',e=>{
+  if(origen&&tarjetaDe(e)){e.preventDefault();e.dataTransfer.dropEffect='move';}
+ });
+ menu.addEventListener('drop',e=>{
+  const destino=tarjetaDe(e);
+  if(origen&&destino){e.preventDefault();mover(origen,destino);}
+ });
+ menu.addEventListener('dragend',()=>{origen?.classList.remove('tarjeta-arrastrada');origen=null;});
+ menu.addEventListener('keydown',e=>{
+  const tarjeta=tarjetaDe(e);
+  const paso={ArrowLeft:-1,ArrowUp:-1,ArrowRight:1,ArrowDown:1}[e.key];
+  if(!ordenando||!tarjeta||!paso)return;
+  e.preventDefault();
+  const lista=tarjetas();
+  mover(tarjeta,lista[lista.indexOf(tarjeta)+paso]);
+  tarjeta.focus();
+ });
+}
+
+async function menuAdministrador(){configurarEncabezadoSEC();document.querySelector('#master-contexto-empresa')?.remove();iniciarMonitorAlertas();if(mapa){mapa.remove();mapa=null;}$('#nav').innerHTML=(usuario?.rol==='MECANICO'?'':'<a href="../index.html">Inicio SEC</a>')+'<button id="home">Volver al menú principal</button><button id="salir">Cerrar sesión</button>';$('#home').textContent=textoVolverMenuSEC();$('#home').onclick=run(volverMenuSEC);$('#salir').onclick=run(async()=>{detenerGps();await api('/acceso/logout',{method:'POST'});if(typeof detenerMensajesOficina==='function')detenerMensajesOficina();sessionStorage.removeItem('sec-dist-apk-gps');if(window.SECAndroid||usuario?.rol==='CONDUCTOR'){localStorage.removeItem('vendedorId');sessionStorage.removeItem('sec-distribucion-token');location.href='salida/login-vendedor.html';return;}login();});$('#vista').innerHTML=`<h2>${usuario?.es_master?'Administrador Master · Distribución':'Distribución'}</h2><div class="menu-principal">${tarjetasMenuDistribucion()}</div><button type="button" id="ordenar-tarjetas" aria-pressed="false">Ordenar tarjetas</button><p id="estado-orden-tarjetas" role="status"></p>`;document.querySelectorAll('[data-section]').forEach(b=>b.onclick=run(()=>{const nombre=secciones[+b.dataset.section][0];if(nombre==='Asignación de repartos')fechaAsignacion=fechaHoy();return abrir(nombre);}));if(typeof cargarTarjetasMenuSEC==='function'&&!usuario?.consulta_comercial)await cargarTarjetasMenuSEC(document.querySelector('.menu-principal'),'DISTRIBUCION');const botonOrden=$('#ordenar-tarjetas');if(botonOrden)ordenarTarjetasDistribucion(document.querySelector('.menu-principal'),botonOrden,$('#estado-orden-tarjetas'));}
 
 let secEmergenciasCache=[],secEmergenciasActor='';
 let secAlertasTimer=null,secAlertaSonido=null,secAlertasConocidas=new Set(),secAlertasInicializadas=false,secAlertasOcultadas=new Set(),secAlertasPendientes=0,secAudioHabilitado=false;

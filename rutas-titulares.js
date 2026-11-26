@@ -1,0 +1,13 @@
+'use strict';
+(()=>{
+  const base='https://sec-backend-gg4j.onrender.com/distribucion',ruta=document.getElementById('ruta-titular-sec'),vendedor=document.getElementById('vendedor-titular-sec'),estado=document.getElementById('estado-titular-sec'),actual=document.getElementById('titular-actual-sec'),confirmar=document.getElementById('confirmar-titular-sec'),guardar=document.getElementById('guardar-titular-sec');
+  let rutas=[];
+  function headers(){const h={Authorization:'Bearer '+(sessionStorage.getItem('sec-unificado-token')||sessionStorage.getItem('sec-distribucion-token')||''),'Content-Type':'application/json'};if(sessionStorage.getItem('sec-master-global')==='1'&&sessionStorage.getItem('sec-master-empresa'))h['X-SEC-Empresa']=sessionStorage.getItem('sec-master-empresa');return h;}
+  function opciones(select,filas,texto){select.replaceChildren(new Option('Seleccionar...', ''));for(const f of filas)select.add(new Option(texto(f),f.id));}
+  function seleccionado(){const r=rutas.find(x=>x.id===ruta.value);actual.textContent=r?`Titular actual: ${r.vendedor}. ${r.clientes} clientes en la ficha principal.${r.tiene_reemplazo?' Tiene reemplazo vigente o futuro; revisalo antes de guardar.':''}`:'';confirmar.checked=false;}
+  async function cargar(){guardar.disabled=true;try{const r=await fetch(base+'/acceso/rutas-titulares',{headers:headers(),cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'No se pudieron consultar las rutas');rutas=d.rutas;opciones(ruta,rutas,x=>'Ruta '+x.nombre+' · '+x.vendedor);opciones(vendedor,d.vendedores,x=>x.legajo+' · '+x.nombre+' '+x.apellido);seleccionado();guardar.disabled=false;}catch(e){estado.textContent=e.message;}}
+  ruta.addEventListener('change',seleccionado);
+  document.getElementById('actualizar-titular-sec').onclick=cargar;
+  document.getElementById('cambio-titular-sec').onsubmit=async e=>{e.preventDefault();const anterior=rutas.find(x=>x.id===ruta.value);if(!anterior||!confirmar.checked)return;guardar.disabled=true;estado.textContent='Guardando cambio de titular...';try{const r=await fetch(base+'/acceso/rutas/'+encodeURIComponent(anterior.id)+'/titular',{method:'PUT',headers:headers(),body:JSON.stringify({vendedor_id:vendedor.value,vendedor_anterior_id:anterior.vendedor_id,confirmar:true})}),d=await r.json();if(!r.ok)throw Error(d.error||'No se pudo guardar');await cargar();await cargarRutas();estado.textContent=`Ruta ${d.ruta}: nuevo titular ${d.vendedor.legajo} · ${d.vendedor.nombre} ${d.vendedor.apellido}. ${d.clientes} fichas y ${d.asignaciones} asignaciones activas actualizadas.`;}catch(e){estado.textContent=e.message;}finally{guardar.disabled=false;}};
+  cargar();
+})();

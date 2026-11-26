@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script src="sec-sector-comercial.js?v=20261118-1"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SEC - Configuración de Rutas</title>
@@ -51,6 +52,19 @@
   </div>
 
   <div class="contenedor">
+    <section class="panel" id="titulares-sec">
+      <h2>Cambiar vendedor titular de una ruta</h2>
+      <p>El cambio es permanente y se aplica desde ahora al titular, las fichas de clientes de la ruta y sus asignaciones activas. Las visitas y recorridos ya registrados se conservan. Para una suplencia por fechas, usá <a href="reemplazos-ruta.html">Reemplazos de Ruta</a>.</p>
+      <form id="cambio-titular-sec">
+        <label>Ruta<select id="ruta-titular-sec" required><option value="">Cargando rutas...</option></select></label>
+        <p id="titular-actual-sec"></p>
+        <label>Nuevo vendedor<select id="vendedor-titular-sec" required><option value="">Cargando vendedores...</option></select></label>
+        <p><label><input id="confirmar-titular-sec" type="checkbox" required> Confirmo el cambio permanente del titular de esta ruta.</label></p>
+        <button id="guardar-titular-sec">Guardar nuevo titular</button>
+        <button type="button" class="secundario" id="actualizar-titular-sec">Actualizar lista</button>
+      </form>
+      <p id="estado-titular-sec" role="status"></p>
+    </section>
     <div class="panel">
       <p class="intro">
         Esta configuración identifica qué función cumple cada ruta.
@@ -220,5 +234,6 @@
 
     cargarRutas();
   </script>
+  <script src="rutas-titulares.js?v=20261126-1"></script>
 </body>
 </html>

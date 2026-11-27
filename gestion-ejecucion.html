@@ -766,7 +766,7 @@ function pintarTabla() {
               <td>
                 ${
                   esEjecucion
-                    ? `Semana ${cliente.semana_ejecucion || "-"}`
+                    ? (cliente.ejecucion_semanal ? `Semanal · ${escapar(cliente.frecuencia || "día asignado")}` : `Semana ${cliente.semana_ejecucion || "-"}`)
                     : "-"
                 }
               </td>

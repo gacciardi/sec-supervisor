@@ -31,10 +31,15 @@
 <div class="container">
   <h2>Importar clientes desde Excel</h2>
 
-  <input type="file" id="archivoExcel" accept=".xlsx,.xls">
-  <br><br>
-
-  <button onclick="importarClientes()">Importar</button>
+  <p>Elegí el Excel y la hoja que querés importar. MK / Mk se marca automáticamente como Ejecución con visita semanal en el día del Excel. Las otras atenciones del cliente se mantienen separadas.</p>
+  <label>Archivo Excel <input type="file" id="archivoExcel" accept=".xlsx,.xls" onchange="leerHojas()"></label>
+  <label>Hoja del Excel <select id="hojaExcel" onchange="mostrarHoja()" disabled><option value="">Seleccioná primero el archivo</option></select></label>
+  <p id="resumenHoja" role="status"></p>
+  <p>Los MK se programan todas las semanas según el día de la columna D. Ejemplo: 4-Jueves = todos los jueves.</p>
+  <label><input type="checkbox" id="suspenderAusentes">Este archivo es un padrón completo: suspender clientes que no aparecen en la hoja elegida.</label>
+  <p>Para novedades o una hoja parcial, dejá esa casilla sin marcar.</p>
+  <label><input type="checkbox" id="confirmarImportacion">Revisé la hoja y quiero importar estos datos.</label>
+  <button id="botonImportar" onclick="importarClientes()" disabled>Importar hoja seleccionada</button>
 
   <pre id="resultado" style="margin-top:20px;background:#f3f4f6;padding:15px;border-radius:8px;white-space:pre-wrap;"></pre>
 </div>
@@ -42,6 +47,15 @@
 <script>
 const API = "https://sec-backend-gg4j.onrender.com";
 
+let hojasDisponibles=[];
+async function leerHojas(){
+ const archivo=document.getElementById('archivoExcel').files[0],selector=document.getElementById('hojaExcel'),resultado=document.getElementById('resultado');
+ hojasDisponibles=[];selector.replaceChildren(new Option('Leyendo hojas…',''));selector.disabled=true;document.getElementById('botonImportar').disabled=true;document.getElementById('confirmarImportacion').checked=false;document.getElementById('resumenHoja').textContent='';
+ if(!archivo)return;
+ try{const f=new FormData();f.append('archivo',archivo);const r=await fetch(API+'/clientes/importar-excel/hojas',{method:'POST',body:f}),d=await r.json();if(archivo!==document.getElementById('archivoExcel').files[0])return;if(!r.ok)throw Error(d.error||'No se pudieron leer las hojas.');hojasDisponibles=d.hojas;selector.replaceChildren(new Option('Elegí una hoja',''),...d.hojas.map(h=>new Option(h.nombre,h.nombre)));selector.disabled=false;resultado.textContent='Archivo leído. Todavía no se guardó ningún dato.';if(d.hojas.length===1){selector.value=d.hojas[0].nombre;mostrarHoja();}}
+ catch(e){resultado.textContent=e.message;}
+}
+function mostrarHoja(){const h=hojasDisponibles.find(h=>h.nombre===document.getElementById('hojaExcel').value);document.getElementById('confirmarImportacion').checked=false;document.getElementById('botonImportar').disabled=!h;document.getElementById('resumenHoja').textContent=h?'Hoja '+h.nombre+': '+h.filas+' filas, '+h.clientes+' clientes y '+h.ejecucion_mk.length+' clientes MK de Ejecución.':'';}
 async function importarClientes() {
   const archivo = document.getElementById("archivoExcel").files[0];
   const resultado = document.getElementById("resultado");
@@ -51,11 +65,16 @@ async function importarClientes() {
     return;
   }
 
-  resultado.textContent = "Importando, por favor espere...";
+  const hoja=document.getElementById('hojaExcel').value;
+  if(!hoja||!document.getElementById('confirmarImportacion').checked){resultado.textContent='Elegí la hoja y marcá la confirmación para importar.';return;}
+  const boton=document.getElementById('botonImportar');boton.disabled=true;
+  resultado.textContent = "Importando la hoja seleccionada, por favor espere...";
 
   try {
     const formData = new FormData();
     formData.append("archivo", archivo);
+    formData.append('hoja',hoja);
+    formData.append('suspender_ausentes',String(document.getElementById('suspenderAusentes').checked));
 
     const respuesta = await fetch(`${API}/clientes/importar-excel`, {
       method: "POST",
@@ -73,18 +92,21 @@ async function importarClientes() {
 
     resultado.textContent =
       "IMPORTACIÓN FINALIZADA\n\n" +
+      "Hoja: " + datos.hojaImportada + "\n" +
+      "Ejecución por MK: " + (datos.ejecucionMK?.marcados || 0) + " clientes\n" +
+      "Clientes ausentes: " + (datos.suspensionDeAusentesOmitida ? "se conservaron" : "se revisaron según padrón completo") + "\n" +
       "Filas leídas: " + datos.filas + "\n" +
       "Importados: " + datos.importados + "\n" +
       "Actualizados: " + datos.actualizados + "\n" +
       "Omitidos: " + datos.omitidos + "\n" +
       "Sin coordenadas: " + datos.sinCoordenadas + "\n\n" +
       "Errores:\n" +
-      JSON.stringify(datos.errores || [], null, 2);
+      JSON.stringify(datos.errores || [], null, 2) + "\n\nAdvertencias:\n" + JSON.stringify(datos.advertencias || [],null,2);
 
   } catch (error) {
     resultado.textContent =
       "ERROR DE CONEXIÓN O JAVASCRIPT:\n\n" + error.message;
-  }
+  } finally {boton.disabled=false;}
 }
 </script>
 

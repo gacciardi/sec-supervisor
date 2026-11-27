@@ -1028,6 +1028,9 @@ async function cargarDetalle() {
     ).textContent =
       `${datos.vendedor.nombre || ""} ` +
       `${datos.vendedor.apellido || ""} - ` +
+      (Array.isArray(datos.vendedor.rutas) && datos.vendedor.rutas.length
+        ? `${datos.vendedor.rutas.length === 1 ? "Ruta" : "Rutas"} ${datos.vendedor.rutas.join(", ")} - `
+        : "Sin ruta asignada - ") +
       `Legajo ${datos.vendedor.legajo || ""}` +
       (
         rolVisible
